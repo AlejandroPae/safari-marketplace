@@ -39,7 +39,7 @@ respalde): `product-flash-sale-info`, `vendor-requests-for-flash-sale`,
 
 | US | Título | Releasable solo | Depende de | LOC est. |
 |----|--------|-----------------|------------|----------|
-| [US-93](./93-authors-postgres.md) | `authors` y `top-authors` desde Postgres | Sí | ninguna | ~700 |
+| [US-93](./93-authors-postgres.md) ✅ | `authors` y `top-authors` desde Postgres. Implementada el 2026-11-17; byte a byte en el listado y el detalle; `top-authors` ordena por `products_count` | Sí | ninguna | ~700 |
 | [US-94](./94-flash-sale-postgres.md) | `flash-sale` y `products-by-flash-sale` desde Postgres | Sí | US-93 (orden secuencial, R-1) | ~1100 |
 
 Orden: **US-93 → US-94**, nunca en paralelo. Las dos tocan `db/schema.sql`,

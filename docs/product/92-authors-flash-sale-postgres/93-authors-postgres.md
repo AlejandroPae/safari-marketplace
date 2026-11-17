@@ -6,7 +6,7 @@
 
 **Épico:** [Épico 92](./README.md)
 **Fecha:** 2026-11-17
-**Status:** Listo para ejecución
+**Status:** Implementada (2026-11-17, rama `us-93-authors`)
 **Depende de:** ninguna
 **LOC est.:** ~700
 
@@ -86,11 +86,11 @@ curl -s "$B/top-authors" > top-authors.json
 | `bio`, `quote` | `text` | |
 | `born`, `death` | `timestamptz` | `Date.toJSON()` da los mismos 3 decimales que el mock |
 | `languages` | `text` | cadena libre, como el mock |
-| `socials` | `jsonb NOT NULL DEFAULT '[]'` | |
-| `image`, `cover_image` | `jsonb` | precedente `manufacturers.image` |
+| `socials` | `json NOT NULL DEFAULT '[]'` | `json` y no `jsonb`: `jsonb` reordena las claves y el orden es contrato (precedente `ownership_transfers`) |
+| `image`, `cover_image` | `json` | ídem |
 | `products_count` | `integer NOT NULL DEFAULT 0 CHECK (>= 0)` | DA-4 (a): dato sembrado |
 | `is_approved` | `boolean NOT NULL DEFAULT true` | se emite como `1`/`0` |
-| `language` | `text NOT NULL DEFAULT 'en'` | |
+| `language` | `text NOT NULL DEFAULT 'es'` | el default del resto de tablas; el seed y el admin envían `en` |
 | `created_at`, `updated_at` | `timestamptz NOT NULL DEFAULT now()` | no se emiten (el mock no los trae) |
 
 Sin `shop_id`: el mock no lo tiene y el autor es global del catálogo. El
@@ -99,7 +99,7 @@ Sin `shop_id`: el mock no lo tiene y el autor es global del catálogo. El
 ## Reglas del seed
 
 1. 11 filas, ids preservados, `is_approved` de `1`/`0` a booleano.
-2. `born`/`death` tal cual; `socials`, `image` y `cover_image` como `jsonb`.
+2. `born`/`death` tal cual; `socials`, `image` y `cover_image` como `json`.
 3. El generador falla si un slug se repite o si falta `name`.
 4. `setval` de la secuencia. Conteo esperado: `authors` 11. Los previos no
    cambian.
@@ -205,12 +205,150 @@ Feature: Autores desde Postgres
 
 Seguir el protocolo del épico y pegar:
 
-- [ ] Línea base (7 `curl`) con sus bytes.
-- [ ] Generador y `just db-reset`; `psql` con los conteos.
-- [ ] `prisma validate` y `migrate diff` con `EXIT=0`; `just db-build`.
-- [ ] `just db-check`, `npx vitest run` y `npx tsc --noEmit` con sus recuentos.
-- [ ] `just build-api`, `just build-shop` y `just verify`.
-- [ ] Byte a byte de CA-2; antes y después de cada divergencia.
-- [ ] `curl` y `psql` de CA-4.
-- [ ] `grep` sin import de `authors.json`.
-- [ ] Status de la US y fila del épico.
+- [x] Línea base (7 `curl`) con sus bytes.
+- [x] Generador y `just db-reset`; `psql` con los conteos.
+- [x] `prisma validate` y `migrate diff` con `EXIT=0`; `just db-build`.
+- [x] `just db-check`, `npx vitest run` y `npx tsc --noEmit` con sus recuentos.
+- [x] `just build-api`, `just build-shop` y `just verify`.
+- [x] Byte a byte de CA-2; antes y después de cada divergencia.
+- [x] `curl` y `psql` de CA-4.
+- [x] `grep` sin import de `authors.json`.
+- [x] Status de la US y fila del épico.
+
+## Resultado — ejecutado el 2026-11-17
+
+Rama `us-93-authors`, desde `main` @ `37d5120`. Las 6 rutas de autores leen
+y escriben Postgres; `authors.json` ya no se importa en ningún servicio.
+
+### Cambios respecto al refinamiento
+
+- `socials`, `image` y `cover_image` van en **`json`**, no en `jsonb`: el
+  esquema ya fija que `jsonb` reordena las claves y que el orden es contrato
+  (precedente `ownership_transfers`). Con `jsonb`, unas `socials`
+  `{icon, url}` del admin se guardarían como `{url, icon}`.
+- `language` toma el default del resto de tablas (`'es'`); el seed y el
+  admin envían `en`.
+- `CreateAuthorDto` declaraba lo contrario de lo que envía el admin (omitía
+  `name`, `bio`, `slug`…). Ahora omite solo lo que fija la API, y
+  `Author.socials` pasa a ser un array, que es lo que traen los datos.
+
+### Línea base (API mock recién arrancada)
+
+```
+authors-all.json      14983 B  11 autores, ids 12..2, total 11, per_page 30
+authors-100.json      14988 B
+authors-p2.json        7111 B  ids 7,6,5,4,3, per_page "5"
+authors-search.json    1646 B  id 12
+author-slug.json       1328 B
+author-404 (no-existe)    0 B  200 vacío
+top-authors-5.json     6660 B  ids 12,11,10,9,8
+top-authors.json      13329 B
+```
+
+### Seed y esquema
+
+```
+just db-seed-generate → ... · 6 ownership_transfers · 11 authors
+just db-reset          → esquema y datos de referencia aplicados
+
+ authors | aprobados | products_count
+      11 |        11 |             67
+ products 1200 · shops 12 · ownership_transfers 6 · orders 40 · attributes 8
+```
+
+`git diff db/seed.sql`: 22 líneas añadidas y solo cambia la línea de conteos
+de la cabecera. `npx prisma validate` → válido; `npx prisma migrate diff
+--from-config-datasource --to-schema ./prisma/schema.prisma --exit-code` →
+`No difference detected.`, `EXIT=0`. `just db-build` en verde.
+
+### Tests
+
+```
+just db-check (typecheck + vitest)      Test Files 33 passed · Tests 427 passed
+  authors.integration.test.ts            15 passed
+npx vitest run (API)                     Test Files 35 passed · Tests 579 passed
+  authors.service.spec.ts                14 passed
+npx tsc --noEmit -p tsconfig.json        exit 0
+npx eslint src/authors                   0 problemas
+```
+
+La API pasa de 34 archivos y 565 tests a 35 y 579.
+
+### CA-2 — Equivalencia ✅
+
+```
+IGUAL  authors-all (14983 B)
+IGUAL  authors-100 (14988 B)
+IGUAL  authors-p2 (7111 B)
+IGUAL  author-slug (1328 B)
+IGUAL  authors-search (1646 B)
+```
+
+Comparación con `cmp`: byte a byte, mismo orden de filas y de claves.
+
+### CA-3 — Divergencias ✅
+
+- **V-1**, búsqueda. El «antes» se reproduce con la misma configuración de
+  Fuse del mock (`keys: ['name','slug'], threshold: 0.3`):
+
+  ```
+  search=name:kely     antes: 9:kelly-white 6:kelton-benjamin   después: (vacío), total 0
+  search=name:Wickham  antes: 8:jenifer-wickham                 después: 8:jenifer-wickham, total 1
+  ```
+
+  La búsqueda difusa se pierde: `kely` ya no encuentra `kelly-white`.
+- **V-2**: `GET /authors/no-existe` pasa de 200 vacío a
+  `404 {"message":"No existe un autor con slug `no-existe`.",...}`.
+- **V-4**: `top-authors?limit=5` pasa de `12(5) 11(6) 10(9) 9(7) 8(7)` a
+  `10(9) 4(8) 9(7) 8(7) 11(6)` (id y `products_count`), con las mismas claves.
+
+### CA-4 — Escrituras ✅
+
+Bearer de `admin@demo.com`:
+
+```
+POST /authors sin token                         401
+POST /authors (formulario completo, shop_id 1)  201  slug zz-us93-autora-nueva, born 1990-05-01T00:00:00.000Z
+  psql: is_approved t · socials [{"icon":"FacebookIcon","url":"https://example.com"}]
+PUT {id, is_approved:false} (lista del admin)    200  psql f · GET is_approved 0
+PUT {name, quote}                                200  psql: nombre y cita nuevos, slug igual, updated_at > created_at
+PUT {born:"no-es-fecha"}                         400  `born` no es una fecha válida.
+PUT /authors/999999 · DELETE /authors/999999     404 · 404
+DELETE /authors/23                               200  (devuelve el autor) → GET 404 · count 11
+```
+
+### CA-5 — Sin import huérfano ni regresión ✅
+
+Imports de JSON que quedan en `apps/api/rest/src` (fuera de los specs):
+
+```
+./flash-sale/flash-sale.service.ts
+./orders/orders.service.ts
+./payment-intent/payment-intent.service.ts
+./payment-method/payment-method.service.ts
+./payment/stripe-payment.service.ts
+```
+
+`authors.json` solo aparece ya en un comentario de `authors.service.ts`.
+
+- `just build-api` → `Done`.
+- `just build-shop` → exit 0, 279/279 páginas; se generan las 11
+  `/en/authors/*`. El primer intento terminó la generación, pero Next
+  16.4.1 cortó el proceso con exit 1 por un aviso de seguridad sobre la
+  versión instalada; el segundo pasó. No se actualizó nada.
+- El shop sirve `/en/authors` (90 775 B, con los nombres) y los detalles
+  `kaity-lerry` y `jenifer-wickham` (200).
+
+```
+just verify
+OK   API    :9001/api/settings  200  5503B
+OK   Shop   :3003/en  200  192797B  cards:30
+OK   Admin  :3002/en/login  200  73158B  cards:1
+```
+
+### Para el dueño
+
+- **Next 16.4.1 avisa de una vulnerabilidad conocida** al terminar
+  `next build`. Merece una US propia en el Épico 75.
+- La rejilla «libros del autor» del shop sigue mostrando todos los
+  productos: `products` no tiene `author_id` (DA-3).
