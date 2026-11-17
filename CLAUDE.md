@@ -45,11 +45,14 @@ just scraper-install   # venv + requirements + Chromium de Playwright
 just spiders           # lista los 6 spiders (alkosto|compulago|compuworking|exito|falabella|tauret)
 just scrape <spider>   # corre un spider
 just db-test           # prueba el pipeline contra la base sin salir a internet
-                       # OJO: HOY ROTO — el pipeline escribe en la tabla `productos`,
-                       # que ya no existe en db/schema.sql (ver US-6 del backlog)
+                       # OJO: HOY ROTO — el pipeline ya escribe en `products`
+                       # (US-6), pero test_pipeline.py y `just db-count` aún
+                       # consultan la tabla `productos`, que no existe (US-8)
 
 # Build de producción
-just build             # shop + admin (detener los `dev` antes: comparten .next)
+just build             # shop + admin. Desde Next 16 `next dev` escribe en
+                       # .next/dev y puede convivir con un build, pero no dos
+                       # `next build` (ni dos `next dev`) de la misma app
                        # EXIGE LA API ARRIBA: la tienda prerenderiza por HTTP
                        # (getStaticPaths -> /api/shops, /api/products...). Sin
                        # `just api-dev` en otra terminal muere en
@@ -62,52 +65,51 @@ es US-10 del backlog, Épico 9). Hoy existen y pasan dos suites automatizadas:
 
 - `just db-check` — vitest de integración en `packages/db` (requiere
   `just db-up` antes). Es el único gate envuelto en una receta de `just`.
-- `cd apps/api/rest && npx jest` — 9 suites / 285 tests (`products`, `shops`,
-  `users`, `user-dto.mapper`, `types`, `tags`, `manufacturers`, `categories`
-  y `domain-error.mapper`). Cifra medida en la rama `correcciones-post-us-31`:
-  incluye los 17 tests de US-31 y los 11 de su red CA-2; `main` sin esos
-  commits marca menos. Ninguna receta de `just` lo envuelve. Las
-  suites mockean `@safari/db` (no necesitan Postgres levantado); el bloque
-  `jest` de su `package.json` mapea `@db/*` y `src/*` con `moduleNameMapper`
-  y excluye `packages/db/dist` en `transformIgnorePatterns`, por eso resuelve
-  el mock JSON y el `@safari/db` ya construido (`just db-build` antes). No es
-  cobertura general: no hay suite de `auth` (las de `products`, `shops` y
-  `users` solo importan de ahí el tipo `CurrentUserPayload`, que se borra al
-  compilar).
+- `cd apps/api/rest && npx vitest run` — 34 archivos / 565 tests (medido el
+  2026-11-17 en `main` @ `37d5120`). Ninguna receta de `just` lo envuelve.
+  Vitest 4 con `unplugin-swc` (Nest necesita `emitDecoratorMetadata`, que
+  esbuild no emite); `vitest.config.ts` mapea `#db/*` a `src/db/pickbazar/`
+  y `#src/*` a `src/`. 31 de los 34 specs mockean `@safari/db`, así que no
+  necesitan Postgres levantado. La red de tipos es aparte:
+  `npx tsc --noEmit -p tsconfig.json` (Vitest no comprueba tipos).
+- Lint de la API: `npx eslint "{src,apps,libs,test}/**/*.ts"`. **No** uses
+  `yarn lint` ahí: lleva `--fix` y reescribe archivos. En shop y admin,
+  `yarn lint` es `eslint src`, sin `--fix`.
 
 ## Arquitectura
 
 ```
 apps/
-├── shop/           Next.js 13.5 (pages router), @pick-bazar/shop, puerto 3003.
-│                   Variantes dev:rest (la usada) y dev:gql (requiere codegen graphql-let).
-├── admin/rest/     Next.js 13.5, panel de administración, puerto 3002.
-├── admin/graphql/  Variante GraphQL del admin (instalada por el workspace, no usada en el stack REST).
-├── api/rest/       NestJS 9. HÍBRIDA (verificado 2026-09-14): 9 módulos leen y
-│                   escriben Postgres vía @safari/db -- auth, categories,
-│                   manufacturers, products, settings, shops, tags, types y
-│                   users. En esos 9 viven 78 de las 250 rutas, pero OJO: 78 es
-│                   "rutas alojadas en modulos migrados", no "rutas que tocan la
-│                   base" -- 14 de ellas son stubs declarados (staffs, profiles,
-│                   los DELETE, logout, contact-us), asi que las que de verdad
-│                   llegan al driver son ~65. Los 33 modulos restantes NO son
-│                   todos mock: 24 sirven JSON estatico desde src/db/pickbazar/
-│                   -- transaccional (orders, payment-intent, payment-method,
-│                   taxes, shippings, coupons, withdraws), contenido (reviews,
-│                   questions, wishlists, conversations, messages, authors,
-│                   store-notices), legal (faqs, terms-and-conditions, refund-
-│                   policies, refund-reasons, ownership-transfer, become-seller)
-│                   y analytics, reports, attributes, flash-sale -- y los otros
-│                   9 no sirven NADA: addresses, ai, feedbacks, imports,
-│                   newsletters, notify-logs, refunds, uploads y web-hook
-│                   devuelven literales ("This action...", {data: []}), sin JSON
-│                   ni base. store-notices es hibrido: GET getUsersToNotify va a
-│                   Postgres via UsersService. src/payment/ no tiene controlador
-│                   (solo servicios de stripe/paypal) y tambien lee JSON.
-│                   db/schema.sql:13-16 excluye esas tablas a propósito; el
-│                   siguiente corte está razonado con evidencia en
-│                   docs/product/_backlog/api-mock-restante-dominio-transaccional.md.
+├── shop/           Next.js 16.4.1 (pages router, `--webpack`: Turbopack se
+│                   descartó dos veces), React 19.3.1, Tailwind 4.3.3 con la
+│                   config en JS (`@config` en main.css), @pick-bazar/shop,
+│                   puerto 3003. Variantes dev:rest (la usada) y dev:gql
+│                   (requiere codegen graphql-let).
+├── admin/rest/     Igual que el shop (Next 16.4.1, React 19.3.1, Tailwind
+│                   4.3.3), panel de administración, puerto 3002.
+├── admin/graphql/  Variante GraphQL del admin (instalada por el workspace, no
+│                   usada en el stack REST). Sigue en Tailwind 3.4.14 (copia
+│                   anidada). Declara React 18.2.0, pero el pin de `resolutions`
+│                   de apps/package.json le da la 19.3.1: hay una sola copia.
+├── api/rest/       NestJS 12 en ESM (`"type": "module"`, imports `#src/*` y
+│                   `#db/*`), TypeScript 6. Casi todo en Postgres vía
+│                   @safari/db (verificado 2026-11-17, tras el Épico 46). Sigue
+│                   en mock:
+│                   - 4 módulos con JSON de src/db/pickbazar/, PERMANENTES por
+│                     decisión 2 del Épico 46: authors, flash-sale,
+│                     payment-method y payment-intent. También src/payment/
+│                     (servicios de Stripe/PayPal, sin controlador) y la
+│                     llamada a la pasarela de `POST /orders/payment`.
+│                   - 9 stubs sin datos ni JSON: addresses, ai, feedbacks,
+│                     imports, newsletters, notify-logs, refunds, uploads y
+│                     web-hook devuelven literales ("This action...").
+│                   - Métodos sueltos con literal en módulos ya migrados (sobre
+│                     todo los DELETE y aprobar/desaprobar de shops).
+│                   db/schema.sql sigue excluyendo carritos, direcciones y
+│                   wallets/balances. Los JSON de src/db/pickbazar/ se quedan en
+│                   disco: son la fuente de db/generate-seed.mjs.
 │                   FUERA del workspace de yarn: requiere su propio `yarn install`.
+│                   @nestjs/cli sigue en la 11: la 12 exige Node 22.22.3 o más.
 ├── api/graphql/    Variante GraphQL de la API (no usada en el stack REST).
 └── deployment/     Scripts zx originales de Pickbazar para VM+Nginx (referencia, no el camino).
 
@@ -125,8 +127,9 @@ db/                 Fuente de verdad del catálogo compartido:
 services/
 └── scraper-worker/ Scrapy + Playwright. 6 spiders de retailers colombianos.
                     Migrado de MongoDB a PostgreSQL (psycopg). Su schema.sql es un
-                    tombstone: el esquema vive en db/. PENDIENTE: pipelines.py aún
-                    upserta en la tabla `productos`, que ya no existe (US-6).
+                    tombstone: el esquema vive en db/. pipelines.py ya upserta en
+                    `products` (US-6); test_pipeline.py y `just db-count` siguen
+                    en `productos` (US-8).
 
 docker-compose.yml  Solo Postgres 16 (safari/safari@localhost:5433/safari_scraper).
 justfile            Todas las tareas, en español, agrupadas (setup/dev/build/verify/bd/scraper/limpieza).
