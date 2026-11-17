@@ -11,7 +11,8 @@
 -- (apps/shop/src/framework/rest/client/index.ts).
 --
 -- Identidad entra desde US-20. El resto del dominio entra por el Épico 46
--- (2026-10-20), una US por bloque de tablas, sembradas desde los mismos JSON.
+-- (2026-10-20) y el Épico 92 (autores y ventas flash, 2026-11-17), una US
+-- por bloque de tablas, sembradas desde los mismos JSON.
 -- Siguen fuera de alcance deliberado: carritos, direcciones y wallets/
 -- balances, porque ningún mock JSON los respalda.
 --
@@ -1153,6 +1154,42 @@ CREATE TABLE IF NOT EXISTS ownership_transfers (
     created_at              timestamptz  NOT NULL DEFAULT now(),
     updated_at              timestamptz  NOT NULL DEFAULT now(),
     CONSTRAINT ownership_transfers_owners_distintos CHECK (previous_owner_id <> current_owner_id)
+);
+
+
+-- =====================================================================
+-- Autores (US-93, Épico 92).
+--
+-- Sembrados desde authors.json (11 autores). El autor es global del
+-- catálogo: el mock no trae shop_id y el que envía el admin se ignora.
+-- products NO tiene author_id (products.json no lo trae en ninguna fila,
+-- DA-3 del épico), así que products_count es el dato sembrado del mock y
+-- no un conteo (DA-4).
+--
+-- born/death son timestamptz: Date.toJSON() emite los mismos 3 decimales
+-- que el mock. languages es texto libre ("English, Russian"), como allí.
+-- socials, image y cover_image van en json y no en jsonb: jsonb reordena las
+-- claves y el orden es contrato (precedente ownership_transfers). created_at
+-- y updated_at ordenan y siguen el reloj único, pero la API no los emite
+-- (el mock no los trae). Sin trigger (reloj único, ver abajo).
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS authors (
+    id              bigserial    PRIMARY KEY,
+    name            text         NOT NULL,
+    slug            text         NOT NULL UNIQUE,
+    bio             text,
+    quote           text,
+    born            timestamptz,
+    death           timestamptz,
+    languages       text,
+    socials         json         NOT NULL DEFAULT '[]',
+    image           json,
+    cover_image     json,
+    products_count  integer      NOT NULL DEFAULT 0 CHECK (products_count >= 0),
+    is_approved     boolean      NOT NULL DEFAULT true,
+    language        text         NOT NULL DEFAULT 'es',
+    created_at      timestamptz  NOT NULL DEFAULT now(),
+    updated_at      timestamptz  NOT NULL DEFAULT now()
 );
 
 

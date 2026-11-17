@@ -547,6 +547,25 @@ de la API, que llega aquí como el filtro `ownerId`.
   Inexistente: `RecordNotFoundError`.
 - **`deleteWithdraw(id)`**: borra y devuelve la fila borrada.
 
+### Autores (US-93, Épico 92) — `authors.repository.ts`
+
+`AuthorRecord` es la fila plana: `socials`, `image` y `coverImage` como
+`JsonValue` en su orden, `born`/`death` como `Date` y `productsCount` como
+el dato sembrado (no se calcula: no hay `products.author_id`).
+
+- **`listAuthors({name, isApproved, page, limit})`**: paginado (`limit`
+  30) en `id DESC`. `name` es ILIKE sobre `name` o `slug`.
+- **`listTopAuthors(limit = 10)`**: `productsCount DESC, id DESC`, sin
+  paginar.
+- **`findAuthorBySlug(slug)`**: el autor, o `null`.
+- **`createAuthor(input)`**: slug con `generateSlug(name)` (o el enviado);
+  `isApproved` por defecto `true`.
+- **`updateAuthor(id, input)`**: el slug es inmutable; un `name` que
+  normaliza a vacío da `EmptySlugError`; fija `updatedAt: now()`.
+  Inexistente: `RecordNotFoundError`.
+- **`deleteAuthor(id)`**: borra y devuelve la fila borrada. Nada referencia
+  a `authors`, así que no cuenta dependientes.
+
 ### Dashboard (US-61, Épico 46) — `analytics.repository.ts`
 
 Solo lectura y sin tabla propia. Todo en UTC; «ahora» es el `Date` que

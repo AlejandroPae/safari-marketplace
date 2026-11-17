@@ -34,6 +34,7 @@ export type {
   AbusiveReportRecord,
   AttributeRecord,
   AttributeValueRecord,
+  AuthorRecord,
   BecomeSellerRecord,
   CategoryRecord,
   ConversationRecord,
@@ -124,6 +125,19 @@ export {
   findUserIdByProfileContact,
   purgeExpiredAuthTokens,
 } from './src/repositories/auth-tokens.repository';
+export type {
+  CreateAuthorInput,
+  ListAuthorsInput,
+  UpdateAuthorInput,
+} from './src/repositories/authors.repository';
+export {
+  createAuthor,
+  deleteAuthor,
+  findAuthorBySlug,
+  listAuthors,
+  listTopAuthors,
+  updateAuthor,
+} from './src/repositories/authors.repository';
 export type { UpdateBecomeSellerInput } from './src/repositories/become-seller.repository';
 export {
   getBecomeSeller,

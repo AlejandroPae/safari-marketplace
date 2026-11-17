@@ -53,6 +53,7 @@ const orders = leer('orders');
 const orderFiles = leer('order-files');
 const withdraws = leer('withdraws');
 const transferencias = leer('ownership-transfer');
+const authors = leer('authors');
 
 // ── Literales SQL ────────────────────────────────────────────────────────
 const txt = (v) =>
@@ -663,6 +664,22 @@ if (new Set(transferencias.map((t) => t.transaction_identifier)).size !== transf
   problemas.push('ownership_transfers: transaction_identifier duplicado');
 const ownersSembrados = usuariosSembrados.slice(sembradosAntesDeTransferencias);
 
+// ── Autores (US-93) ──────────────────────────────────────────────────────
+// Globales del catálogo (sin shop_id). products_count se siembra tal cual:
+// products no tiene author_id (DA-3/DA-4 del Épico 92).
+for (const a of authors) {
+  if (!a.name) problemas.push(`authors ${a.id}: sin name`);
+  if (!a.slug) problemas.push(`authors ${a.id}: sin slug`);
+  if (!Number.isInteger(a.products_count) || a.products_count < 0)
+    problemas.push(`authors ${a.id}: products_count ${a.products_count} no es un entero >= 0`);
+  if (![0, 1].includes(a.is_approved))
+    problemas.push(`authors ${a.id}: is_approved ${a.is_approved} no es 0 ni 1`);
+  if (a.socials !== undefined && !Array.isArray(a.socials))
+    problemas.push(`authors ${a.id}: socials no es un array`);
+}
+if (new Set(authors.map((a) => a.slug)).size !== authors.length)
+  problemas.push('authors: slug duplicado');
+
 if (problemas.length) {
   console.error(`\nEl mock viola ${problemas.length} restriccion(es) del esquema:`);
   problemas.slice(0, 20).forEach((p) => console.error('  - ' + p));
@@ -699,7 +716,7 @@ L.push(
     `${conversaciones.length} conversations · ${mensajes.length} messages · ` +
     `${orderStatuses.length} order_statuses · ${ordenes.length} orders · ` +
     `${ordenes.reduce((n, o) => n + o.products.length, 0)} order_products · ${orderFiles.length} order_files · ` +
-    `${withdraws.length} withdraws · ${transferencias.length} ownership_transfers`,
+    `${withdraws.length} withdraws · ${transferencias.length} ownership_transfers · ${authors.length} authors`,
   '-- =====================================================================',
   '',
   'BEGIN;'
@@ -1389,6 +1406,25 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
+// authors (US-93) -------------------------------------------------------------
+bloque(`authors — ${authors.length}`);
+L.push(
+  '-- Ids del mock. Sin timestamps en el mock: toman now(), y la API no los emite.',
+  '-- socials, image y cover_image van verbatim en json (el orden de claves es',
+  '-- contrato). products_count es el dato del mock, no un conteo (DA-4).',
+  'INSERT INTO authors (id, name, slug, bio, quote, born, death, languages, socials, image, cover_image, products_count, is_approved, language) VALUES'
+);
+L.push(
+  authors
+    .map(
+      (a) =>
+        `  (${a.id}, ${txt(a.name)}, ${txt(a.slug)}, ${txt(a.bio)}, ${txt(a.quote)}, ${txt(a.born)}, ` +
+        `${txt(a.death)}, ${txt(a.languages)}, ${jsonTal(a.socials ?? [])}, ${jsonTal(a.image)}, ` +
+        `${jsonTal(a.cover_image)}, ${num(a.products_count)}, ${bool(a.is_approved)}, ${txt(a.language)})`
+    )
+    .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
+);
+
 // category_product -------------------------------------------------------
 bloque('category_product — deliberadamente VACÍA');
 L.push(
@@ -1408,7 +1444,7 @@ L.push(
   '-- mock, así que hay que adelantar las secuencias o el primer INSERT nuevo',
   '-- chocaría con una clave existente.'
 );
-for (const t of ['types', 'users', 'permissions', 'shops', 'categories', 'manufacturers', 'tags', 'products', 'faqs', 'terms_and_conditions', 'refund_policies', 'refund_reasons', 'taxes', 'shippings', 'attributes', 'attribute_values', 'store_notices', 'coupons', 'reviews', 'abusive_reports', 'questions', 'conversations', 'messages', 'order_statuses', 'orders', 'order_files', 'withdraws', 'ownership_transfers']) {
+for (const t of ['types', 'users', 'permissions', 'shops', 'categories', 'manufacturers', 'tags', 'products', 'faqs', 'terms_and_conditions', 'refund_policies', 'refund_reasons', 'taxes', 'shippings', 'attributes', 'attribute_values', 'store_notices', 'coupons', 'reviews', 'abusive_reports', 'questions', 'conversations', 'messages', 'order_statuses', 'orders', 'order_files', 'withdraws', 'ownership_transfers', 'authors']) {
   L.push(`SELECT setval('${t}_id_seq', GREATEST((SELECT COALESCE(max(id), 1) FROM ${t}), 1));`);
 }
 
@@ -1433,5 +1469,5 @@ console.log(
     `${conversaciones.length} conversations · ${mensajes.length} messages · ` +
     `${orderStatuses.length} order_statuses · ${ordenes.length} orders · ` +
     `${ordenes.reduce((n, o) => n + o.products.length, 0)} order_products · ${orderFiles.length} order_files · ` +
-    `${withdraws.length} withdraws · ${transferencias.length} ownership_transfers`
+    `${withdraws.length} withdraws · ${transferencias.length} ownership_transfers · ${authors.length} authors`
 );

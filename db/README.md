@@ -29,7 +29,7 @@ SQL inaplicable.
 · 8 attributes · 27 attribute_values · 3 store_notices (6 destinatarios,
 6 lecturas) · 10 coupons · 10 wishlists · 85 reviews · 3 abusive_reports · 68 questions · 2 conversations · 5 messages
 · 10 order_statuses · 40 orders (20 padres + 20 hijas) · 76 order_products
-· 10 order_files · 2 withdraws · 6 ownership_transfers
+· 10 order_files · 2 withdraws · 6 ownership_transfers · 11 authors
 ```
 
 **Los ids del mock se preservan** para no romper las relaciones, y al final se
@@ -527,6 +527,23 @@ Desde US-63. 6 solicitudes `pending` con los ids del mock (5-10), sin tienda
 - `POST /transfer-shop-ownership` es la única escritura sobre
   `shops.owner_id`: en una transacción cambia el dueño e inserta la fila
   `approved`. Aprobar una solicitud por `PUT` no mueve la tienda.
+
+## Autores: `authors`
+
+Desde US-93 (Épico 92). 11 autores con los ids del mock (12..2), todos
+aprobados.
+
+- **Globales**: sin `shop_id`. El mock no lo trae y el que envía el admin
+  se ignora.
+- **`products_count` es un dato sembrado**, no un conteo: `products` no
+  tiene `author_id`, porque `products.json` no lo trae en ninguna de sus
+  1200 filas (DA-3/DA-4 del Épico 92). Las escrituras no lo tocan.
+  `CHECK (products_count >= 0)`.
+- `socials`, `image` y `cover_image` van en `json` y no en `jsonb`: el
+  orden de sus claves es contrato.
+- `born`/`death` son `timestamptz` (`Date.toJSON()` da los mismos 3
+  decimales que el mock); `languages` es texto libre (`"English, Russian"`).
+- El mock no trae timestamps: toman `now()` y la API no los emite.
 
 ## Cómo se adapta el scraper
 

@@ -21,6 +21,7 @@ import type {
   AbusiveReport,
   Attribute,
   AttributeValue,
+  Author,
   BecomeSeller,
   Category,
   Conversation,
@@ -125,6 +126,31 @@ export interface CategoryRecord {
   image: Prisma.JsonValue | null;
   parentId: number | null;
   typeId: number;
+  language: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Autor del catálogo (US-93). Global, sin tienda. `productsCount` es el dato
+ * sembrado del mock, no un conteo: `products` no tiene `author_id` (DA-3/
+ * DA-4 del Épico 92). `socials`, `image` y `coverImage` son columnas
+ * `json`: conservan el orden de claves.
+ */
+export interface AuthorRecord {
+  id: number;
+  name: string;
+  slug: string;
+  bio: string | null;
+  quote: string | null;
+  born: Date | null;
+  death: Date | null;
+  languages: string | null;
+  socials: Prisma.JsonValue;
+  image: Prisma.JsonValue | null;
+  coverImage: Prisma.JsonValue | null;
+  productsCount: number;
+  isApproved: boolean;
   language: string;
   createdAt: Date;
   updatedAt: Date;
@@ -636,6 +662,27 @@ export function _toCategoryRecord(row: Category): CategoryRecord {
     image: row.image,
     parentId: _id(row.parentId),
     typeId: _id(row.typeId),
+    language: row.language,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export function _toAuthorRecord(row: Author): AuthorRecord {
+  return {
+    id: _id(row.id),
+    name: row.name,
+    slug: row.slug,
+    bio: row.bio,
+    quote: row.quote,
+    born: row.born,
+    death: row.death,
+    languages: row.languages,
+    socials: row.socials,
+    image: row.image,
+    coverImage: row.coverImage,
+    productsCount: row.productsCount,
+    isApproved: row.isApproved,
     language: row.language,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
