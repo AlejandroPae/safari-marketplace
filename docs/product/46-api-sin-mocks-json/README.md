@@ -220,6 +220,12 @@ cierre:
   `orders/orders.service.ts`, que son la pasarela mock de `POST /orders` y
   `POST /orders/payment`.
 
+> **Nota (2026-11-17, Épico 92):** `authors/` y `flash-sale/` salen de esta
+> lista. Desde la [US-94](../92-authors-flash-sale-postgres/94-flash-sale-postgres.md)
+> los únicos imports permitidos son los de `payment-intent/`,
+> `payment-method/`, `payment/` y los dos de pasarela de
+> `orders/orders.service.ts`.
+
 La prueba de cierre del épico es un `grep` que solo devuelve esa lista (DoD
 de US-63).
 

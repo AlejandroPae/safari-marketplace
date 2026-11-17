@@ -7,7 +7,7 @@
 
 **Épico:** [Épico 92](./README.md)
 **Fecha:** 2026-11-17
-**Status:** Listo para ejecución
+**Status:** Implementada (2026-11-17, rama `us-94-flash-sale`)
 **Depende de:** [US-93](./93-authors-postgres.md) (orden secuencial, R-1)
 **LOC est.:** ~1100
 
@@ -236,13 +236,177 @@ Feature: Ventas flash desde Postgres
 
 Seguir el protocolo del épico y pegar:
 
-- [ ] Línea base (7 `curl`) con sus bytes.
-- [ ] Generador (corrida buena y corrida que falla), y `just db-reset`.
-- [ ] `psql` con los conteos, 0 huérfanas y los conteos previos.
-- [ ] `prisma validate` y `migrate diff` con `EXIT=0`; `just db-build`.
-- [ ] `just db-check`, `npx vitest run` y `npx tsc --noEmit` con sus recuentos.
-- [ ] `just build-api`, `just build-shop` y `just verify`.
-- [ ] Comparación de CA-2; antes y después de cada divergencia.
-- [ ] `curl` y `psql` de CA-4.
-- [ ] `grep` de cierre de D-8.
-- [ ] Status de la US y fila del épico.
+- [x] Línea base (7 `curl`) con sus bytes.
+- [x] Generador (corrida buena y corrida que falla), y `just db-reset`.
+- [x] `psql` con los conteos, 0 huérfanas y los conteos previos.
+- [x] `prisma validate` y `migrate diff` con `EXIT=0`; `just db-build`.
+- [x] `just db-check`, `npx vitest run` y `npx tsc --noEmit` con sus recuentos.
+- [x] `just build-api`, `just build-shop` y `just verify`.
+- [x] Comparación de CA-2; antes y después de cada divergencia.
+- [x] `curl` y `psql` de CA-4.
+- [x] `grep` de cierre de D-8.
+- [x] Status de la US y fila del épico.
+
+## Resultado — ejecutado el 2026-11-17
+
+Rama `us-94-flash-sale`, desde `main` @ `784cf0b`. Las 6 rutas de ventas
+flash leen y escriben Postgres; `flash-sale.json` y
+`products-by-flash-sale.json` ya no se importan en ningún servicio.
+
+### Cambios respecto al refinamiento
+
+- `sale_builder`, `image` y `cover_image` van en **`json`**, no en
+  `jsonb`: `image` trae las claves `thumbnail, original, id, file_name`, y
+  `jsonb` las reordenaría (mismo cambio que en la US-93).
+- **V-7 no ocurre.** El mock ya emite `created_at`/`updated_at` con 3
+  decimales (`2023-10-16T06:53:42.000Z`), así que con los timestamps del
+  mock sembrados (D-3) las ventas son idénticas byte a byte.
+- `CreateFlashSaleDto` toma lo que envía el formulario del admin (`rate`,
+  `sale_status`, `image`, `cover_image`, `language`) y deja de declarar
+  `products`: los productos llegan en `sale_builder.product_ids`.
+  `GetFlashSaleDto` declara `slug`, que el shop envía suelto.
+- Un `sale_status` booleano del admin se guarda como `1`/`0`, la forma del
+  mock.
+
+### Línea base (API mock recién arrancada)
+
+```
+fs-all.json      14572 B  ventas 3, 1; 2 productos por venta, 44 claves (43 + pivot)
+fs-p1.json        7744 B  venta 3, per_page "1"
+fs-search.json   14580 B  title:limited -> ventas 1, 3 (orden de Fuse)
+fs-3.json         7291 B
+fs-1.json         6958 B  pivot.flash_sale_id 3 en los dos productos
+pbfs-3.json      16204 B  951, 952, 953, 957, 959
+pbfs-1.json      16204 B  951, 952, 953, 957, 959 (ignora el slug)
+/flash-sale/no-existe  200, 0 B
+```
+
+### Seed y esquema
+
+`node db/generate-seed.mjs` → `… · 11 authors · 2 flash_sales · 4
+flash_sale_products`. `db/seed.sql`: +20 líneas; de las existentes solo
+cambia la de conteos.
+
+Corrida que falla (producto 1013 → 999999 en `flash-sale.json`, restaurado
+con `git checkout` después):
+
+```
+El mock viola 2 restriccion(es) del esquema:
+  - flash_sales 1: producto 999999 inexistente
+  - flash_sales 1: sale_builder.product_ids no coincide con products
+EXIT=1
+```
+
+`just db-reset` y `psql`:
+
+```
+ fs | fsp | huerf_fs | huerf_p | products | authors | orders | users
+  2 |   4 |        0 |       0 |     1200 |      11 |     40 |    11
+```
+
+`npx prisma validate` → válido. `npx prisma migrate diff
+--from-config-datasource --to-schema ./prisma/schema.prisma --exit-code` →
+`No difference detected.`, `EXIT=0`. `just db-build` en verde.
+
+### Tests
+
+- `just db-check`: **34 archivos / 446 tests** en verde (antes 33 / 427;
+  19 nuevos en `flash-sale.integration.test.ts`).
+- `cd apps/api/rest && npx vitest run`: **36 archivos / 594 tests** en
+  verde (antes 35 / 579; 15 nuevos en `flash-sale.service.spec.ts`).
+  Corrido desde `C:\`: con el cwd en `c:\` (minúscula) fallan 88 tests de
+  25 archivos con «expected NotFoundException to be an instance of
+  NotFoundException», porque se cargan dos copias de `@nestjs/common`. No es
+  una regresión.
+- `npx tsc --noEmit -p tsconfig.json` → 0 errores (API y `packages/db`).
+  `npx eslint "{src,apps,libs,test}/**/*.ts"` → 0.
+
+### CA-2 — Equivalencia ✅
+
+Comparación `node -e` de cada venta sin la clave `products`:
+
+```
+fs-all.json  IGUAL (sin products) 3034 3034
+fs-p1.json   IGUAL (sin products) 2061 2061
+fs-3.json    IGUAL (sin products) 1608 1608
+fs-1.json    IGUAL (sin products) 1103 1103
+```
+
+El paginador (`total`, `per_page`, las URLs) también es igual.
+`fs-search.json` trae las mismas 2 ventas y el mismo paginador; solo cambia
+el orden: `[1, 3]` → `[3, 1]` (V-4).
+
+### CA-3 — Divergencias ✅
+
+- **V-1:** cada producto embebido pasa de 44 claves a 21: las 20 de
+  `/products` (con `in_flash_sale: 1`) más `pivot`, al final.
+- **V-2:** `pivot` de la venta 1: `{"flash_sale_id":3,…}` →
+  `{"flash_sale_id":1,…}`.
+- **V-3:** `products-by-flash-sale?slug=limited-time-offer-act-fast`:
+  `951, 952, 953, 957, 959` (total 5) → `951, 952` (total 2); con
+  `slug=limited-time-discounts` → `1013, 1023`. Sin `pivot`,
+  `in_flash_sale: 1`.
+- **V-4:** `search=title:limited` aplica ILIKE y ordena `id DESC`.
+- **V-5:** `/flash-sale/no-existe`: `200, 0 B` → `404`
+  (``No existe una venta flash con slug `no-existe`.``); también
+  `products-by-flash-sale?slug=no-existe` → `404`.
+
+### CA-4 — Escrituras transaccionales ✅
+
+Bearer de `admin@demo.com`:
+
+```
+--- sin token                           401
+--- crear (951, 1013)                   201  slug ca4-venta, 2026-12-01 00:00:00, rate 15, sale_status 1
+    psql flash_sale_products            10|951  10|1013
+--- PUT título + productos 952,1023,959 200
+    psql                                CA4 renombrada|ca4-venta|{"data_type":"handpicked_products","product_ids":[952,1023,959]}|t
+                                        10|952  10|959  10|1023
+--- POST con producto 999999            400  `flash_sales.product_ids` referencia un registro inexistente (`999999`).
+    filas antes=3/7 despues=3/7
+--- fecha ilegible                      400
+--- PUT inexistente                     404
+--- DELETE                              200  -> 0 venta, 0 puente; totales 2/4
+--- DELETE de nuevo                     404
+```
+
+### CA-5 — Cierre de D-8 y sin regresión ✅
+
+`grep` de imports de JSON en `apps/api/rest/src` (sin specs):
+
+```
+src/orders/orders.service.ts:1:               #db/payment-gateway.json
+src/orders/orders.service.ts:2:               #db/payment-intent.json
+src/payment/stripe-payment.service.ts:2,6:    #db/settings.json, payment-gateway.json
+src/payment-intent/payment-intent.service.ts  #db/taxes.json, #db/orders.json
+src/payment-method/payment-method.service.ts  #db/payment-gateway.json, #db/payment-methods.json
+```
+
+- `just build-api` → `Done`, `EXIT=0`.
+- `just build-shop` → 279 páginas, con
+  `/en/flash-sales/limited-time-offer-act-fast` y
+  `/en/flash-sales/limited-time-discounts` prerenderizadas desde Postgres.
+  La primera corrida terminó en `SecurityFatalError` (el aviso de Next
+  16.4.1 de la US-93); la segunda, `EXIT=0`. No se ejecutó ningún upgrade.
+- `just verify`:
+
+```
+OK   API    :9001/api/settings  200  5503B  387ms
+OK   Shop   :3003/en  200  191897B  893ms  cards:30
+OK   Admin  :3002/en/login  200  72554B  4594ms  cards:1
+```
+
+- En el navegador, `/en/flash-sales/limited-time-discounts` muestra sus 2
+  productos (Loogitech Powered Wireless Charging Stand y Amaazfit Bip U), y
+  ya no los 5 de `products-by-flash-sale.json`.
+
+### Para el dueño
+
+- **Next 16.4.1 vuelve a cortar `next build` y `next dev`** con un
+  `SecurityFatalError` la primera vez; la segunda pasa. Sigue pendiente la
+  US de seguridad en el Épico 75.
+- Las 2 ventas sembradas terminaron el 2024-11-29 y el shop las muestra
+  «On going»: la API no filtra por vigencia (R-3), y el estado lo pinta el
+  frontend.
+- La venta no aplica su descuento al precio de los productos, y `/products`
+  sigue emitiendo `in_flash_sale: 0` (DA-3).

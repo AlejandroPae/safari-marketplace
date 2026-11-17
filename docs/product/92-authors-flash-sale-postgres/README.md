@@ -5,7 +5,7 @@
 > importa mocks JSON para la pasarela de pago.
 
 **Fecha:** 2026-11-17
-**Status:** Listo para ejecución (DA-1..DA-6 decididas el 2026-11-17)
+**Status:** Implementado (US-93 y US-94, 2026-11-17)
 
 ## Por qué este épico existe
 
@@ -40,7 +40,7 @@ respalde): `product-flash-sale-info`, `vendor-requests-for-flash-sale`,
 | US | Título | Releasable solo | Depende de | LOC est. |
 |----|--------|-----------------|------------|----------|
 | [US-93](./93-authors-postgres.md) ✅ | `authors` y `top-authors` desde Postgres. Implementada el 2026-11-17; byte a byte en el listado y el detalle; `top-authors` ordena por `products_count` | Sí | ninguna | ~700 |
-| [US-94](./94-flash-sale-postgres.md) | `flash-sale` y `products-by-flash-sale` desde Postgres | Sí | US-93 (orden secuencial, R-1) | ~1100 |
+| [US-94](./94-flash-sale-postgres.md) ✅ | `flash-sale` y `products-by-flash-sale` desde Postgres. Implementada el 2026-11-17; las ventas son iguales byte a byte y cada una trae sus productos reales, con la forma de `/products` | Sí | US-93 (orden secuencial, R-1) | ~1100 |
 
 Orden: **US-93 → US-94**, nunca en paralelo. Las dos tocan `db/schema.sql`,
 `db/generate-seed.mjs`, `schema.prisma`, `records.ts` y el barrel de
