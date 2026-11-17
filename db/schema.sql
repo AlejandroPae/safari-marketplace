@@ -1194,6 +1194,50 @@ CREATE TABLE IF NOT EXISTS authors (
 
 
 -- =====================================================================
+-- Ventas flash (US-94, Épico 92) — flash_sales + flash_sale_products.
+--
+-- Sembradas desde flash-sale.json (2 ventas, 4 productos). La venta es
+-- global: el mock no trae shop_id. start_date/end_date son timestamp SIN
+-- zona porque el mock tampoco la trae ("2023-10-31 06:49:59"); la API los
+-- emite en ese mismo formato. No se filtra por vigencia: las 2 ventas del
+-- mock terminaron el 2024-11-29 (R-3 del épico).
+--
+-- flash_sale_products es la fuente de verdad de los productos de una venta.
+-- sale_builder se guarda tal cual, pero su product_ids se reescribe con la
+-- tabla puente en cada escritura. sale_builder, image y cover_image van en
+-- json y no en jsonb: jsonb reordena las claves y el orden es contrato
+-- (image trae thumbnail, original, id, file_name). Sin trigger (reloj único).
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS flash_sales (
+    id            bigserial      PRIMARY KEY,
+    title         text           NOT NULL,
+    slug          text           NOT NULL UNIQUE,
+    description   text,
+    start_date    timestamp      NOT NULL,
+    end_date      timestamp      NOT NULL,
+    sale_status   smallint       NOT NULL DEFAULT 1,
+    type          text           NOT NULL,
+    rate          numeric(12,2)  NOT NULL,
+    sale_builder  json           NOT NULL,
+    image         json,
+    cover_image   json,
+    language      text           NOT NULL DEFAULT 'es',
+    created_at    timestamptz    NOT NULL DEFAULT now(),
+    updated_at    timestamptz    NOT NULL DEFAULT now(),
+    CONSTRAINT flash_sales_type_check        CHECK (type IN ('percentage', 'fixed_rate')),
+    CONSTRAINT flash_sales_rate_check        CHECK (rate >= 0),
+    CONSTRAINT flash_sales_dates_check       CHECK (end_date >= start_date),
+    CONSTRAINT flash_sales_sale_status_check CHECK (sale_status IN (0, 1))
+);
+
+CREATE TABLE IF NOT EXISTS flash_sale_products (
+    flash_sale_id  bigint  NOT NULL REFERENCES flash_sales(id) ON DELETE CASCADE,
+    product_id     bigint  NOT NULL REFERENCES products(id)    ON DELETE CASCADE,
+    PRIMARY KEY (flash_sale_id, product_id)
+);
+
+
+-- =====================================================================
 -- Índices.
 --
 -- No son decorativos: cada uno responde a un filtro que el frontend
@@ -1325,6 +1369,10 @@ CREATE INDEX IF NOT EXISTS ownership_transfers_shop_idx       ON ownership_trans
 CREATE INDEX IF NOT EXISTS ownership_transfers_previous_idx   ON ownership_transfers (previous_owner_id);
 CREATE INDEX IF NOT EXISTS ownership_transfers_current_idx    ON ownership_transfers (current_owner_id);
 CREATE INDEX IF NOT EXISTS ownership_transfers_created_by_idx ON ownership_transfers (created_by);
+
+-- Ventas flash (US-94): la PK cubre flash_sale_id; product_id sirve a su FK
+-- (borrar un producto busca sus filas puente).
+CREATE INDEX IF NOT EXISTS flash_sale_products_product_idx    ON flash_sale_products (product_id);
 
 
 -- ---------------------------------------------------------------------

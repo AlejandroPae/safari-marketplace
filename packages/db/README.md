@@ -566,6 +566,33 @@ el dato sembrado (no se calcula: no hay `products.author_id`).
 - **`deleteAuthor(id)`**: borra y devuelve la fila borrada. Nada referencia
   a `authors`, así que no cuenta dependientes.
 
+### Ventas flash (US-94, Épico 92) — `flash-sale.repository.ts`
+
+`FlashSaleRecord` es la venta con `products: ProductRecord[]` (de la tabla
+puente, en orden de `product_id`, hidratados con `PRODUCT_INCLUDE` como en
+`wishlists`). `startDate`/`endDate` son `Date` leídos como UTC de columnas
+`timestamp` sin zona; `rate` es `number`; `saleBuilder`, `image` y
+`coverImage` son `JsonValue` en su orden.
+
+- **`listFlashSales({title, page, limit})`**: paginado (`limit` 10) en
+  `id DESC`. `title` es ILIKE. Sin filtro por vigencia.
+- **`findFlashSaleBySlug(slug)`**: la venta con sus productos, o `null`.
+- **`listFlashSaleProducts({slug, page, limit})`**: productos de la venta,
+  en `id ASC`. Sin `slug`, los de todas las ventas sin repetir. Slug
+  inexistente: `null`.
+- **`createFlashSale(input)`**: slug con `generateSlug(title)`. Valida los
+  CHECKs (`InvalidFieldValueError`) y que existan todos los `productIds`
+  (`InvalidReferenceError`) antes de escribir; la venta y sus filas puente
+  van en una transacción. `saleBuilder.product_ids` se reescribe con los
+  `productIds` deduplicados.
+- **`updateFlashSale(id, input)`**: igual, y `productIds` presente
+  **reemplaza** el conjunto de productos en la misma transacción; ausente,
+  no lo toca. Slug inmutable; un `title` que normaliza a vacío da
+  `EmptySlugError`; fija `updatedAt: now()`. Inexistente:
+  `RecordNotFoundError`.
+- **`deleteFlashSale(id)`**: borra (cascada a la tabla puente) y devuelve
+  la venta borrada con los productos que tenía.
+
 ### Dashboard (US-61, Épico 46) — `analytics.repository.ts`
 
 Solo lectura y sin tabla propia. Todo en UTC; «ahora» es el `Date` que

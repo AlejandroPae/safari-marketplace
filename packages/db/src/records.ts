@@ -27,6 +27,7 @@ import type {
   Conversation,
   Coupon,
   Faq,
+  FlashSale,
   Manufacturer,
   Message,
   Order,
@@ -53,6 +54,7 @@ import type {
   User,
   Withdraw,
 } from '../generated/prisma/client/client';
+import type { ProductRecord } from './repositories/products.repository';
 
 // ---------------------------------------------------------------------------
 // Helpers de conversión
@@ -154,6 +156,33 @@ export interface AuthorRecord {
   language: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * Venta flash (US-94). `startDate`/`endDate` vienen de columnas `timestamp`
+ * sin zona, que Prisma lee como UTC: el consumidor los formatea con
+ * `toISOString()` sin reinterpretar la zona. `rate` es Decimal → number.
+ * `saleBuilder`, `image` y `coverImage` son columnas `json`: conservan el
+ * orden de claves. `products` sale de la tabla puente, en orden de
+ * `product_id`, hidratado como en `products.repository.ts`.
+ */
+export interface FlashSaleRecord {
+  id: number;
+  title: string;
+  slug: string;
+  description: string | null;
+  startDate: Date;
+  endDate: Date;
+  saleStatus: number;
+  type: string;
+  rate: number;
+  saleBuilder: Prisma.JsonValue;
+  image: Prisma.JsonValue | null;
+  coverImage: Prisma.JsonValue | null;
+  language: string;
+  createdAt: Date;
+  updatedAt: Date;
+  products: ProductRecord[];
 }
 
 export interface ManufacturerRecord {
@@ -686,6 +715,31 @@ export function _toAuthorRecord(row: Author): AuthorRecord {
     language: row.language,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+/** Fila de `flash_sales` + sus productos ya hidratados (los pasa el repositorio). */
+export function _toFlashSaleRecord(
+  row: FlashSale,
+  products: ProductRecord[]
+): FlashSaleRecord {
+  return {
+    id: _id(row.id),
+    title: row.title,
+    slug: row.slug,
+    description: row.description,
+    startDate: row.startDate,
+    endDate: row.endDate,
+    saleStatus: row.saleStatus,
+    type: row.type,
+    rate: _dec(row.rate),
+    saleBuilder: row.saleBuilder,
+    image: row.image,
+    coverImage: row.coverImage,
+    language: row.language,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    products,
   };
 }
 

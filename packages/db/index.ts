@@ -38,6 +38,7 @@ export type {
   BecomeSellerRecord,
   CategoryRecord,
   ConversationRecord,
+  FlashSaleRecord,
   CouponRecord,
   FaqRecord,
   ManufacturerRecord,
@@ -138,6 +139,21 @@ export {
   listTopAuthors,
   updateAuthor,
 } from './src/repositories/authors.repository';
+export type {
+  CreateFlashSaleInput,
+  ListFlashSaleProductsInput,
+  ListFlashSalesInput,
+  UpdateFlashSaleInput,
+} from './src/repositories/flash-sale.repository';
+export {
+  createFlashSale,
+  deleteFlashSale,
+  FLASH_SALE_TYPES,
+  findFlashSaleBySlug,
+  listFlashSaleProducts,
+  listFlashSales,
+  updateFlashSale,
+} from './src/repositories/flash-sale.repository';
 export type { UpdateBecomeSellerInput } from './src/repositories/become-seller.repository';
 export {
   getBecomeSeller,

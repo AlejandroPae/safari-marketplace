@@ -30,6 +30,7 @@ SQL inaplicable.
 6 lecturas) · 10 coupons · 10 wishlists · 85 reviews · 3 abusive_reports · 68 questions · 2 conversations · 5 messages
 · 10 order_statuses · 40 orders (20 padres + 20 hijas) · 76 order_products
 · 10 order_files · 2 withdraws · 6 ownership_transfers · 11 authors
+· 2 flash_sales · 4 flash_sale_products
 ```
 
 **Los ids del mock se preservan** para no romper las relaciones, y al final se
@@ -544,6 +545,30 @@ aprobados.
 - `born`/`death` son `timestamptz` (`Date.toJSON()` da los mismos 3
   decimales que el mock); `languages` es texto libre (`"English, Russian"`).
 - El mock no trae timestamps: toman `now()` y la API no los emite.
+
+## Ventas flash: `flash_sales` + `flash_sale_products`
+
+Desde US-94 (Épico 92). 2 ventas con los ids y timestamps del mock (3 y 1)
+y 4 filas puente: 951 y 952 en la venta 3; 1013 y 1023 en la venta 1.
+
+- **Globales**: sin `shop_id`. El mock no lo trae.
+- **La tabla puente es la fuente de verdad** de los productos de una venta.
+  `sale_builder` se guarda tal cual, pero su `product_ids` se reescribe con
+  la tabla puente en cada escritura. FKs `ON DELETE CASCADE` hacia la venta
+  y hacia el producto; PK `(flash_sale_id, product_id)`.
+- El seed toma los `products[].id` de cada venta iterada, no el
+  `pivot.flash_sale_id`: en la venta 1 del mock vale 3. El generador falla
+  si un producto no existe o si no coincide con `sale_builder.product_ids`.
+  `products-by-flash-sale.json` no se siembra (DA-6 del épico).
+- `start_date`/`end_date` son `timestamp` **sin** zona, como el mock
+  (`2023-10-31 06:49:59`). Las 2 ventas terminaron el 2024-11-29 y la API
+  no filtra por vigencia (R-3 del épico).
+- `sale_builder`, `image` y `cover_image` van en `json` y no en `jsonb`: el
+  orden de sus claves es contrato.
+- CHECKs: `type IN ('percentage','fixed_rate')`, `rate >= 0`,
+  `end_date >= start_date`, `sale_status IN (0,1)`.
+- `products` sigue emitiendo `in_flash_sale: 0` (DA-3 del épico): la venta
+  no aplica su descuento al precio de los productos.
 
 ## Cómo se adapta el scraper
 

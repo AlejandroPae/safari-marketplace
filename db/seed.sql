@@ -9,7 +9,7 @@
 -- ya existen, y creando en tiempo de ejecución únicamente lo que es suyo
 -- (los retailers como shops, las marcas como manufacturers).
 --
--- 10 types · 12 shops · 198 categorías · 14 manufacturers · 10 tags · 1200 productos · 11 usuarios · 4 permisos · 1 become_seller · 3 shop_staff · 19 faqs · 5 terms_and_conditions · 5 refund_policies · 8 refund_reasons · 1 taxes · 1 shippings · 8 attributes · 27 attribute_values · 3 store_notices · 10 coupons · 10 wishlists · 85 reviews · 3 abusive_reports · 68 questions · 2 conversations · 5 messages · 10 order_statuses · 40 orders · 76 order_products · 10 order_files · 2 withdraws · 6 ownership_transfers · 11 authors
+-- 10 types · 12 shops · 198 categorías · 14 manufacturers · 10 tags · 1200 productos · 11 usuarios · 4 permisos · 1 become_seller · 3 shop_staff · 19 faqs · 5 terms_and_conditions · 5 refund_policies · 8 refund_reasons · 1 taxes · 1 shippings · 8 attributes · 27 attribute_values · 3 store_notices · 10 coupons · 10 wishlists · 85 reviews · 3 abusive_reports · 68 questions · 2 conversations · 5 messages · 10 order_statuses · 40 orders · 76 order_products · 10 order_files · 2 withdraws · 6 ownership_transfers · 11 authors · 2 flash_sales · 4 flash_sale_products
 -- =====================================================================
 
 BEGIN;
@@ -2399,6 +2399,24 @@ INSERT INTO authors (id, name, slug, bio, quote, born, death, languages, socials
 ON CONFLICT (id) DO NOTHING;
 
 -- ────────────────────────────────────────────────────────────────────
+-- flash_sales — 2; flash_sale_products — 4
+-- ────────────────────────────────────────────────────────────────────
+-- Ids y timestamps del mock (D-3). start_date/end_date sin zona, como el mock.
+-- sale_builder, image y cover_image verbatim en json (el orden de claves es
+-- contrato). products-by-flash-sale.json NO se siembra (DA-6 del épico).
+INSERT INTO flash_sales (id, title, slug, description, start_date, end_date, sale_status, type, rate, sale_builder, image, cover_image, language, created_at, updated_at) VALUES
+  (3, 'Limited-Time Offer: Act Fast! 🔥', 'limited-time-offer-act-fast', 'Don''t miss out on our incredible Limited-Time Offer sale! We''ve slashed prices on a wide range of products for a brief period, giving you the perfect opportunity to grab those items you''ve had your eye on. Whether it''s the latest fashion trends, cutting-edge electronics, or home essentials, this sale has something for everyone. But remember, time is of the essence – these discounts won''t be around for long. So, hurry and fill your cart with fantastic deals while they last. It''s the ultimate chance to upgrade your lifestyle without breaking the bank. Shop now and make the most of this exclusive offer before it vanishes!', '2023-10-31 06:49:59', '2024-11-29 18:00:00', 1, 'percentage', 50, '{"data_type":"handpick_category","product_ids":[951,952]}'::json, '{"thumbnail":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2289/conversions/Group-1000003746-thumbnail.jpg","original":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2289/Group-1000003746.png","id":2292,"file_name":"Group-1000003746.png"}'::json, '{"thumbnail":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2291/conversions/Group-1000003746-thumbnail.jpg","original":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2291/Group-1000003746.png","id":2294,"file_name":"Group-1000003746.png"}'::json, 'en', '2023-10-16T06:53:42.000000Z', '2023-10-16T06:53:42.000000Z'),
+  (1, 'Limited time discounts.', 'limited-time-discounts', 'Offer a discount on a specific product or category of products for a limited time. This creates a sense of urgency and encourages customers to make quick purchases.', '2023-10-16 06:40:17', '2024-11-29 18:00:00', 1, 'fixed_rate', 10, '{"data_type":"handpicked_products","product_ids":[1013,1023]}'::json, '{"thumbnail":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2285/conversions/2-92206549-thumbnail.jpg","original":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2285/2-92206549.png","id":2288,"file_name":"2-92206549.png"}'::json, '{"thumbnail":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2286/conversions/4-954757967-thumbnail.jpg","original":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2286/4-954757967.png","id":2289,"file_name":"4-954757967.png"}'::json, 'en', '2023-10-16T06:46:21.000000Z', '2023-10-16T06:46:21.000000Z')
+ON CONFLICT (id) DO NOTHING;
+-- Los products[].id de cada venta; el pivot.flash_sale_id del mock se ignora (V-2).
+INSERT INTO flash_sale_products (flash_sale_id, product_id) VALUES
+  (3, 951),
+  (3, 952),
+  (1, 1013),
+  (1, 1023)
+ON CONFLICT DO NOTHING;
+
+-- ────────────────────────────────────────────────────────────────────
 -- category_product — deliberadamente VACÍA
 -- ────────────────────────────────────────────────────────────────────
 -- Ninguno de los 1200 productos del mock trae la relación con
@@ -2444,5 +2462,6 @@ SELECT setval('order_files_id_seq', GREATEST((SELECT COALESCE(max(id), 1) FROM o
 SELECT setval('withdraws_id_seq', GREATEST((SELECT COALESCE(max(id), 1) FROM withdraws), 1));
 SELECT setval('ownership_transfers_id_seq', GREATEST((SELECT COALESCE(max(id), 1) FROM ownership_transfers), 1));
 SELECT setval('authors_id_seq', GREATEST((SELECT COALESCE(max(id), 1) FROM authors), 1));
+SELECT setval('flash_sales_id_seq', GREATEST((SELECT COALESCE(max(id), 1) FROM flash_sales), 1));
 
 COMMIT;

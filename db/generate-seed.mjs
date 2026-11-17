@@ -54,6 +54,7 @@ const orderFiles = leer('order-files');
 const withdraws = leer('withdraws');
 const transferencias = leer('ownership-transfer');
 const authors = leer('authors');
+const flashSales = leer('flash-sale');
 
 // ── Literales SQL ────────────────────────────────────────────────────────
 const txt = (v) =>
@@ -680,6 +681,38 @@ for (const a of authors) {
 if (new Set(authors.map((a) => a.slug)).size !== authors.length)
   problemas.push('authors: slug duplicado');
 
+// ── Ventas flash (US-94) ─────────────────────────────────────────────────
+// La tabla puente sale de los products[].id de la venta ITERADA, nunca de
+// products[].pivot.flash_sale_id: en la venta 1 del mock vale 3 (V-2).
+const TIPOS_FLASH_SALE = ['percentage', 'fixed_rate'];
+const FECHA_VENTA = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+const flashSaleProductos = flashSales.flatMap((f) =>
+  (f.products ?? []).map((p) => ({ flash_sale_id: f.id, product_id: p.id }))
+);
+for (const f of flashSales) {
+  if (!f.title) problemas.push(`flash_sales ${f.id}: sin title`);
+  if (!f.slug) problemas.push(`flash_sales ${f.id}: sin slug`);
+  if (!TIPOS_FLASH_SALE.includes(f.type))
+    problemas.push(`flash_sales ${f.id}: type '${f.type}' fuera del CHECK`);
+  if (typeof f.rate !== 'number' || f.rate < 0)
+    problemas.push(`flash_sales ${f.id}: rate ${f.rate} no es un número >= 0`);
+  if (![0, 1].includes(f.sale_status))
+    problemas.push(`flash_sales ${f.id}: sale_status ${f.sale_status} no es 0 ni 1`);
+  if (!FECHA_VENTA.test(f.start_date) || !FECHA_VENTA.test(f.end_date))
+    problemas.push(`flash_sales ${f.id}: fechas fuera del formato YYYY-MM-DD HH:MM:SS`);
+  else if (f.end_date < f.start_date)
+    problemas.push(`flash_sales ${f.id}: end_date anterior a start_date`);
+  const ids = (f.products ?? []).map((p) => p.id);
+  for (const id of ids)
+    if (!idsProductos.has(id)) problemas.push(`flash_sales ${f.id}: producto ${id} inexistente`);
+  if (new Set(ids).size !== ids.length) problemas.push(`flash_sales ${f.id}: producto repetido`);
+  const builder = [...(f.sale_builder?.product_ids ?? [])].sort((a, b) => a - b);
+  if (JSON.stringify(builder) !== JSON.stringify([...ids].sort((a, b) => a - b)))
+    problemas.push(`flash_sales ${f.id}: sale_builder.product_ids no coincide con products`);
+}
+if (new Set(flashSales.map((f) => f.slug)).size !== flashSales.length)
+  problemas.push('flash_sales: slug duplicado');
+
 if (problemas.length) {
   console.error(`\nEl mock viola ${problemas.length} restriccion(es) del esquema:`);
   problemas.slice(0, 20).forEach((p) => console.error('  - ' + p));
@@ -716,7 +749,8 @@ L.push(
     `${conversaciones.length} conversations · ${mensajes.length} messages · ` +
     `${orderStatuses.length} order_statuses · ${ordenes.length} orders · ` +
     `${ordenes.reduce((n, o) => n + o.products.length, 0)} order_products · ${orderFiles.length} order_files · ` +
-    `${withdraws.length} withdraws · ${transferencias.length} ownership_transfers · ${authors.length} authors`,
+    `${withdraws.length} withdraws · ${transferencias.length} ownership_transfers · ${authors.length} authors · ` +
+    `${flashSales.length} flash_sales · ${flashSaleProductos.length} flash_sale_products`,
   '-- =====================================================================',
   '',
   'BEGIN;'
@@ -1425,6 +1459,33 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
+// flash_sales + flash_sale_products (US-94) -----------------------------------
+bloque(`flash_sales — ${flashSales.length}; flash_sale_products — ${flashSaleProductos.length}`);
+L.push(
+  '-- Ids y timestamps del mock (D-3). start_date/end_date sin zona, como el mock.',
+  '-- sale_builder, image y cover_image verbatim en json (el orden de claves es',
+  '-- contrato). products-by-flash-sale.json NO se siembra (DA-6 del épico).',
+  'INSERT INTO flash_sales (id, title, slug, description, start_date, end_date, sale_status, type, rate, sale_builder, image, cover_image, language, created_at, updated_at) VALUES'
+);
+L.push(
+  flashSales
+    .map(
+      (f) =>
+        `  (${f.id}, ${txt(f.title)}, ${txt(f.slug)}, ${txt(f.description)}, ${txt(f.start_date)}, ` +
+        `${txt(f.end_date)}, ${num(f.sale_status)}, ${txt(f.type)}, ${num(f.rate)}, ${jsonTal(f.sale_builder)}, ` +
+        `${jsonTal(f.image)}, ${jsonTal(f.cover_image)}, ${txt(f.language)}, ${ts(f.created_at)}, ${ts(f.updated_at)})`
+    )
+    .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
+);
+L.push(
+  '-- Los products[].id de cada venta; el pivot.flash_sale_id del mock se ignora (V-2).',
+  'INSERT INTO flash_sale_products (flash_sale_id, product_id) VALUES'
+);
+L.push(
+  flashSaleProductos.map((r) => `  (${r.flash_sale_id}, ${r.product_id})`).join(',\n') +
+    '\nON CONFLICT DO NOTHING;'
+);
+
 // category_product -------------------------------------------------------
 bloque('category_product — deliberadamente VACÍA');
 L.push(
@@ -1444,7 +1505,7 @@ L.push(
   '-- mock, así que hay que adelantar las secuencias o el primer INSERT nuevo',
   '-- chocaría con una clave existente.'
 );
-for (const t of ['types', 'users', 'permissions', 'shops', 'categories', 'manufacturers', 'tags', 'products', 'faqs', 'terms_and_conditions', 'refund_policies', 'refund_reasons', 'taxes', 'shippings', 'attributes', 'attribute_values', 'store_notices', 'coupons', 'reviews', 'abusive_reports', 'questions', 'conversations', 'messages', 'order_statuses', 'orders', 'order_files', 'withdraws', 'ownership_transfers', 'authors']) {
+for (const t of ['types', 'users', 'permissions', 'shops', 'categories', 'manufacturers', 'tags', 'products', 'faqs', 'terms_and_conditions', 'refund_policies', 'refund_reasons', 'taxes', 'shippings', 'attributes', 'attribute_values', 'store_notices', 'coupons', 'reviews', 'abusive_reports', 'questions', 'conversations', 'messages', 'order_statuses', 'orders', 'order_files', 'withdraws', 'ownership_transfers', 'authors', 'flash_sales']) {
   L.push(`SELECT setval('${t}_id_seq', GREATEST((SELECT COALESCE(max(id), 1) FROM ${t}), 1));`);
 }
 
@@ -1469,5 +1530,6 @@ console.log(
     `${conversaciones.length} conversations · ${mensajes.length} messages · ` +
     `${orderStatuses.length} order_statuses · ${ordenes.length} orders · ` +
     `${ordenes.reduce((n, o) => n + o.products.length, 0)} order_products · ${orderFiles.length} order_files · ` +
-    `${withdraws.length} withdraws · ${transferencias.length} ownership_transfers · ${authors.length} authors`
+    `${withdraws.length} withdraws · ${transferencias.length} ownership_transfers · ${authors.length} authors · ` +
+    `${flashSales.length} flash_sales · ${flashSaleProductos.length} flash_sale_products`
 );
