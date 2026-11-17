@@ -14,7 +14,7 @@ export class Author extends CoreEntity {
   products_count?: number;
   quote?: string;
   slug?: string;
-  socials?: ShopSocials;
+  socials?: ShopSocials[];
   language?: string;
   translated_languages?: string[];
 }
