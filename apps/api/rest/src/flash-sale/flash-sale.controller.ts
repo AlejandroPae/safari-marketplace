@@ -70,3 +70,19 @@ export class ProductsByFlashSaleController {
     return this.flashSaleService.findAllProductsByFlashSale(query);
   }
 }
+
+/**
+ * Ventas de un producto, para el cuadro de la ficha de edición del admin
+ * (US-96). Pública como `/flash-sale`; `language`, `with` y `searchJoin`
+ * del cliente se ignoran.
+ */
+@Public()
+@Controller('product-flash-sale-info')
+export class ProductFlashSaleInfoController {
+  constructor(private flashSaleService: FlashSaleService) {}
+
+  @Get()
+  findByProduct(@Query('id') id: string) {
+    return this.flashSaleService.getFlashSaleInfoByProductId(id);
+  }
+}

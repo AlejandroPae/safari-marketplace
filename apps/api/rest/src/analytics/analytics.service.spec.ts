@@ -67,6 +67,7 @@ function makeProductRecord(
     quantity: 8,
     inStock: true,
     soldQuantity: 0,
+    inFlashSale: false,
     sku: '123',
     unit: '1 Pcs',
     status: 'publish',

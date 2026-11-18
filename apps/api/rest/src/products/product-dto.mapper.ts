@@ -3,9 +3,9 @@ import { Product } from './entities/product.entity.js';
 
 /**
  * `ProductRecord` (camelCase, `@safari/db`) → proyección de 20 claves
- * snake_case que ya publicaba `products.json`. `type.logo` e
- * `in_flash_sale` son constantes: no hay columna que los respalde
- * (divergencias documentadas en `design.md`). Se castea a `Product`, igual
+ * snake_case que ya publicaba `products.json`. `type.logo` es constante: no
+ * hay columna que lo respalde (divergencia documentada en `design.md`).
+ * `in_flash_sale` es `1` si el producto está en alguna venta flash (US-96). Se castea a `Product`, igual
  * que `settings.service.ts:39` — la entidad declara campos que este
  * listado no emite.
  */
@@ -40,7 +40,7 @@ export function toProductDto(record: ProductRecord): Product {
     unit: record.unit,
     sku: record.sku,
     sold_quantity: record.soldQuantity,
-    in_flash_sale: 0,
+    in_flash_sale: record.inFlashSale ? 1 : 0,
     visibility: record.visibility,
   } as unknown as Product;
 }

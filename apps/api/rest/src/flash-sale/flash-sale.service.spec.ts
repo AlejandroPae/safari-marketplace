@@ -22,6 +22,7 @@ import {
   InvalidReferenceError,
   listFlashSaleProducts,
   listFlashSales,
+  listProductFlashSales,
   RecordNotFoundError,
   updateFlashSale,
   type FlashSaleRecord,
@@ -37,6 +38,7 @@ vi.mock('@safari/db', async (importOriginal) => ({
   listFlashSales: vi.fn(),
   findFlashSaleBySlug: vi.fn(),
   listFlashSaleProducts: vi.fn(),
+  listProductFlashSales: vi.fn(),
   createFlashSale: vi.fn(),
   updateFlashSale: vi.fn(),
   deleteFlashSale: vi.fn(),
@@ -45,6 +47,7 @@ vi.mock('@safari/db', async (importOriginal) => ({
 const listFlashSalesMock = vi.mocked(listFlashSales);
 const findFlashSaleBySlugMock = vi.mocked(findFlashSaleBySlug);
 const listFlashSaleProductsMock = vi.mocked(listFlashSaleProducts);
+const listProductFlashSalesMock = vi.mocked(listProductFlashSales);
 const createFlashSaleMock = vi.mocked(createFlashSale);
 const updateFlashSaleMock = vi.mocked(updateFlashSale);
 const deleteFlashSaleMock = vi.mocked(deleteFlashSale);
@@ -68,6 +71,7 @@ function makeProductRecord(id: number): ProductRecord {
     quantity: 8,
     inStock: true,
     soldQuantity: 0,
+    inFlashSale: false,
     sku: '123',
     unit: '1 Pcs',
     status: 'publish',
@@ -256,6 +260,41 @@ describe('FlashSaleService', () => {
         service.getFlashSale('no-existe', 'en'),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
+  });
+
+  describe('getFlashSaleInfoByProductId (US-96)', () => {
+    it('array de ventas con la proyección de /flash-sale/:slug', async () => {
+      listProductFlashSalesMock.mockResolvedValue([makeFlashSaleRecord()]);
+      const result = await service.getFlashSaleInfoByProductId('1013');
+
+      expect(listProductFlashSalesMock).toHaveBeenCalledWith(1013);
+      expect(result).toHaveLength(1);
+      expect(Object.keys(result[0])).toEqual(MOCK_KEYS);
+    });
+
+    it('producto fuera de toda venta ⇒ []', async () => {
+      listProductFlashSalesMock.mockResolvedValue([]);
+      await expect(service.getFlashSaleInfoByProductId('2')).resolves.toEqual(
+        [],
+      );
+    });
+
+    it('producto inexistente ⇒ 404', async () => {
+      listProductFlashSalesMock.mockResolvedValue(null);
+      await expect(
+        service.getFlashSaleInfoByProductId('999999'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it.each(['abc', '0', '-1', '1.5', '', '99999999999999999999'])(
+      'id %j inválido ⇒ 404 sin tocar el driver',
+      async (id) => {
+        await expect(
+          service.getFlashSaleInfoByProductId(id),
+        ).rejects.toBeInstanceOf(NotFoundException);
+        expect(listProductFlashSalesMock).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe('findAllProductsByFlashSale', () => {

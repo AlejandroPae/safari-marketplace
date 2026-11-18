@@ -398,6 +398,7 @@ function makeProduct(
     quantity: 16,
     inStock: true,
     soldQuantity: 2,
+    inFlashSale: false,
     sku: null,
     unit: '1 pc',
     status: 'publish',

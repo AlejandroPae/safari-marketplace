@@ -180,6 +180,7 @@ function makeProductRecord(
     quantity: 20,
     inStock: true,
     soldQuantity: 10,
+    inFlashSale: false,
     sku: 'SKU-APPLES-1',
     unit: '1lb',
     status: 'publish',
@@ -333,13 +334,23 @@ describe('ProductsService.getProducts (Postgres vía @safari/db, US-2)', () => {
       expect(Object.keys(dto.shop)).toEqual(['id', 'name', 'slug', 'logo']);
     });
 
-    it('emite in_flash_sale=0 y type.logo=null constantes (sin columna que los respalde)', async () => {
+    it('emite type.logo=null constante (sin columna que lo respalde) e in_flash_sale=0 fuera de ventas', async () => {
       const result = await service.getProducts(rawQuery({}));
       const dto = asDto(result.data[0]);
 
       expect(dto.in_flash_sale).toBe(0);
       // Constante null aunque el record traiga `type.icon` poblado.
       expect(dto.type.logo).toBeNull();
+    });
+
+    it('emite in_flash_sale=1 si el producto está en una venta flash (US-96)', async () => {
+      listProductsMock.mockResolvedValueOnce({
+        items: [makeProductRecord({ inFlashSale: true })],
+        total: 1,
+      });
+      const result = await service.getProducts(rawQuery({}));
+
+      expect(asDto(result.data[0]).in_flash_sale).toBe(1);
     });
 
     it('traduce camelCase del record a snake_case del contrato', async () => {

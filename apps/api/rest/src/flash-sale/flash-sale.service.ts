@@ -13,6 +13,7 @@ import {
   isPrismaConnectionError,
   listFlashSaleProducts,
   listFlashSales,
+  listProductFlashSales,
   updateFlashSale,
   type FlashSaleRecord,
   type Prisma,
@@ -286,5 +287,29 @@ export class FlashSaleService {
     }
     const data = result.items.map((p) => toFlashSaleProductDto(p));
     return { data, ...paginate(result.total, page, limit, data.length, url) };
+  }
+
+  /**
+   * Ventas en las que está el producto `id` (US-96), con la proyección de
+   * `/flash-sale/:slug`, en `id DESC`. `[]` si no está en ninguna. Producto
+   * inexistente o `id` que no es un entero positivo ⇒ 404 (guarda de US-31).
+   */
+  async getFlashSaleInfoByProductId(id: string): Promise<FlashSale[]> {
+    const productId = /^[1-9]\d*$/.test(id ?? '') ? Number(id) : NaN;
+    if (!Number.isSafeInteger(productId)) {
+      throw new NotFoundException(`No existe un producto con id ${id}.`);
+    }
+
+    let records: FlashSaleRecord[] | null;
+    try {
+      records = await listProductFlashSales(productId);
+    } catch (error) {
+      readError(error);
+    }
+
+    if (!records) {
+      throw new NotFoundException(`No existe un producto con id ${id}.`);
+    }
+    return records.map(toFlashSaleDto);
   }
 }

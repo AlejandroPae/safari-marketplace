@@ -87,6 +87,7 @@ const PRODUCT = {
   unit: '1lb',
   sku: null,
   soldQuantity: 0,
+  inFlashSale: false,
   visibility: 'visibility_public',
   type: { id: 1, name: 'Grocery', slug: 'grocery', settings: {} },
   shop: { id: 6, name: 'Grocery Shop', slug: 'grocery-shop', logo: null },
