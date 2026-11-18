@@ -6,7 +6,7 @@
 > del repo.
 
 **Fecha:** 2026-08-25
-**Status:** Refinado
+**Status:** Implementado (2026-11-18): US-6, US-7 y US-8
 
 ## Contexto verificado (2026-08-25)
 
@@ -34,7 +34,7 @@
 |----|--------|-----------------|------------|----------|--------|
 | [US-6](./6-pipeline-upsert-products.md) | Upsert del pipeline en `products` con procedencia | Sí | ninguna | ~250 | ✅ Implementada |
 | [US-7](./7-categorizacion-slugs-catalogo.md) | Categorización a slugs del catálogo + `category_product` | Sí | US-6 | ~200 | ✅ Implementada |
-| [US-8](./8-realinear-harness-scraper.md) | Realinear el harness del scraper (`db-test`, `db-count`) | Sí | US-6 | ~150 | |
+| [US-8](./8-realinear-harness-scraper.md) | Realinear el harness del scraper (`db-test`, `db-count`) | Sí | US-6 | ~150 | ✅ Implementada |
 
 **Orden sugerido:** US-6 → (US-7 ∥ US-8 con cuidado: US-8 toca
 `test_pipeline.py` y US-7 puede tocar el pipeline — no correr dos agentes a la
