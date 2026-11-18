@@ -6,7 +6,7 @@
 > del Épico 92, y hace que la ficha de un producto muestre sus ventas.
 
 **Fecha:** 2026-11-17
-**Status:** Listo para ejecución (DA-1..DA-7 decididas el 2026-11-17)
+**Status:** Implementado (2026-11-17): US-96, US-97 y US-98 en `main`
 
 ## Por qué este épico existe
 
@@ -58,7 +58,7 @@ fijan hoy `in_flash_sale` en `0`.
 |----|--------|-----------------|------------|----------|
 | [US-96](./96-in-flash-sale-real.md) ✅ | `in_flash_sale` real y `product-flash-sale-info` | Sí | ninguna | ~350 |
 | [US-97](./97-solicitudes-venta-flash.md) ✅ | Solicitudes de vendedores: tablas, CRUD y `requested-products` | Sí | US-96 (orden secuencial, R-1) | ~1100 |
-| [US-98](./98-aprobar-solicitudes-venta-flash.md) | Aprobar y rechazar solicitudes | Sí | US-97 | ~450 |
+| [US-98](./98-aprobar-solicitudes-venta-flash.md) ✅ | Aprobar y rechazar solicitudes | Sí | US-97 | ~450 |
 
 Orden: **US-96 → US-97 → US-98**, nunca en paralelo. Las tres tocan
 `records.ts`, el barrel de `packages/db` y `flash-sale.repository.ts`

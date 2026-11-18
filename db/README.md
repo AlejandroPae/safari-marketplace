@@ -587,8 +587,11 @@ El generador solo añade el `setval` de `flash_sale_requests_id_seq`.
   y FKs `ON DELETE CASCADE` hacia la solicitud y el producto.
 - Índices: `flash_sale_requests (flash_sale_id)`, `(shop_id)` y
   `flash_sale_request_products (product_id)`.
-- Estas tablas solo guardan la solicitud. Aprobar y rechazar (US-98)
-  escriben en `flash_sale_products`.
+- Aprobar y rechazar (US-98) escriben en `flash_sale_products`, que sigue
+  siendo la fuente de verdad de la venta, y reescriben su
+  `sale_builder.product_ids`. `flash_sale_request_products.added_to_sale`
+  (boolean, default `false`) marca los productos que metió la aprobación
+  (DA-6): rechazar retira solo esos, nunca uno que ya estaba en la venta.
 
 ## Cómo se adapta el scraper
 

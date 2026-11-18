@@ -634,6 +634,17 @@ escrituras vive en el servicio de Nest.
   `updatedAt: now()`. Inexistente: `RecordNotFoundError`.
 - **`deleteFlashSaleRequest(id)`**: no `approved` (409: hay que rechazarla
   antes, US-98). Cascada a la tabla puente; devuelve la solicitud borrada.
+- **`approveFlashSaleRequest(id)`** (US-98): `pending` o `rejected` →
+  `approved`. Mete en la venta los productos que faltan, los marca con
+  `addedToSale` y deja sin marca los que ya estaban. Ya aprobada: 409.
+- **`rejectFlashSaleRequest(id)`** (US-98): `pending` o `approved` →
+  `rejected`. Si estaba aprobada, retira de la venta solo los marcados y
+  les quita la marca (DA-6). Ya rechazada: 409.
+
+Aprobar y rechazar van en una transacción que bloquea la solicitud y la
+venta (`SELECT … FOR UPDATE`, precedente `ownership-transfers`), reescribe
+`sale_builder.product_ids` con la tabla puente (orden de `product_id`) y
+fija `updatedAt: now()` en la venta y en la solicitud.
 
 `InvalidFlashSaleRequestError` y `FlashSaleRequestStateError` son locales
 del repositorio y reutilizan los códigos del 400 y del 409 (precedente
