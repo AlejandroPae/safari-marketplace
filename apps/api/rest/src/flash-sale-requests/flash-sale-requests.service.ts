@@ -7,6 +7,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import {
+  approveFlashSaleRequest,
   createFlashSaleRequest,
   deleteFlashSaleRequest,
   findFlashSaleRequestById,
@@ -16,6 +17,7 @@ import {
   isShopStaff,
   listFlashSaleRequestProducts,
   listFlashSaleRequests,
+  rejectFlashSaleRequest,
   resolveFlashSaleRequestShop,
   updateFlashSaleRequest,
   type FlashSaleRequestRecord,
@@ -304,6 +306,35 @@ export class FlashSaleRequestsService {
     const url = `/requested-products-for-flash-sale?search=${query.search}&limit=${limit}`;
     const data = result.items.map(toProductDto);
     return { data, ...paginate(result.total, page, limit, data.length, url) };
+  }
+
+  /**
+   * Aprueba (US-98, solo super admin por el guard): los productos que faltan
+   * entran en la venta. Ya aprobada ⇒ 409; inexistente o id inválido ⇒ 404.
+   */
+  async approve(rawId: unknown) {
+    const id = toId(rawId);
+    if (id === null) throw notFound(rawId);
+    try {
+      return toRequestDto(await approveFlashSaleRequest(id), { detail: true });
+    } catch (error) {
+      throw toWriteHttpException(error);
+    }
+  }
+
+  /**
+   * Rechaza (US-98, solo super admin por el guard): si estaba aprobada,
+   * retira de la venta lo que metió esa aprobación (DA-6). Ya rechazada ⇒
+   * 409; inexistente o id inválido ⇒ 404.
+   */
+  async disapprove(rawId: unknown) {
+    const id = toId(rawId);
+    if (id === null) throw notFound(rawId);
+    try {
+      return toRequestDto(await rejectFlashSaleRequest(id), { detail: true });
+    } catch (error) {
+      throw toWriteHttpException(error);
+    }
   }
 
   /** Id válido de una solicitud que el usuario puede ver; si no, 404. */

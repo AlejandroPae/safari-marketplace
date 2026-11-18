@@ -19,6 +19,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import {
+  approveFlashSaleRequest,
   createFlashSaleRequest,
   deleteFlashSaleRequest,
   FlashSaleRequestStateError,
@@ -29,6 +30,8 @@ import {
   isShopStaff,
   listFlashSaleRequestProducts,
   listFlashSaleRequests,
+  RecordNotFoundError,
+  rejectFlashSaleRequest,
   resolveFlashSaleRequestShop,
   updateFlashSaleRequest,
   type FlashSaleRecord,
@@ -53,6 +56,8 @@ vi.mock('@safari/db', async (importOriginal) => ({
   deleteFlashSaleRequest: vi.fn(),
   findShopOwnerById: vi.fn(),
   isShopStaff: vi.fn(),
+  approveFlashSaleRequest: vi.fn(),
+  rejectFlashSaleRequest: vi.fn(),
 }));
 
 const listMock = vi.mocked(listFlashSaleRequests);
@@ -64,6 +69,8 @@ const updateMock = vi.mocked(updateFlashSaleRequest);
 const deleteMock = vi.mocked(deleteFlashSaleRequest);
 const ownerMock = vi.mocked(findShopOwnerById);
 const staffMock = vi.mocked(isShopStaff);
+const approveMock = vi.mocked(approveFlashSaleRequest);
+const rejectMock = vi.mocked(rejectFlashSaleRequest);
 
 const NOW = new Date('2026-11-17T00:00:00Z');
 
@@ -519,5 +526,60 @@ describe('FlashSaleRequestsService', () => {
       ).rejects.toBeInstanceOf(NotFoundException);
       expect(productsMock).not.toHaveBeenCalled();
     });
+  });
+
+  describe('approve y disapprove (US-98)', () => {
+    it('aprobar devuelve la solicitud con request_status true', async () => {
+      approveMock.mockResolvedValue(makeRequestRecord({ status: 'approved' }));
+      const dto = await service.approve(7);
+      expect(approveMock).toHaveBeenCalledWith(7);
+      expect(dto.request_status).toBe(true);
+      expect(Object.keys(dto)).toEqual([...REQUEST_KEYS, 'products']);
+    });
+
+    it('rechazar devuelve la solicitud con request_status false; acepta id string', async () => {
+      rejectMock.mockResolvedValue(makeRequestRecord({ status: 'rejected' }));
+      const dto = await service.disapprove('7');
+      expect(rejectMock).toHaveBeenCalledWith(7);
+      expect(dto.request_status).toBe(false);
+    });
+
+    it('ya aprobada ⇒ 409; ya rechazada ⇒ 409', async () => {
+      approveMock.mockRejectedValue(
+        new FlashSaleRequestStateError(7, 'approved', 'aprobar'),
+      );
+      rejectMock.mockRejectedValue(
+        new FlashSaleRequestStateError(7, 'rejected', 'rechazar'),
+      );
+      await expect(service.approve(7)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      await expect(service.disapprove(7)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('inexistente ⇒ 404', async () => {
+      approveMock.mockRejectedValue(
+        new RecordNotFoundError('flash_sale_requests', 7),
+      );
+      await expect(service.approve(7)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it.each([undefined, 'abc', 0, -1, '1.5'])(
+      'id %j inválido ⇒ 404 sin tocar el driver',
+      async (id) => {
+        await expect(service.approve(id)).rejects.toBeInstanceOf(
+          NotFoundException,
+        );
+        await expect(service.disapprove(id)).rejects.toBeInstanceOf(
+          NotFoundException,
+        );
+        expect(approveMock).not.toHaveBeenCalled();
+        expect(rejectMock).not.toHaveBeenCalled();
+      },
+    );
   });
 });
