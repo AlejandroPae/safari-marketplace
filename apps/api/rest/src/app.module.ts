@@ -49,6 +49,7 @@ import { RefundReasonModule } from './refund-reasons/refund-reasons.module.js';
 import { NotifyLogsModule } from './notify-logs/notify-logs.module.js';
 import { BecomeSellerModule } from './become-seller/become-seller.module.js';
 import { OwnershipTransferModule } from './ownership-transfer/ownership-transfer.module.js';
+import { HealthModule } from './health/health.module.js';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -101,6 +102,7 @@ import { OwnershipTransferModule } from './ownership-transfer/ownership-transfer
     RefundReasonModule,
     BecomeSellerModule,
     OwnershipTransferModule,
+    HealthModule,
   ],
   controllers: [],
   providers: [

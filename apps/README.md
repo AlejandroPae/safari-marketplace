@@ -288,9 +288,42 @@ de Node cuando haga falta liberar espacio.
   nivela a propósito, para no convertir un endpoint sin rate limiting en un
   amplificador de CPU de coste fijo.
 
+## Salud y logs de la API (US-17)
+
+Dos endpoints públicos, sin token, para healthchecks:
+
+| Endpoint | Qué mira | Responde |
+|---|---|---|
+| `GET /api/health` | liveness: solo que el proceso responde, sin tocar la base | `200 {"status":"ok"}` |
+| `GET /api/health/ready` | readiness: un `SELECT 1` real a Postgres, con timeout de 2 s | `200` con `checks.database.status: "up"`; `503` con `"down"` si la base no responde |
+
+```
+$ curl -s localhost:9001/api/health/ready      # con `just db-down`
+{"status":"error","checks":{"database":{"status":"down","latency_ms":45}}}
+```
+
+Un healthcheck que reinicia el proceso tiene que usar `/api/health`. Si usara
+`/api/health/ready`, una base caída reiniciaría una API sana. Tampoco sirve
+`/api/settings`, que con la base abajo da 500. El 503 nombra la dependencia
+caída pero no trae el error del driver, que puede llevar host y puerto. Ese
+detalle va al log como `WARN [HealthService]`.
+
+Logs:
+
+- Cada entrada lleva pid, timestamp ISO 8601 en UTC y nivel:
+  `[Nest] 23828  - 2026-11-18T16:57:14.296Z     LOG [HTTP] GET /api/health/ready 503 48.3ms`.
+- Hay una línea `[HTTP]` por request: método, ruta sin query string, status y
+  duración.
+- Los errores de Prisma salen como `ERROR [Prisma]` en una sola línea. Antes
+  eran un bloque `prisma:error` suelto (`setPrismaLogSink` de `@safari/db`).
+- Lo único que sigue sin prefijo son las líneas de continuación de una entrada
+  multilínea (el stack de un `ERROR [ExceptionsHandler]`) y los `console.log`
+  heredados de Pickbazar (pagos, stubs, `users`, `auth`).
+
 ## Verificación
 
 ```bash
+curl http://localhost:9001/api/health/ready  # 200 si la base responde
 curl http://localhost:9001/api/settings      # 200, ~5.5 KB JSON
 curl http://localhost:9001/api/products      # 200, catálogo
 open  http://localhost:9001/docs             # Swagger (sigue abierto, ver arriba)

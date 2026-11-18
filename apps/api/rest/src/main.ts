@@ -1,14 +1,24 @@
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { json, NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module.js';
+import { setPrismaLogSink } from '@safari/db';
+import {
+  IsoConsoleLogger,
+  logPrisma,
+  requestLogger,
+} from './common/logging.js';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     cors: true,
+    // US-17: timestamp ISO 8601 y nivel en cada línea de log.
+    logger: new IsoConsoleLogger(),
   });
+  app.use(requestLogger);
+  setPrismaLogSink(logPrisma);
   // US-78: Express 5 cambió el parser de query strings por defecto de `qs`
   // ('extended') a `node:querystring` ('simple'), que no entiende corchetes:
   // `?limit[]=2` o `?search[name]=x` dejaban de llegar como array/objeto y
@@ -38,6 +48,8 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document);
   const PORT = process.env.PORT || 5000;
   await app.listen(PORT);
-  console.log(`Application is running on: ${await app.getUrl()}/api`);
+  new Logger('Bootstrap').log(
+    `Application is running on: ${await app.getUrl()}/api`,
+  );
 }
 bootstrap();
