@@ -140,10 +140,16 @@ El primer `just verify` falló (`FALLA API :9001 ECONNREFUSED`, y la tienda dio
 500). `nest start --watch` detectó cambios de archivo varias veces mientras
 arrancaban la tienda y el admin, y relanzó la API. Una de las relanzadas murió
 con `EADDRINUSE :::9001` porque la instancia anterior seguía con el puerto, y
-`verify` corrió en ese hueco. Las dos instancias eran del mismo `api-dev`, sin
-procesos ajenos. La instancia superviviente respondía 200 y el segundo
-`verify` pasó. La US solo toca docs y un comentario del `justfile`, así que no
-puede causar esto.
+`verify` corrió en ese hueco. La instancia superviviente respondía 200 y el
+segundo `verify` pasó. La US solo toca docs y un comentario del `justfile`,
+así que no puede causar esto.
+
+> **Corrección (2026-11-18, US-17):** se escribió que «las dos instancias eran
+> del mismo `api-dev`». No es así. La que tenía el puerto era hija de un
+> `nest start --watch` huérfano, lanzado a las 9:12 en la verificación del
+> upgrade de Next a 16.4.5. Al apagarlo se mató solo el proceso del puerto, y
+> el watcher siguió vivo relanzando la API. Era un proceso del agente, no del
+> dueño. Ver el Resultado de US-17.
 
 ### Fuera de alcance, mencionado
 
