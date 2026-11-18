@@ -20,7 +20,7 @@ Divergencias ratificadas (no son defectos):
 
 | Campo | Valor | Alcance |
 |---|---|---|
-| `in_flash_sale` | `0` fijo (sin columna) | 1 fila (id 2: mock=1) |
+| `in_flash_sale` | `1` si el producto tiene alguna fila en `flash_sale_products`, `0` si no (US-96; sin mirar la vigencia de la venta) | 5 filas: 951, 952, 1013 y 1023 pasan a `1` (mock=0); id 2 sigue en `0` (mock=1) |
 | `type.logo` | `null` fijo | todas |
 | `type` (name/settings embebidos) | desactualizado vs. `types.json` sembrado; type 11 además cambia `isHome` false→true (el shop lo lee) | types 6 y 11, 86 filas en total (55+31), **85 observables vía el endpoint** (54+31 — 1 fila de type 6 no es `publish`/`visibility_public`); ninguna en pág. 1 |
 | precios (`*_price`) | redondeo `numeric(12,2)` | 8 filas |

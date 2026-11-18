@@ -6,7 +6,7 @@
 
 **Épico:** [Épico 95](./README.md)
 **Fecha:** 2026-11-17
-**Status:** Listo para ejecución
+**Status:** Implementado (2026-11-17)
 **Depende de:** ninguna (orden secuencial del épico, R-1)
 **LOC est.:** ~350
 
@@ -100,9 +100,128 @@ eslint, `just build-api`, `just build-shop` y `just verify` en verde.
 
 ## Definición de Done
 
-- [ ] Línea base de `/products` y del detalle de 951, 1013 y 2, con bytes.
-- [ ] `just db-check`, `npx vitest run` y `npx tsc --noEmit` con sus recuentos.
-- [ ] Comparación de CA-1 y medición de CA-3.
-- [ ] `curl` de CA-2 y captura del navegador.
-- [ ] `just build-api`, `just build-shop` y `just verify`.
-- [ ] Status de la US y fila del épico.
+- [x] Línea base de `/products` y del detalle de 951, 1013 y 2, con bytes.
+- [x] `just db-check`, `npx vitest run` y `npx tsc --noEmit` con sus recuentos.
+- [x] Comparación de CA-1 y medición de CA-3.
+- [x] `curl` de CA-2 y captura del navegador.
+- [x] `just build-api`, `just build-shop` y `just verify`.
+- [x] Status de la US y fila del épico.
+
+## Resultado (2026-11-17, rama `feat/us-96-in-flash-sale` sobre `main` @ `f9738c5`)
+
+### Qué se hizo
+
+- `PRODUCT_INCLUDE` cuenta las filas de `flash_sale_products`
+  (`_count: { select: { flashSales: true } }`), y `ProductRecord` gana
+  `inFlashSale: boolean`. Como todos los repositorios que devuelven
+  productos usan ese include, el dato llega a todos los embebedores (R-2).
+- `toProductDto` emite `in_flash_sale: record.inFlashSale ? 1 : 0`.
+  `orders` y `analytics` tienen su propia proyección y siguen en `0` (DA-2).
+- `listProductFlashSales(productId)` en `flash-sale.repository.ts`, y la
+  ruta `GET /product-flash-sale-info?id=N` (`@Public()`) en
+  `ProductFlashSaleInfoController`. Ignora `language`, `with` y
+  `searchJoin`. Un `id` que no es un entero positivo seguro da 404 sin
+  tocar el driver.
+- Specs de OpenSpec `product-listing-api` y `product-write-api`
+  actualizadas.
+
+### CA-1 — `in_flash_sale` real
+
+Línea base (`main` @ `f9738c5`) y después, con el mismo `db-up`. Los
+bytes no cambian, porque `0` y `1` miden lo mismo:
+
+```
+               antes    después
+products-all   1247200  1247200   (limit=1200: 1199 filas)
+products-def     28938    28938
+detail-951       21448    21448
+detail-1013      21474    21474
+detail-2         19751    19751
+in_flash_sale=1: []  ->  [ 951, 952, 1013, 1023 ]
+```
+
+Diff recursivo con `node` (todas las rutas JSON que difieren):
+
+```
+detail-1013.json: 4 diferencias
+detail-2.json: 0 diferencias
+detail-951.json: 4 diferencias
+products-all.json: 4 diferencias
+products-default.json: 0 diferencias
+todas son in_flash_sale 0 -> 1: true
+  detail-1013.json.in_flash_sale: 0 -> 1
+  detail-1013.json.related_products.1.in_flash_sale: 0 -> 1
+  detail-1013.json.related_products.2.in_flash_sale: 0 -> 1
+  detail-1013.json.related_products.12.in_flash_sale: 0 -> 1
+  detail-951.json.in_flash_sale: 0 -> 1
+  detail-951.json.related_products.1.in_flash_sale: 0 -> 1
+  detail-951.json.related_products.2.in_flash_sale: 0 -> 1
+  detail-951.json.related_products.12.in_flash_sale: 0 -> 1
+  products-all.json.data.938.in_flash_sale: 0 -> 1   (id 951)
+  products-all.json.data.939.in_flash_sale: 0 -> 1   (id 952)
+  products-all.json.data.959.in_flash_sale: 0 -> 1   (id 1013)
+  products-all.json.data.969.in_flash_sale: 0 -> 1   (id 1023)
+```
+
+Los `related_products` 1, 2 y 12 de los dos detalles son 951, 952 y 1013
+(los 4 son del type `gadget`).
+
+### CA-2 — `product-flash-sale-info`
+
+```
+id=951                                              HTTP 200 [{"id":3,"title":"Limited-Time Offer: Act Fast! 🔥","products":[951,952]}]
+id=1013                                             HTTP 200 [{"id":1,"title":"Limited time discounts.","products":[1013,1023]}]
+id=2                                                HTTP 200 []
+id=999999                                           HTTP 404 No existe un producto con id 999999.
+id=abc                                              HTTP 404 No existe un producto con id abc.
+searchJoin=and&id=1013&language=en&with=flash_sales HTTP 200 [{"id":1,"title":"Limited time discounts.","products":[1013,1023]}]
+```
+
+(Resumen de cada venta: `id`, `title` e ids de `products`. Cada elemento
+trae las 18 claves de `/flash-sale/:slug`.)
+
+Navegador (`just admin-dev`, super admin):
+
+- `/gadget/products/loogitech-powered-wireless-charging-stand/edit` (1013):
+  cuadro «Promotional» con «Product selected for this campaign.»,
+  «Limited time discounts.», Active Date 16 Oct 2023, Expire Date
+  29 Nov 2024, «Fixed Rate», Deals rate 10 y el enlace «See details» a
+  `/flash-sale/limited-time-discounts`.
+- `/grocery-shop/products/baby-spinach/edit` (2): no hay cuadro de venta;
+  el formulario muestra «Product is not selected in any campaign.» y la
+  página no llama a `product-flash-sale-info`.
+
+### CA-3 — Rendimiento
+
+`/products` (página por defecto), 5 corridas tras un calentamiento,
+ordenadas:
+
+```
+antes:   0.054052 0.068525 0.068538 0.107776 0.216309   mediana 0.0685 s
+después: 0.032164 0.036241 0.043080 0.047307 0.064522   mediana 0.0431 s
+```
+
+No empeora. La diferencia a favor está dentro del ruido de una máquina de
+desarrollo, así que no se atribuye al cambio.
+
+### CA-4 — Sin regresión
+
+```
+just db-check                 Test Files 34 passed (34) · Tests 452 passed (452)   (antes 446: +6)
+npx vitest run (desde C:\)    Test Files 36 passed (36) · Tests 604 passed (604)   (antes 594: +10)
+npx tsc --noEmit              TSC=0
+npx eslint "{src,apps,libs,test}/**/*.ts"   sin salida
+just build-api                Done in 141.50s. EXIT=0
+just build-shop               279/279 páginas, las 2 de flash-sales prerenderizadas, EXIT=0
+just verify                   OK API 5503B · OK Shop cards:30 · OK Admin cards:1
+```
+
+`build-shop` y `shop-dev` se cortaron la primera vez con el
+`SecurityFatalError` de Next 16.4.1 y pasaron al reintentar; no se corrió
+`next upgrade`. `apps/shop/public/sitemap-0.xml` se restauró tras el build.
+
+### Fuera de alcance, mencionado
+
+- `flash-sale.service.ts` sigue sobrescribiendo `in_flash_sale: 1` en los
+  productos de una venta. Ahora es redundante con el record, pero no es
+  incorrecto; no se tocó.

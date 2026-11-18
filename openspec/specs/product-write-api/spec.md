@@ -157,13 +157,14 @@ tal cual: 20 claves en el mismo orden que `GET /products/:slug`, sin
 El input hacia `@safari/db` MUST construirse campo a campo, nunca
 `...body`. `variations`/`variation_options`, `author_id`, `digital_file`,
 `height`/`length`/`width`, `in_flash_sale` y `source_*` MUST aceptarse sin
-error y descartarse; `in_flash_sale` MUST seguir emitiendo `0`.
+error y descartarse; `in_flash_sale` MUST emitirse desde
+`flash_sale_products` (US-96), nunca desde el cuerpo.
 
 #### Scenario: Campos sin columna se aceptan y se descartan
 - WHEN `POST /products` con `height`, `digital_file`, `author_id`,
   `in_flash_sale: 1`
 - THEN la fila se crea, ninguno persiste, y la respuesta emite
-  `in_flash_sale: 0`
+  `in_flash_sale: 0` (el producto nuevo no está en ninguna venta)
 
 ### Requirement: Sin mock huérfano ni regresión (CA-7)
 

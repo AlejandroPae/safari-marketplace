@@ -56,7 +56,7 @@ fijan hoy `in_flash_sale` en `0`.
 
 | US | Título | Releasable solo | Depende de | LOC est. |
 |----|--------|-----------------|------------|----------|
-| [US-96](./96-in-flash-sale-real.md) | `in_flash_sale` real y `product-flash-sale-info` | Sí | ninguna | ~350 |
+| [US-96](./96-in-flash-sale-real.md) ✅ | `in_flash_sale` real y `product-flash-sale-info` | Sí | ninguna | ~350 |
 | [US-97](./97-solicitudes-venta-flash.md) | Solicitudes de vendedores: tablas, CRUD y `requested-products` | Sí | US-96 (orden secuencial, R-1) | ~1100 |
 | [US-98](./98-aprobar-solicitudes-venta-flash.md) | Aprobar y rechazar solicitudes | Sí | US-97 | ~450 |
 
