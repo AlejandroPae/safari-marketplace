@@ -208,7 +208,7 @@ Feature: …
 Épico 5  Scraper al catálogo compartido       → US-6, US-7, US-8 ✅ (completado 2026-11-18)
 Épico 9  Gate de calidad y CI                 → US-10, US-11, US-12 ✅, US-73, US-74   ← US-12 hecha (2026-11-18: GraphQL congelada); US-10/11 actualizadas tras el escaneo de bingo-flow (2026-10-24); US-73 audit en modo reporte; US-74 tras US-10
 Épico 13 Orquestación local con Docker        → US-14, US-15
-Épico 16 Despliegue y observabilidad          → US-17, US-18   ← Terraform: el README lo promete, hoy no existe
+Épico 16 Despliegue y observabilidad          → US-17 ✅, US-18   ← US-17 hecha (2026-11-18: /api/health y logs con timestamp); Terraform: el README lo promete, hoy no existe
 Épico 19 Autenticación y autorización         → US-20 … US-25  (completado)
 Épico 26 Escrituras del catálogo desde Postgres → US-27a … US-30  (completado 2026-09-11)
 Épico 33 Contenido y configuración desde Postgres → REEMPLAZADO por el Épico 46 (2026-10-20)

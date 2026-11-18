@@ -28,7 +28,7 @@
 
 | US | Título | Releasable solo | Depende de | LOC est. |
 |----|--------|-----------------|------------|----------|
-| [US-17](./17-salud-logging-api.md) | Endpoint de salud y logging con timestamps en la API | Sí | ninguna | ~150 |
+| [US-17](./17-salud-logging-api.md) ✅ | Endpoint de salud y logging con timestamps en la API | Sí | ninguna | ~150 |
 | [US-18](./18-terraform-minimo.md) | Terraform mínimo para el stack contenedorizado | Sí | US-15, US-17 | ~300 |
 
 **Orden sugerido:** US-17 (barata, desbloquea healthchecks honestos) →
