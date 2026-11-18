@@ -6,8 +6,8 @@
 > sensibles, y una regla de lint impide que vuelvan.
 
 **Fecha:** 2026-11-18
-**Status:** Listo para ejecución — con propuesta por defecto en DA-1..DA-4;
-el ejecutor las confirma con el dueño antes de tocar código.
+**Status:** Implementado (2026-11-18). DA-1..DA-4 confirmadas por el dueño
+con la propuesta por defecto.
 **Depende de:** [US-17](./16-despliegue-observabilidad/17-salud-logging-api.md)
 (el Logger con timestamp ISO y nivel ya está en `main`)
 **LOC est.:** ~200
@@ -176,18 +176,171 @@ Feature: El log de la API no filtra secretos
 
 ## Definición de Done
 
-- [ ] DA-1..DA-4 confirmadas por el dueño, citadas en el reporte.
-- [ ] `grep` del CA-2 en 0, con la salida pegada.
-- [ ] Fragmento real del log del CA-1 y del CA-3 pegado.
-- [ ] Salida de `npx eslint` en rojo con el `console.log` temporal (CA-4) y
+- [x] DA-1..DA-4 confirmadas por el dueño, citadas en el reporte.
+- [x] `grep` del CA-2 en 0, con la salida pegada.
+- [x] Fragmento real del log del CA-1 y del CA-3 pegado.
+- [x] Salida de `npx eslint` en rojo con el `console.log` temporal (CA-4) y
       en verde sin él.
-- [ ] Lint sin escribir en 0 en la API, con la salida pegada
+- [x] Lint sin escribir en 0 en la API, con la salida pegada
       (`npx eslint "{src,apps,libs,test}/**/*.ts"`; nunca `yarn lint`, que
       lleva `--fix`).
-- [ ] `npx vitest run`, `tsc`, `just build-api` y `just verify` en verde, con
+- [x] `npx vitest run`, `tsc`, `just build-api` y `just verify` en verde, con
       recuentos.
-- [ ] Status de esta US actualizado y su línea marcada en el mapa del
+- [x] Status de esta US actualizado y su línea marcada en el mapa del
       backlog.
+
+## Resultado (2026-11-18, rama `feat/us-99-console-log` sobre `main` @ `f840a36`)
+
+### Decisiones confirmadas por el dueño
+
+Las cuatro con la propuesta por defecto, tal como las respondió:
+
+- DA-1: «WARN solo con el provider (Recomendado)».
+- DA-2: «WARN de stub con metadatos (Recomendado)».
+- DA-3: «ERROR con mensaje y stack (Recomendado)».
+- DA-4: «no-console: error en src (Recomendado)».
+
+### Qué se hizo
+
+Los 21 `console.log` pasan al Logger de Nest, con un `new Logger(Clase.name)`
+por clase:
+
+- **`AuthService.socialLogin`** (DA-1): `WARN social-login es un stub (D-11):
+  provider=…`. El `provider` pasa por `oneLine()`, así que un valor con
+  saltos de línea no puede inventarse líneas de log.
+- **Stubs** (DA-2):
+  - `ProfilesController`: `POST` y `PUT /profiles/:id`, con el `id` de la
+    ruta.
+  - `UploadsController`: `describeUploads()` da cuántos archivos, más su
+    `mimetype` y `size`; nunca el `buffer` ni el `originalname`.
+  - `ImportsController`: los 3 imports, solo con el nombre de la ruta.
+  - `payment-intent`: el literal se quitó.
+- **Pagos** (DA-3): 10 `catch` en Stripe, 1 en PayPal y 2 en
+  payment-method. Ahora hacen `this.logger.error(...errorDetails(error))`:
+  el mensaje en una línea y el `stack`, nunca el objeto entero. El flujo no
+  cambia: el `catch` sigue devolviendo lo mismo que antes. `errorDetails()`
+  vive en `src/common/logging.ts`.
+- **Lint** (DA-4): `'no-console': 'error'` en `eslint.config.mjs` para
+  `src/**/*.ts`, salvo `src/**/*.spec.ts`.
+- **Specs nuevos:**
+  - `auth/social-login-log.spec.ts` (2 tests): el token no aparece y un
+    provider con saltos de línea no parte la línea.
+  - `uploads/uploads.controller.spec.ts` (2): ni el `buffer` ni el nombre.
+  - `common/logging.spec.ts` (+2): `errorDetails` no arrastra el resto del
+    error.
+
+### CA-1 y CA-3 — Antes y después (mismo script, mismas peticiones)
+
+Antes (`main` @ `f840a36`):
+
+```
+== respuestas
+social-login-token  {"token":"jwt token","permissions":["super_admin","customer"],"role":"customer"}  -> 201
+uploads             201
+import-products     true  -> 201
+PUT profiles/2      200
+payment-intent      200
+== lineas nuevas del log (sin las [HTTP])
+{ provider: 'google', access_token: 'zz-token-de-prueba' }
+[
+  {
+    fieldname: 'attachment[]',
+    originalname: 'zz-nombre-privado.txt',
+    encoding: '7bit',
+    mimetype: 'text/plain',
+    buffer: <Buffer 7a 7a 2d 63 6f 6e 74 65 6e 69 64 6f 2d 64 65 6c 2d 61 72 63 68 69 76 6f>,
+    size: 24
+  }
+]
+{ shop_id: '1', csv: 'zz-cuerpo-del-import' }
+{ contact: 'zz-telefono-privado', bio: 'zz-bio' }
+payment_intent payment_intent
+== secretos en el log
+zz-token-de-prueba         1
+zz-contenido-del-archivo   0
+zz-nombre-privado          1
+zz-cuerpo-del-import       1
+zz-telefono-privado        1
+```
+
+Después:
+
+```
+== respuestas
+social-login-token  {"token":"jwt token","permissions":["super_admin","customer"],"role":"customer"}  -> 201
+uploads             201
+import-products     true  -> 201
+PUT profiles/2      200
+payment-intent      200
+== lineas nuevas del log (sin las [HTTP])
+[Nest] 34124  - 2026-11-18T19:31:03.497Z    WARN [AuthService] social-login es un stub (D-11): provider=google
+[Nest] 34124  - 2026-11-18T19:31:03.698Z    WARN [UploadsController] POST /attachments es un stub: no guarda nada (1 archivo(s): text/plain 24B)
+[Nest] 34124  - 2026-11-18T19:31:03.874Z    WARN [ImportsController] POST /import-products es un stub: no importa nada
+[Nest] 34124  - 2026-11-18T19:31:04.052Z    WARN [ProfilesController] PUT /profiles/2 es un stub: no guarda nada
+== secretos en el log
+zz-token-de-prueba         0
+zz-contenido-del-archivo   0
+zz-nombre-privado          0
+zz-cuerpo-del-import       0
+zz-telefono-privado        0
+```
+
+Lo que muestra:
+
+- **Antes**, el log mostraba en claro el `access_token`, el nombre del
+  archivo, su `buffer` (en hex: por eso el conteo del contenido sale 0 aun
+  así), el cuerpo del import y el teléfono del perfil. Ninguna de esas
+  líneas llevaba timestamp ni nivel.
+- **Después**, las respuestas son idénticas y cada línea lleva timestamp
+  ISO, `WARN` y contexto. Ninguno de los cinco secretos de prueba aparece.
+
+El camino de error de pagos no se puede provocar en vivo sin claves de
+Stripe ni PayPal. Lo cubre el spec de `errorDetails`.
+
+### CA-2 y CA-4 — `grep` y lint
+
+```
+grep -rn "console\." apps/api/rest/src --include=*.ts | grep -v '\.spec\.ts' | wc -l
+antes: 21   después: 0
+```
+
+Con un `console.log('x')` temporal en `src/zz-no-console-check.ts`:
+
+```
+c:\DevOps\MyGitHub\safari-marketplace\apps\api\rest\src\zz-no-console-check.ts
+  2:3  error  Unexpected console statement  no-console
+
+✖ 1 problem (1 error, 0 warnings)
+
+ESLINT_CON_CONSOLE=1
+```
+
+Sin él, `ESLINT_SIN=0`. Un `console.log` en un `*.spec.ts` temporal no dispara
+`no-console`: solo prettier protestó por el formato. Así se confirma la
+excepción de los specs. Los dos archivos temporales se borraron.
+
+### CA-5 — Sin regresión
+
+```
+npx vitest run (apps/api/rest, desde C:\)   Test Files 42 passed (42) · Tests 684 passed (684)   (antes 40/678: +6)
+npx tsc --noEmit -p tsconfig.json            TSC=0
+npx eslint "{src,apps,libs,test}/**/*.ts"    ESLINT=0
+just build-api                               Done in 142.29s. BUILD_API=0
+just verify
+OK   API    :9001/api/settings  200  5503B  442ms
+OK   Shop   :3003/en  200  191897B  1153ms  cards:30
+OK   Admin  :3002/en/login  200  72554B  4522ms  cards:1
+```
+
+### Fuera de alcance, mencionado
+
+- **Los `catch` de pagos siguen tragándose el error** y devuelven
+  `undefined` o `this.paymentMethods[0]`. Ahora al menos queda un
+  `ERROR [StripePaymentService]` en el log. Arreglar el flujo encaja con
+  US-87.
+- **`socialLogin` sigue siendo el stub D-11.** Con Google configurado, el
+  shop sigue mandando el token real a la API, que ya no lo registra pero
+  tampoco lo usa.
 
 ## Notas para el agente ejecutor
 
