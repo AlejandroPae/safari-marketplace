@@ -80,15 +80,9 @@ export class OrdersController {
     @Query() query: GetOrdersDto,
     @CurrentUser() user: CurrentUserPayload,
   ): Promise<OrderPaginator> {
-    const isAdminLevel = ADMIN_OWNER_AND_STAFF.some((permission) =>
-      user.permissions.includes(permission),
-    );
-    // D-8 (design.md, Decisión G): un cliente solo puede pedir SUS pedidos.
-    // `customer_id` es opcional en GetOrdersDto y hoy el borde no lo
-    // controlaba. Con permiso admin/owner/staff se respeta el query tal cual.
-    return this.ordersService.getOrders(
-      isAdminLevel ? query : { ...query, customer_id: user.sub },
-    );
+    // D-8 (un cliente solo pide SUS pedidos) y US-100 (un dueño o staff solo
+    // ve sus tiendas): las reglas viven en el servicio.
+    return this.ordersService.getOrders(query, user);
   }
 
   @Get(':id')
@@ -109,14 +103,18 @@ export class OrdersController {
 
   @Permissions(...ADMIN_OWNER_AND_STAFF)
   @Put(':id')
-  update(@Param('id') id: string, @Body() updateOrderDto: UpdateOrderDto) {
-    return this.ordersService.update(+id, updateOrderDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateOrderDto: UpdateOrderDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.ordersService.update(+id, updateOrderDto, user);
   }
 
   @Permissions(...ADMIN_OWNER_AND_STAFF)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.ordersService.remove(+id);
+  remove(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.ordersService.remove(+id, user);
   }
 
   // D-10 (proposal.md): mismo motivo que POST /orders.

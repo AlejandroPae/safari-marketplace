@@ -14,6 +14,7 @@ import 'reflect-metadata';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
   ServiceUnavailableException,
   UnprocessableEntityException,
@@ -26,11 +27,13 @@ import {
   findFirstOrderFileByDigitalFileId,
   findOrderByIdOrTracking,
   findProductsForOrder,
+  findShopOwnerById,
   findShippingById,
   findTaxById,
   findUserById,
   getSettings,
   InsufficientStockError,
+  isShopStaff,
   listOrderFilesByCustomer,
   listOrders,
   markOrderPaid,
@@ -63,6 +66,8 @@ vi.mock('@safari/db', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@safari/db')>()),
   listOrders: vi.fn(),
   findOrderByIdOrTracking: vi.fn(),
+  findShopOwnerById: vi.fn(),
+  isShopStaff: vi.fn(),
   findProductsForOrder: vi.fn(),
   findTaxById: vi.fn(),
   findShippingById: vi.fn(),
@@ -264,7 +269,7 @@ describe('OrdersService — lectura', () => {
   describe('getOrders', () => {
     it('sin filtros: defaults del mock y la url con search=undefined', async () => {
       listMock.mockResolvedValue({ items: [makeOrder()], total: 1 });
-      const page = await service.getOrders({} as GetOrdersDto);
+      const page = await service.getOrders({} as GetOrdersDto, ADMIN_USER);
       expect(listMock).toHaveBeenCalledWith({
         customerId: undefined,
         shopId: undefined,
@@ -279,12 +284,15 @@ describe('OrdersService — lectura', () => {
 
     it('obedece customer_id, shop_id y search=tracking_number:X; per_page queda string', async () => {
       listMock.mockResolvedValue({ items: [], total: 0 });
-      const page = await service.getOrders({
-        customer_id: 2,
-        shop_id: '7',
-        search: 'tracking_number:20240207303639',
-        limit: '20',
-      } as unknown as GetOrdersDto);
+      const page = await service.getOrders(
+        {
+          customer_id: 2,
+          shop_id: '7',
+          search: 'tracking_number:20240207303639',
+          limit: '20',
+        } as unknown as GetOrdersDto,
+        ADMIN_USER,
+      );
       expect(listMock).toHaveBeenCalledWith({
         customerId: 2,
         shopId: 7,
@@ -297,9 +305,15 @@ describe('OrdersService — lectura', () => {
 
     it('shop_id "undefined" (lo manda el admin) se ignora; un id mal formado da lista vacía sin consultar', async () => {
       listMock.mockResolvedValue({ items: [], total: 0 });
-      await service.getOrders({ shop_id: 'undefined' } as GetOrdersDto);
+      await service.getOrders(
+        { shop_id: 'undefined' } as GetOrdersDto,
+        ADMIN_USER,
+      );
       expect(listMock.mock.calls[0][0]).toMatchObject({ shopId: undefined });
-      const empty = await service.getOrders({ shop_id: 'abc' } as GetOrdersDto);
+      const empty = await service.getOrders(
+        { shop_id: 'abc' } as GetOrdersDto,
+        ADMIN_USER,
+      );
       expect(empty).toMatchObject({ data: [], total: 0 });
       expect(listMock).toHaveBeenCalledTimes(1);
     });
@@ -315,7 +329,7 @@ describe('OrdersService — lectura', () => {
         ),
       );
       await expect(
-        service.getOrders({} as GetOrdersDto),
+        service.getOrders({} as GetOrdersDto, ADMIN_USER),
       ).rejects.toBeInstanceOf(ServiceUnavailableException);
     });
   });
@@ -750,9 +764,13 @@ describe('OrdersService — escritura', () => {
   describe('update / remove (V-7)', () => {
     it('update pasa order_status y payment_status al repositorio y devuelve la orden', async () => {
       statusMock.mockResolvedValue(makeParentWithChild());
-      const order = await service.update(48, {
-        order_status: 'order-completed',
-      } as UpdateOrderDto);
+      const order = await service.update(
+        48,
+        {
+          order_status: 'order-completed',
+        } as UpdateOrderDto,
+        ADMIN_USER,
+      );
       expect(statusMock).toHaveBeenCalledWith(48, {
         orderStatus: 'order-completed',
       });
@@ -761,26 +779,34 @@ describe('OrdersService — escritura', () => {
 
     it('update sin estado o con id inválido ⇒ 400; inexistente ⇒ 404', async () => {
       await expect(
-        service.update(48, {} as UpdateOrderDto),
+        service.update(48, {} as UpdateOrderDto, ADMIN_USER),
       ).rejects.toBeInstanceOf(BadRequestException);
       await expect(
-        service.update(Number.NaN, {
-          order_status: 'order-completed',
-        } as UpdateOrderDto),
+        service.update(
+          Number.NaN,
+          {
+            order_status: 'order-completed',
+          } as UpdateOrderDto,
+          ADMIN_USER,
+        ),
       ).rejects.toBeInstanceOf(BadRequestException);
       statusMock.mockRejectedValue(new RecordNotFoundError('orders', 999));
       await expect(
-        service.update(999, {
-          order_status: 'order-completed',
-        } as UpdateOrderDto),
+        service.update(
+          999,
+          {
+            order_status: 'order-completed',
+          } as UpdateOrderDto,
+          ADMIN_USER,
+        ),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('remove devuelve el snapshot; inexistente ⇒ 404', async () => {
       deleteMock.mockResolvedValueOnce(makeParentWithChild());
-      expect((await service.remove(48)).id).toBe(48);
+      expect((await service.remove(48, ADMIN_USER)).id).toBe(48);
       deleteMock.mockRejectedValueOnce(new RecordNotFoundError('orders', 999));
-      await expect(service.remove(999)).rejects.toBeInstanceOf(
+      await expect(service.remove(999, ADMIN_USER)).rejects.toBeInstanceOf(
         NotFoundException,
       );
     });
@@ -945,5 +971,199 @@ describe('OrdersService — descargas, export e invoice', () => {
     expect(ORDER_INVOICE_URL).toBe(
       'https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/100/invoice-order.pdf',
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Acceso por tienda (US-100)
+// ---------------------------------------------------------------------------
+
+describe('OrdersService — acceso por tienda (US-100)', () => {
+  const ownerMock = vi.mocked(findShopOwnerById);
+  const staffMock = vi.mocked(isShopStaff);
+  const findOrderMock = vi.mocked(findOrderByIdOrTracking);
+  const listOrdersMock = vi.mocked(listOrders);
+  const setStatusMock = vi.mocked(setOrderStatus);
+  const deleteOrderMock = vi.mocked(deleteOrder);
+
+  // Seed: la tienda 7 es del dueño 1; el 42 es store_owner sin tiendas.
+  const OWNER: CurrentUserPayload = {
+    sub: 1,
+    email: 'store_owner@demo.com',
+    permissions: ['customer', 'store_owner'],
+    iat: 0,
+    exp: 0,
+  };
+  const OTHER_OWNER: CurrentUserPayload = { ...OWNER, sub: 42 };
+  const STAFF: CurrentUserPayload = {
+    sub: 2,
+    email: 'customer@demo.com',
+    permissions: ['customer', 'staff'],
+    iat: 0,
+    exp: 0,
+  };
+  // Hija de la tienda 7 y su padre, las dos del cliente 2.
+  const child = () =>
+    makeOrder({ id: 6, parentId: 5, shopId: 7, shop: SHOP, customerId: 2 });
+  const parent = () => makeOrder({ id: 5, customerId: 2 });
+
+  let service: OrdersService;
+
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    ownerMock.mockImplementation(async (shopId) => (shopId === 7 ? 1 : 99));
+    staffMock.mockImplementation(
+      async (userId, shopId) => userId === 2 && shopId === 7,
+    );
+    listOrdersMock.mockResolvedValue({ items: [], total: 0 });
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        OrdersService,
+        { provide: AuthService, useValue: {} },
+        { provide: StripePaymentService, useValue: {} },
+        { provide: PaypalPaymentService, useValue: {} },
+      ],
+    }).compile();
+    service = moduleRef.get(OrdersService);
+  });
+
+  describe('listado (decisión 1)', () => {
+    it('el super admin conserva la query tal cual', async () => {
+      await service.getOrders({ shop_id: '7' } as GetOrdersDto, ADMIN_USER);
+      await service.getOrders({} as GetOrdersDto, ADMIN_USER);
+      expect(listOrdersMock.mock.calls[0][0]).toMatchObject({
+        shopId: 7,
+        customerId: undefined,
+      });
+      expect(listOrdersMock.mock.calls[1][0]).toMatchObject({
+        shopId: undefined,
+        customerId: undefined,
+      });
+      expect(ownerMock).not.toHaveBeenCalled();
+    });
+
+    it('un dueño con shop_id de su tienda ve esa tienda', async () => {
+      await service.getOrders({ shop_id: '7' } as GetOrdersDto, OWNER);
+      expect(listOrdersMock.mock.calls[0][0]).toMatchObject({
+        shopId: 7,
+        customerId: undefined,
+      });
+    });
+
+    it('un dueño con shop_id ajeno recibe la lista vacía sin consultar órdenes', async () => {
+      const page = await service.getOrders(
+        { shop_id: '7' } as GetOrdersDto,
+        OTHER_OWNER,
+      );
+      expect(page).toMatchObject({ data: [], total: 0 });
+      expect(listOrdersMock).not.toHaveBeenCalled();
+    });
+
+    it('un staff ve la tienda donde tiene fila en shop_staff, y ninguna otra', async () => {
+      await service.getOrders({ shop_id: '7' } as GetOrdersDto, STAFF);
+      expect(listOrdersMock).toHaveBeenCalledTimes(1);
+      const other = await service.getOrders(
+        { shop_id: '8' } as GetOrdersDto,
+        STAFF,
+      );
+      expect(other).toMatchObject({ data: [], total: 0 });
+      expect(listOrdersMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('sin shop_id, un dueño solo ve sus pedidos como cliente («Mis pedidos»)', async () => {
+      await service.getOrders({} as GetOrdersDto, OWNER);
+      expect(listOrdersMock.mock.calls[0][0]).toMatchObject({
+        customerId: 1,
+        shopId: undefined,
+      });
+    });
+
+    it('un cliente con shop_id sigue acotado a sus pedidos', async () => {
+      await service.getOrders(
+        { shop_id: '7', customer_id: 3 } as unknown as GetOrdersDto,
+        CUSTOMER_USER,
+      );
+      expect(listOrdersMock.mock.calls[0][0]).toMatchObject({
+        customerId: 2,
+        shopId: 7,
+      });
+      expect(ownerMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('detalle (decisión 2)', () => {
+    it('un dueño abre la hija de su tienda pero no la padre de otro cliente', async () => {
+      findOrderMock.mockResolvedValue(child());
+      expect((await service.getOrder('6', OWNER)).id).toBe(6);
+      findOrderMock.mockResolvedValue(parent());
+      await expect(service.getOrder('5', OWNER)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('un dueño ajeno recibe 404 en la hija y en la padre', async () => {
+      findOrderMock.mockResolvedValue(child());
+      await expect(service.getOrder('6', OTHER_OWNER)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      findOrderMock.mockResolvedValue(parent());
+      await expect(
+        service.getOrderByTrackingNumber('20231105635099', OTHER_OWNER),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('un dueño abre sus propios pedidos como cliente', async () => {
+      findOrderMock.mockResolvedValue(makeOrder({ id: 70, customerId: 1 }));
+      expect((await service.getOrder('70', OWNER)).id).toBe(70);
+    });
+  });
+
+  describe('escritura (decisión 3)', () => {
+    const dto = { order_status: 'order-completed' } as UpdateOrderDto;
+
+    it('un dueño cambia y borra la hija de su tienda', async () => {
+      findOrderMock.mockResolvedValue(child());
+      setStatusMock.mockResolvedValue(child());
+      deleteOrderMock.mockResolvedValue(child());
+      expect((await service.update(6, dto, OWNER)).id).toBe(6);
+      expect((await service.remove(6, OWNER)).id).toBe(6);
+    });
+
+    it('un dueño ajeno recibe 404 y no se escribe nada', async () => {
+      findOrderMock.mockResolvedValue(child());
+      await expect(service.update(6, dto, OTHER_OWNER)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      await expect(service.remove(6, OTHER_OWNER)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(setStatusMock).not.toHaveBeenCalled();
+      expect(deleteOrderMock).not.toHaveBeenCalled();
+    });
+
+    it('una padre que no ve ⇒ 404; su propio pedido, que ve pero no gestiona ⇒ 403', async () => {
+      findOrderMock.mockResolvedValue(parent());
+      await expect(service.update(5, dto, OWNER)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      findOrderMock.mockResolvedValue(makeOrder({ id: 70, customerId: 1 }));
+      await expect(service.remove(70, OWNER)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      expect(setStatusMock).not.toHaveBeenCalled();
+      expect(deleteOrderMock).not.toHaveBeenCalled();
+    });
+
+    it('un staff gestiona la hija de su tienda', async () => {
+      findOrderMock.mockResolvedValue(child());
+      setStatusMock.mockResolvedValue(child());
+      expect((await service.update(6, dto, STAFF)).id).toBe(6);
+    });
+
+    it('el super admin no consulta la orden antes de escribir', async () => {
+      setStatusMock.mockResolvedValue(parent());
+      await service.update(5, dto, ADMIN_USER);
+      expect(findOrderMock).not.toHaveBeenCalled();
+    });
   });
 });

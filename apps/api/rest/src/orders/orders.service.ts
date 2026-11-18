@@ -2,6 +2,7 @@ import paymentGatewayJson from '#db/payment-gateway.json' with { type: 'json' };
 import paymentIntentJson from '#db/payment-intent.json' with { type: 'json' };
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -15,6 +16,7 @@ import {
   findCouponById,
   findFirstOrderFileByDigitalFileId,
   findOrderByIdOrTracking,
+  findShopOwnerById,
   findProductsForOrder,
   findShippingById,
   findTaxById,
@@ -22,6 +24,7 @@ import {
   getSettings,
   getUserFriendlyMessage,
   isPrismaConnectionError,
+  isShopStaff,
   listOrderFilesByCustomer,
   listOrders,
   markOrderPaid,
@@ -38,7 +41,6 @@ import {
 import { plainToClass } from 'class-transformer';
 import { toWriteHttpException } from '#src/common/errors/domain-error.mapper.js';
 import { AuthService } from '#src/auth/auth.service.js';
-import { ADMIN_OWNER_AND_STAFF } from '#src/auth/decorators/permissions.decorator.js';
 import { CurrentUserPayload } from '#src/auth/decorators/current-user.decorator.js';
 import { paginate } from '#src/common/pagination/paginate.js';
 import { parseSearch } from '#src/common/search/parse-search.js';
@@ -80,9 +82,14 @@ const _paymentGateways = plainToClass(PaymentGateWay, paymentGatewayJson);
 
 const TRACKING_NUMBER = /^[0-9]{14}$/;
 
-/** Admin, dueño o staff ven todas las órdenes; el resto, solo las suyas. */
-function canSeeAllOrders(user: CurrentUserPayload): boolean {
-  return ADMIN_OWNER_AND_STAFF.some((permission) =>
+/** Solo el super admin ve y toca cualquier orden (US-100). */
+function isSuperAdmin(user: CurrentUserPayload): boolean {
+  return user.permissions.includes('super_admin');
+}
+
+/** Dueño o staff: puede gestionar las órdenes de las tiendas que gestiona. */
+function hasShopRole(user: CurrentUserPayload): boolean {
+  return ['store_owner', 'staff'].some((permission) =>
     user.permissions.includes(permission),
   );
 }
@@ -535,26 +542,48 @@ export class OrdersService {
   }
 
   /**
+   * Quién ve qué (US-100, decisión 1):
+   * - El super admin: la query tal cual.
+   * - Un dueño o staff con `shop_id`: esa tienda solo si la gestiona. Si no,
+   *   lista vacía, nunca 403, que en el admin cierra la sesión.
+   * - Cualquier otro caso, incluido un dueño sin `shop_id` («Mis pedidos»
+   *   del shop): solo sus pedidos como cliente.
+   */
+  async getOrders(
+    query: GetOrdersDto,
+    user: CurrentUserPayload,
+  ): Promise<OrderPaginator> {
+    if (isSuperAdmin(user)) return this.listOrdersPage(query);
+
+    const shopId = toIdFilter(
+      query.shop_id === 'undefined' ? undefined : query.shop_id,
+    );
+    if (hasShopRole(user) && typeof shopId === 'number') {
+      return (await this.managesShop(user, shopId))
+        ? this.listOrdersPage(query)
+        : this.listOrdersPage(query, { empty: true });
+    }
+    return this.listOrdersPage({ ...query, customer_id: user.sub });
+  }
+
+  /**
    * Sin `shop_id` ni búsqueda, solo padres (con su hija embebida). `shop_id`
    * da las hijas de esa tienda (V-2) y `search=tracking_number:X` la orden
-   * exacta (V-3). `customer_id` se obedece siempre: el controlador lo fija
-   * al usuario del token cuando no tiene rol de tienda (V-1). Un id mal
-   * formado no casa con nada.
+   * exacta (V-3). `customer_id` se obedece siempre: `getOrders` lo fija al
+   * usuario del token cuando no puede ver más (V-1). Un id mal formado, o
+   * `empty`, da la lista vacía con el envoltorio de siempre.
    */
-  async getOrders({
-    limit,
-    page,
-    customer_id,
-    search,
-    shop_id,
-  }: GetOrdersDto): Promise<OrderPaginator> {
+  private async listOrdersPage(
+    { limit, page, customer_id, search, shop_id }: GetOrdersDto,
+    { empty = false }: { empty?: boolean } = {},
+  ): Promise<OrderPaginator> {
     if (!page) page = 1;
     if (!limit) limit = 15;
     const url = `/orders?search=${search}&limit=${limit}`;
 
     const customerId = toIdFilter(customer_id);
     const shopId = toIdFilter(shop_id === 'undefined' ? undefined : shop_id);
-    if (customerId === null || shopId === null) {
+    if (empty || customerId === null || shopId === null) {
       return { data: [], ...paginate(0, page, limit, 0, url) };
     }
     const input: ListOrdersInput = {
@@ -601,37 +630,102 @@ export class OrdersService {
     return this.findVisibleOrder(String(trackingNumber), user);
   }
 
-  /**
-   * Inexistente u orden ajena para un usuario sin rol de tienda ⇒ 404 (V-4):
-   * un 403 revelaría que la orden existe.
-   */
+  /** Inexistente o no visible para quien llama ⇒ 404 (V-4): un 403 revelaría que existe. */
   private async findVisibleOrder(
     idOrTracking: number | string,
     user: CurrentUserPayload,
   ): Promise<Order> {
+    return toOrderDto(await this.loadVisibleRecord(idOrTracking, user));
+  }
+
+  private async loadVisibleRecord(
+    idOrTracking: number | string,
+    user: CurrentUserPayload,
+  ): Promise<OrderDetailRecord> {
     let record: OrderDetailRecord | null;
     try {
       record = await findOrderByIdOrTracking(idOrTracking);
     } catch (error) {
       readError(error);
     }
-    if (!record || (!canSeeAllOrders(user) && record.customerId !== user.sub)) {
+    if (!record || !(await this.canSee(record, user))) {
       throw new NotFoundException(`No existe la orden ${idOrTracking}.`);
     }
-    return toOrderDto(record);
+    return record;
+  }
+
+  /**
+   * US-100, decisión 2: el super admin ve todo. Los demás ven sus propios
+   * pedidos como cliente y las hijas de tiendas que gestionan, nunca la
+   * padre de otro cliente, que embebe las hijas de otras tiendas.
+   */
+  private async canSee(
+    record: OrderDetailRecord,
+    user: CurrentUserPayload,
+  ): Promise<boolean> {
+    if (isSuperAdmin(user) || record.customerId === user.sub) return true;
+    return this.canManage(record, user);
+  }
+
+  /** US-100, decisión 3: solo una hija de una tienda que gestiona quien llama. */
+  private async canManage(
+    record: OrderDetailRecord,
+    user: CurrentUserPayload,
+  ): Promise<boolean> {
+    if (isSuperAdmin(user)) return true;
+    if (record.parentId === null || record.shopId === null) return false;
+    return this.managesShop(user, record.shopId);
+  }
+
+  /** Dueño de la tienda o staff con fila en `shop_staff` (precedente US-66). */
+  private async managesShop(
+    user: CurrentUserPayload,
+    shopId: number,
+  ): Promise<boolean> {
+    if (isSuperAdmin(user)) return true;
+    if (!hasShopRole(user)) return false;
+    try {
+      if ((await findShopOwnerById(shopId)) === user.sub) return true;
+      return await isShopStaff(user.sub, shopId);
+    } catch (error) {
+      readError(error);
+    }
+  }
+
+  /**
+   * Antes de escribir (US-100, decisión 3): no visible ⇒ 404; visible pero
+   * no gestionable (por ejemplo su propio pedido como cliente, o una padre)
+   * ⇒ 403. El super admin no consulta nada.
+   */
+  private async assertCanWrite(
+    id: number,
+    user: CurrentUserPayload,
+  ): Promise<void> {
+    if (isSuperAdmin(user)) return;
+    const record = await this.loadVisibleRecord(id, user);
+    if (!(await this.canManage(record, user))) {
+      throw new ForbiddenException(
+        `No tienes permisos para modificar la orden ${id}.`,
+      );
+    }
   }
 
   /**
    * R-l (V-7): `order_status` y/o `payment_status`, ya validados por el DTO
    * (V-9). En un padre se propaga a sus hijas. Devuelve la orden completa.
    */
-  async update(id: number, dto: UpdateOrderDto): Promise<Order> {
+  async update(
+    id: number,
+    dto: UpdateOrderDto,
+    user: CurrentUserPayload,
+  ): Promise<Order> {
     assertOrderId(id);
     if (dto.order_status === undefined && dto.payment_status === undefined) {
       throw new BadRequestException(
         'Nada que cambiar: falta order_status o payment_status.',
       );
     }
+    await this.assertCanWrite(id, user);
     try {
       return toOrderDto(
         await setOrderStatus(id, {
@@ -649,8 +743,9 @@ export class OrdersService {
   }
 
   /** R-m (V-7): devuelve el snapshot previo. No repone stock. */
-  async remove(id: number): Promise<Order> {
+  async remove(id: number, user: CurrentUserPayload): Promise<Order> {
     assertOrderId(id);
+    await this.assertCanWrite(id, user);
     try {
       return toOrderDto(await deleteOrder(id));
     } catch (error) {
