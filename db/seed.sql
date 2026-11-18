@@ -163,6 +163,11 @@ INSERT INTO shop_staff (user_id, shop_id) VALUES
   (2, 2),
   (3, 1)
 ON CONFLICT (user_id, shop_id) DO NOTHING;
+-- Permiso 'staff' para los 2 usuarios con fila en shop_staff (US-101).
+INSERT INTO permission_user (user_id, permission_id) VALUES
+  (2, 4),
+  (3, 4)
+ON CONFLICT (user_id, permission_id) DO NOTHING;
 
 -- ────────────────────────────────────────────────────────────────────
 -- faqs — 19 (5 globales, 14 de tienda)

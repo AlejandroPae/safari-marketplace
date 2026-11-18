@@ -914,6 +914,17 @@ L.push(
     '\nON CONFLICT (user_id, shop_id) DO NOTHING;'
 );
 
+// US-101: el permiso global 'staff' refleja si el usuario es staff de alguna
+// tienda. Es la misma regla que aplican createShopStaff y removeShopStaff en
+// @safari/db. Sin él, el admin no deja entrar a un staff.
+const usuariosStaff = [...new Set(staffAsignaciones.map((s) => s.user_id))].sort((a, b) => a - b);
+L.push(
+  `-- Permiso 'staff' para los ${usuariosStaff.length} usuarios con fila en shop_staff (US-101).`,
+  'INSERT INTO permission_user (user_id, permission_id) VALUES',
+  usuariosStaff.map((id) => `  (${id}, ${idPermiso('staff')})`).join(',\n') +
+    '\nON CONFLICT (user_id, permission_id) DO NOTHING;'
+);
+
 // faqs (US-47; tras shops y users: las dos FK lo exigen) -------------------
 const faqsDeTienda = faqsFilas.filter((f) => f._shop_id != null).length;
 bloque(`faqs — ${faqsFilas.length} (${faqsFilas.length - faqsDeTienda} globales, ${faqsDeTienda} de tienda)`);
