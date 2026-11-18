@@ -1,5 +1,24 @@
 import { PrismaPg } from '@prisma/adapter-pg';
+import type { Prisma } from '../generated/prisma/client/client';
 import { PrismaClient } from '../generated/prisma/client/client';
+
+export type PrismaLogLevel = 'error' | 'warn';
+export type PrismaLogSink = (level: PrismaLogLevel, message: string) => void;
+
+// Por defecto, el mismo formato que imprimía Prisma con `log: ['error']`.
+const defaultSink: PrismaLogSink = (level, message) => {
+  console[level](`prisma:${level} ${message}`);
+};
+let logSink: PrismaLogSink = defaultSink;
+
+/**
+ * Redirige los errores y warnings de Prisma a otro logger (US-17). La API los
+ * manda al Logger de Nest para que salgan con timestamp y nivel. Sin llamar a
+ * esto, se imprimen como hasta ahora. `null` restaura el sink por defecto.
+ */
+export function setPrismaLogSink(sink: PrismaLogSink | null): void {
+  logSink = sink ?? defaultSink;
+}
 
 const createClient = () => {
   // Fail-fast con mensaje claro: el driver adapter (@prisma/adapter-pg) NO aborta
@@ -12,13 +31,20 @@ const createClient = () => {
     );
   }
   const adapter = new PrismaPg({ connectionString });
-  return new PrismaClient({
-    adapter,
-    log:
-      process.env.NODE_ENV === 'development'
-        ? ['query', 'error', 'warn']
-        : ['error'],
-  });
+  // Mismos niveles que antes, pero `error` y `warn` salen como eventos para
+  // pasar por `logSink`; `query` sigue yendo directo a stdout.
+  const log: Prisma.LogDefinition[] =
+    process.env.NODE_ENV === 'development'
+      ? [
+          { emit: 'stdout', level: 'query' },
+          { emit: 'event', level: 'error' },
+          { emit: 'event', level: 'warn' },
+        ]
+      : [{ emit: 'event', level: 'error' }];
+  const client = new PrismaClient({ adapter, log });
+  client.$on('error', (e) => logSink('error', e.message));
+  client.$on('warn', (e) => logSink('warn', e.message));
+  return client;
 };
 
 const globalForPrisma = globalThis as unknown as {

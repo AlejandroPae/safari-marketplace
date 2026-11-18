@@ -33,7 +33,9 @@ index.ts                        barrel explícito (el único entry point)
 prisma/schema.prisma            introspección de la base, revisada a mano
 generated/                      cliente Prisma (gitignored; `npm run generate`)
 src/
-  client.ts                     singleton lazy de PrismaClient (adapter pg)
+  client.ts                     singleton lazy de PrismaClient (adapter pg);
+                                 setPrismaLogSink() redirige sus errores y
+                                 warnings a otro logger (US-17)
   clock.ts                      now() inyectable para tests (alcance de
                                  _setNowProvider documentado en su cabecera,
                                  US-32 CA-3)

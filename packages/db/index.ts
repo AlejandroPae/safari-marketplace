@@ -1,7 +1,8 @@
 export type { Prisma, PrismaClient } from './generated/prisma/client/client';
 /** Aritmética decimal exacta (la de `numeric`); la usa el cálculo del checkout. */
 export { Decimal } from './generated/prisma/client/internal/prismaNamespace';
-export { prisma } from './src/client';
+export type { PrismaLogLevel, PrismaLogSink } from './src/client';
+export { prisma, setPrismaLogSink } from './src/client';
 export { _setNowProvider, now } from './src/clock';
 export type { CatalogErrorCode } from './src/domain-errors';
 export {
