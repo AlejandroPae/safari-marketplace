@@ -43,6 +43,7 @@ import { AiModule } from './ai/ai.module.js';
 import { FaqsModule } from './faqs/faqs.module.js';
 import { TermsAndConditionsModule } from './terms-and-conditions/terms-and-conditions.module.js';
 import { FlashSaleModule } from './flash-sale/flash-sale.module.js';
+import { FlashSaleRequestsModule } from './flash-sale-requests/flash-sale-requests.module.js';
 import { RefundPoliciesModule } from './refund-policies/refund-policies.module.js';
 import { RefundReasonModule } from './refund-reasons/refund-reasons.module.js';
 import { NotifyLogsModule } from './notify-logs/notify-logs.module.js';
@@ -95,6 +96,7 @@ import { OwnershipTransferModule } from './ownership-transfer/ownership-transfer
     NotifyLogsModule,
     TermsAndConditionsModule,
     FlashSaleModule,
+    FlashSaleRequestsModule,
     RefundPoliciesModule,
     RefundReasonModule,
     BecomeSellerModule,

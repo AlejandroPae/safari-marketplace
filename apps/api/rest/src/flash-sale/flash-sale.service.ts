@@ -57,7 +57,7 @@ function toFlashSaleProductDto(
  * `FlashSaleRecord` → las 18 claves de `flash-sale.json`, en su orden
  * (US-94, D-1). `deleted_at` y `translated_languages` son constantes (D-6).
  */
-function toFlashSaleDto(record: FlashSaleRecord): FlashSale {
+export function toFlashSaleDto(record: FlashSaleRecord): FlashSale {
   return {
     id: record.id,
     title: record.title,
