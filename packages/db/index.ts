@@ -39,11 +39,11 @@ export type {
   BecomeSellerRecord,
   CategoryRecord,
   ConversationRecord,
+  CouponRecord,
+  FaqRecord,
   FlashSaleRecord,
   FlashSaleRequestRecord,
   FlashSaleRequestStatus,
-  CouponRecord,
-  FaqRecord,
   ManufacturerRecord,
   MessageRecord,
   OrderFileRecord,
@@ -142,42 +142,6 @@ export {
   listTopAuthors,
   updateAuthor,
 } from './src/repositories/authors.repository';
-export type {
-  CreateFlashSaleInput,
-  ListFlashSaleProductsInput,
-  ListFlashSalesInput,
-  UpdateFlashSaleInput,
-} from './src/repositories/flash-sale.repository';
-export {
-  createFlashSale,
-  deleteFlashSale,
-  FLASH_SALE_TYPES,
-  findFlashSaleBySlug,
-  listFlashSaleProducts,
-  listFlashSales,
-  listProductFlashSales,
-  updateFlashSale,
-} from './src/repositories/flash-sale.repository';
-export type {
-  CreateFlashSaleRequestInput,
-  ListFlashSaleRequestProductsInput,
-  ListFlashSaleRequestsInput,
-  UpdateFlashSaleRequestInput,
-} from './src/repositories/flash-sale-requests.repository';
-export {
-  approveFlashSaleRequest,
-  createFlashSaleRequest,
-  deleteFlashSaleRequest,
-  FLASH_SALE_REQUEST_STATUSES,
-  FlashSaleRequestStateError,
-  findFlashSaleRequestById,
-  InvalidFlashSaleRequestError,
-  listFlashSaleRequestProducts,
-  listFlashSaleRequests,
-  rejectFlashSaleRequest,
-  resolveFlashSaleRequestShop,
-  updateFlashSaleRequest,
-} from './src/repositories/flash-sale-requests.repository';
 export type { UpdateBecomeSellerInput } from './src/repositories/become-seller.repository';
 export {
   getBecomeSeller,
@@ -243,6 +207,42 @@ export {
   listFaqs,
   updateFaq,
 } from './src/repositories/faqs.repository';
+export type {
+  CreateFlashSaleInput,
+  ListFlashSaleProductsInput,
+  ListFlashSalesInput,
+  UpdateFlashSaleInput,
+} from './src/repositories/flash-sale.repository';
+export {
+  createFlashSale,
+  deleteFlashSale,
+  FLASH_SALE_TYPES,
+  findFlashSaleBySlug,
+  listFlashSaleProducts,
+  listFlashSales,
+  listProductFlashSales,
+  updateFlashSale,
+} from './src/repositories/flash-sale.repository';
+export type {
+  CreateFlashSaleRequestInput,
+  ListFlashSaleRequestProductsInput,
+  ListFlashSaleRequestsInput,
+  UpdateFlashSaleRequestInput,
+} from './src/repositories/flash-sale-requests.repository';
+export {
+  approveFlashSaleRequest,
+  createFlashSaleRequest,
+  deleteFlashSaleRequest,
+  FLASH_SALE_REQUEST_STATUSES,
+  FlashSaleRequestStateError,
+  findFlashSaleRequestById,
+  InvalidFlashSaleRequestError,
+  listFlashSaleRequestProducts,
+  listFlashSaleRequests,
+  rejectFlashSaleRequest,
+  resolveFlashSaleRequestShop,
+  updateFlashSaleRequest,
+} from './src/repositories/flash-sale-requests.repository';
 export type {
   CreateManufacturerInput,
   ListManufacturersInput,
