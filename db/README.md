@@ -567,8 +567,28 @@ y 4 filas puente: 951 y 952 en la venta 3; 1013 y 1023 en la venta 1.
   orden de sus claves es contrato.
 - CHECKs: `type IN ('percentage','fixed_rate')`, `rate >= 0`,
   `end_date >= start_date`, `sale_status IN (0,1)`.
-- `products` sigue emitiendo `in_flash_sale: 0` (DA-3 del épico): la venta
-  no aplica su descuento al precio de los productos.
+- Desde US-96, `products` emite `in_flash_sale: 1` si el producto tiene
+  alguna fila en `flash_sale_products`. La venta no aplica su descuento al
+  precio de los productos.
+
+## Solicitudes de venta flash: `flash_sale_requests` + `flash_sale_request_products`
+
+Desde US-97 (Épico 95). **Nacen vacías**: no hay mock del que sembrar (DA-4).
+El generador solo añade el `setval` de `flash_sale_requests_id_seq`.
+
+- Un dueño de tienda (o su staff) pide que unos productos suyos entren en
+  una venta. `shop_id` se deduce de los productos, que deben ser todos de
+  la misma tienda; el cuerpo del admin no lo trae.
+- `status` es texto (`pending`/`approved`/`rejected`, DA-5) con CHECK
+  `flash_sale_requests_status_check` y default `pending`. La API emite el
+  `request_status` booleano del admin como `status = 'approved'`.
+- FKs: venta y tienda `ON DELETE CASCADE`; `created_by` hacia `users`
+  `ON DELETE SET NULL`. La tabla puente tiene PK `(request_id, product_id)`
+  y FKs `ON DELETE CASCADE` hacia la solicitud y el producto.
+- Índices: `flash_sale_requests (flash_sale_id)`, `(shop_id)` y
+  `flash_sale_request_products (product_id)`.
+- Estas tablas solo guardan la solicitud. Aprobar y rechazar (US-98)
+  escriben en `flash_sale_products`.
 
 ## Cómo se adapta el scraper
 

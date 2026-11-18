@@ -583,11 +583,6 @@ puente, en orden de `product_id`, hidratados con `PRODUCT_INCLUDE` como en
 - **`listProductFlashSales(productId)`** (US-96): las ventas en las que
   está el producto, en `id DESC`, con sus productos. `[]` si no está en
   ninguna; producto inexistente: `null`.
-
-`ProductRecord.inFlashSale` (US-96) es `true` si el producto tiene alguna
-fila en `flash_sale_products`. Sale de un `_count` en `PRODUCT_INCLUDE`, así
-que lo traen todos los repositorios que devuelven productos. No mira la
-vigencia de la venta.
 - **`createFlashSale(input)`**: slug con `generateSlug(title)`. Valida los
   CHECKs (`InvalidFieldValueError`) y que existan todos los `productIds`
   (`InvalidReferenceError`) antes de escribir; la venta y sus filas puente
@@ -600,6 +595,49 @@ vigencia de la venta.
   `RecordNotFoundError`.
 - **`deleteFlashSale(id)`**: borra (cascada a la tabla puente) y devuelve
   la venta borrada con los productos que tenía.
+
+`ProductRecord.inFlashSale` (US-96) es `true` si el producto tiene alguna
+fila en `flash_sale_products`. Sale de un `_count` en `PRODUCT_INCLUDE`, así
+que lo traen todos los repositorios que devuelven productos. No mira la
+vigencia de la venta.
+
+### Solicitudes de venta flash (US-97, Épico 95) — `flash-sale-requests.repository.ts`
+
+`FlashSaleRequestRecord` es la solicitud con `products: ProductRecord[]`
+(los pedidos, en orden de `product_id`) y `flashSale: FlashSaleRecord` (la
+venta con sus productos). `status` es `FlashSaleRequestStatus`:
+`pending | approved | rejected` (DA-5). La tienda (`shopId`) se deduce de los
+productos y no cambia al editar.
+
+**Visibilidad:** con `viewerId`, las lecturas solo ven las solicitudes de las
+tiendas de las que ese usuario es dueño (`shops.owner_id`) o staff
+(`shop_staff`); sin `viewerId` (super admin), todas. La autorización de las
+escrituras vive en el servicio de Nest.
+
+- **`listFlashSaleRequests({title, shopId, viewerId, page, limit})`**:
+  paginado (`limit` 10) en `id DESC`; `title` es ILIKE.
+- **`findFlashSaleRequestById(id, {viewerId})`**: la solicitud, o `null` si
+  no existe o no es visible.
+- **`listFlashSaleRequestProducts({requestId, viewerId, name, page, limit})`**:
+  productos de la solicitud en `id ASC`, `name` ILIKE; `null` si la
+  solicitud no existe o no es visible.
+- **`resolveFlashSaleRequestShop(productIds)`**: deduplica y devuelve
+  `{shopId, productIds}`. Sin productos o de 2 tiendas:
+  `InvalidFlashSaleRequestError` (400); producto inexistente:
+  `InvalidReferenceError`. El servicio la usa para autorizar antes de crear.
+- **`createFlashSaleRequest(input)`**: `pending`. Valida `note` no vacía, la
+  venta y los productos antes de escribir; la solicitud y sus filas puente
+  van en una sola sentencia anidada (atómica).
+- **`updateFlashSaleRequest(id, input)`**: solo `pending`
+  (`FlashSaleRequestStateError`, 409). `productIds` presente **reemplaza**
+  los productos, que deben ser de la tienda de la solicitud. Fija
+  `updatedAt: now()`. Inexistente: `RecordNotFoundError`.
+- **`deleteFlashSaleRequest(id)`**: no `approved` (409: hay que rechazarla
+  antes, US-98). Cascada a la tabla puente; devuelve la solicitud borrada.
+
+`InvalidFlashSaleRequestError` y `FlashSaleRequestStateError` son locales
+del repositorio y reutilizan los códigos del 400 y del 409 (precedente
+`SameOwnerError`), así que `toWriteHttpException` los mapea sin cambios.
 
 ### Dashboard (US-61, Épico 46) — `analytics.repository.ts`
 
