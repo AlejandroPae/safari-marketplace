@@ -164,6 +164,7 @@ export type {
   UpdateFlashSaleRequestInput,
 } from './src/repositories/flash-sale-requests.repository';
 export {
+  approveFlashSaleRequest,
   createFlashSaleRequest,
   deleteFlashSaleRequest,
   FLASH_SALE_REQUEST_STATUSES,
@@ -172,6 +173,7 @@ export {
   InvalidFlashSaleRequestError,
   listFlashSaleRequestProducts,
   listFlashSaleRequests,
+  rejectFlashSaleRequest,
   resolveFlashSaleRequestShop,
   updateFlashSaleRequest,
 } from './src/repositories/flash-sale-requests.repository';

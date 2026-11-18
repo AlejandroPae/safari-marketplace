@@ -15,7 +15,13 @@
  * Las escrituras validan antes de escribir: al menos 1 producto, `note` no
  * vacía, venta y productos existentes, una sola tienda. La solicitud y sus
  * filas puente se escriben en una sola sentencia anidada de Prisma, que es
- * atómica. Aprobar y rechazar van en US-98.
+ * atómica.
+ *
+ * Aprobar y rechazar (US-98) escriben en `flash_sale_products`, la fuente de
+ * verdad de la venta, en una transacción que bloquea la solicitud y la
+ * venta (`FOR UPDATE`): dos aprobaciones a la vez no pueden pisarse el
+ * `sale_builder.product_ids`. `added_to_sale` marca lo que metió la
+ * aprobación, y rechazar retira solo eso (DA-6).
  */
 
 import type { Prisma } from '../../generated/prisma/client/client';
@@ -34,6 +40,7 @@ import {
   type FlashSaleRequestStatus,
 } from '../records';
 import {
+  _saleBuilder,
   _toHydratedFlashSale,
   FLASH_SALE_INCLUDE,
 } from './flash-sale.repository';
@@ -417,4 +424,163 @@ export async function deleteFlashSaleRequest(
     throw translateCatalogWriteError(error, { aggregate: AGGREGATE, id });
   }
   return _toRecord(existing);
+}
+
+// ---------------------------------------------------------------------------
+// Aprobar y rechazar (US-98)
+// ---------------------------------------------------------------------------
+
+type Tx = Prisma.TransactionClient;
+
+/** Bloquea la solicitud y devuelve su estado y su venta; `null` si no existe. */
+async function _lockRequest(
+  tx: Tx,
+  id: number
+): Promise<{ status: FlashSaleRequestStatus; flashSaleId: bigint } | null> {
+  const rows = await tx.$queryRaw<
+    { status: FlashSaleRequestStatus; flash_sale_id: bigint }[]
+  >`SELECT status, flash_sale_id FROM flash_sale_requests WHERE id = ${id} FOR UPDATE`;
+  return rows[0]
+    ? { status: rows[0].status, flashSaleId: rows[0].flash_sale_id }
+    : null;
+}
+
+/**
+ * Bloquea la venta y reescribe su `sale_builder.product_ids` con la tabla
+ * puente (orden de `product_id`), fijando `updatedAt: now()`.
+ */
+async function _syncSaleBuilder(tx: Tx, flashSaleId: bigint): Promise<void> {
+  await tx.$queryRaw`SELECT id FROM flash_sales WHERE id = ${flashSaleId} FOR UPDATE`;
+  const sale = await tx.flashSale.findUniqueOrThrow({
+    where: { id: flashSaleId },
+    select: { saleBuilder: true },
+  });
+  const links = await tx.flashSaleProduct.findMany({
+    where: { flashSaleId },
+    orderBy: { productId: 'asc' },
+    select: { productId: true },
+  });
+  await tx.flashSale.update({
+    where: { id: flashSaleId },
+    data: {
+      saleBuilder: _saleBuilder(
+        sale.saleBuilder,
+        links.map((link) => Number(link.productId))
+      ),
+      updatedAt: now(),
+    },
+  });
+}
+
+/**
+ * `pending` o `rejected` → `approved`. Mete en la venta los productos de la
+ * solicitud que no estaban, marca esos con `added_to_sale` (DA-6) y deja sin
+ * marca los que ya estaban. Ya aprobada: `FlashSaleRequestStateError` (409).
+ * Inexistente: `RecordNotFoundError`.
+ */
+export async function approveFlashSaleRequest(
+  id: number
+): Promise<FlashSaleRequestRecord> {
+  try {
+    const row = await prisma.$transaction(async (tx) => {
+      const request = await _lockRequest(tx, id);
+      if (!request) throw new RecordNotFoundError(AGGREGATE, id);
+      if (request.status === 'approved') {
+        throw new FlashSaleRequestStateError(id, 'approved', 'aprobar');
+      }
+
+      const requested = await tx.flashSaleRequestProduct.findMany({
+        where: { requestId: BigInt(id) },
+        select: { productId: true },
+      });
+      const productIds = requested.map((r) => r.productId);
+      const inSale = await tx.flashSaleProduct.findMany({
+        where: {
+          flashSaleId: request.flashSaleId,
+          productId: { in: productIds },
+        },
+        select: { productId: true },
+      });
+      const already = new Set(inSale.map((r) => r.productId));
+      const added = productIds.filter((productId) => !already.has(productId));
+
+      if (added.length > 0) {
+        await tx.flashSaleProduct.createMany({
+          data: added.map((productId) => ({
+            flashSaleId: request.flashSaleId,
+            productId,
+          })),
+        });
+      }
+      await tx.flashSaleRequestProduct.updateMany({
+        where: { requestId: BigInt(id) },
+        data: { addedToSale: false },
+      });
+      if (added.length > 0) {
+        await tx.flashSaleRequestProduct.updateMany({
+          where: { requestId: BigInt(id), productId: { in: added } },
+          data: { addedToSale: true },
+        });
+      }
+      await _syncSaleBuilder(tx, request.flashSaleId);
+
+      return tx.flashSaleRequest.update({
+        where: { id: BigInt(id) },
+        data: { status: 'approved', updatedAt: now() },
+        include: FLASH_SALE_REQUEST_INCLUDE,
+      });
+    });
+    return _toRecord(row);
+  } catch (error) {
+    throw translateCatalogWriteError(error, { aggregate: AGGREGATE, id });
+  }
+}
+
+/**
+ * `pending` o `approved` → `rejected`. Si estaba aprobada, retira de la venta
+ * solo los productos marcados con `added_to_sale` y les quita la marca.
+ * Ya rechazada: `FlashSaleRequestStateError` (409). Inexistente:
+ * `RecordNotFoundError`.
+ */
+export async function rejectFlashSaleRequest(
+  id: number
+): Promise<FlashSaleRequestRecord> {
+  try {
+    const row = await prisma.$transaction(async (tx) => {
+      const request = await _lockRequest(tx, id);
+      if (!request) throw new RecordNotFoundError(AGGREGATE, id);
+      if (request.status === 'rejected') {
+        throw new FlashSaleRequestStateError(id, 'rejected', 'rechazar');
+      }
+
+      if (request.status === 'approved') {
+        const marked = await tx.flashSaleRequestProduct.findMany({
+          where: { requestId: BigInt(id), addedToSale: true },
+          select: { productId: true },
+        });
+        if (marked.length > 0) {
+          await tx.flashSaleProduct.deleteMany({
+            where: {
+              flashSaleId: request.flashSaleId,
+              productId: { in: marked.map((r) => r.productId) },
+            },
+          });
+          await tx.flashSaleRequestProduct.updateMany({
+            where: { requestId: BigInt(id) },
+            data: { addedToSale: false },
+          });
+        }
+        await _syncSaleBuilder(tx, request.flashSaleId);
+      }
+
+      return tx.flashSaleRequest.update({
+        where: { id: BigInt(id) },
+        data: { status: 'rejected', updatedAt: now() },
+        include: FLASH_SALE_REQUEST_INCLUDE,
+      });
+    });
+    return _toRecord(row);
+  } catch (error) {
+    throw translateCatalogWriteError(error, { aggregate: AGGREGATE, id });
+  }
 }

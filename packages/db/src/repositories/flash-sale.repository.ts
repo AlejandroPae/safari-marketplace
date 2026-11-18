@@ -292,7 +292,11 @@ async function _resolveProductIds(ids: number[]): Promise<number[]> {
   return unique;
 }
 
-function _saleBuilder(
+/**
+ * `sale_builder` con `product_ids` reescrito. Exportado para
+ * `flash-sale-requests.repository.ts` (US-98); no está en el barrel.
+ */
+export function _saleBuilder(
   base: Prisma.JsonValue | Prisma.InputJsonObject | undefined,
   productIds: number[]
 ): Prisma.InputJsonObject {

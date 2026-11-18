@@ -1247,7 +1247,9 @@ CREATE TABLE IF NOT EXISTS flash_sale_products (
 -- status es texto (DA-5): con un booleano no se distinguirían «pendiente»
 -- y «rechazada». La API emite el request_status booleano del admin como
 -- status = 'approved'. Aprobar y rechazar (US-98) escriben en
--- flash_sale_products; estas tablas solo guardan la solicitud.
+-- flash_sale_products. added_to_sale (US-98, DA-6) marca los productos que
+-- esa aprobación metió en la venta: rechazar retira solo esos, nunca uno
+-- que ya estaba (o que el admin metió a mano).
 -- =====================================================================
 
 CREATE TABLE IF NOT EXISTS flash_sale_requests (
@@ -1265,8 +1267,9 @@ CREATE TABLE IF NOT EXISTS flash_sale_requests (
 );
 
 CREATE TABLE IF NOT EXISTS flash_sale_request_products (
-    request_id  bigint  NOT NULL REFERENCES flash_sale_requests(id) ON DELETE CASCADE,
-    product_id  bigint  NOT NULL REFERENCES products(id)            ON DELETE CASCADE,
+    request_id     bigint   NOT NULL REFERENCES flash_sale_requests(id) ON DELETE CASCADE,
+    product_id     bigint   NOT NULL REFERENCES products(id)            ON DELETE CASCADE,
+    added_to_sale  boolean  NOT NULL DEFAULT false,
     PRIMARY KEY (request_id, product_id)
 );
 
