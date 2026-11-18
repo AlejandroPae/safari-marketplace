@@ -31,7 +31,7 @@
 
 | US | Título | Releasable solo | Depende de | LOC est. |
 |----|--------|-----------------|------------|----------|
-| [US-10](./10-receta-just-check.md) | Receta `just check` (gate local agregador) | Sí | ninguna | ~120 |
+| [US-10](./10-receta-just-check.md) ✅ | Receta `just check` (gate local agregador) | Sí | ninguna | ~120 |
 | [US-11](./11-ci-github-actions.md) | CI en GitHub Actions | Sí | US-10 | ~150 |
 | [US-12](./12-acotar-variante-graphql.md) ✅ | Decidir y acotar la variante GraphQL | Sí | ninguna | ~100 |
 | [US-73](./73-auditoria-secretos-dependencias.md) | `just audit`: Gitleaks + OSV-Scanner en Docker, en modo reporte y fuera de `check` | Sí | ninguna dura (toca el justfile: no en paralelo con US-10/US-12) | ~150 |
