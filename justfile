@@ -6,6 +6,7 @@
 #        just shop-dev     -> arranca la tienda (terminal 2)
 #        just admin-dev    -> arranca el admin (terminal 3)
 #        just verify       -> comprueba que los tres responden
+#        just check        -> gate local: lint + typecheck + tests (corta al primer rojo)
 #
 # Requiere: Node 20+, yarn 1 (`npm i -g yarn`), Python 3.11+ (solo scraper).
 # Detalle de cada paso y problemas conocidos: apps/README.md
@@ -275,6 +276,98 @@ doctor:
     for d in apps/node_modules apps/api/rest/node_modules; do
       [ -d "$d" ] && echo "deps    $d OK" || echo "deps    $d FALTA - corre 'just install'"
     done
+
+# Gate local (US-10): lint, typecheck y tests de todo el monorepo. Corta al primer rojo
+#
+# Pide: `just install`, `just db-up` y `just scraper-install`. Si falta algo,
+# lo dice antes de correr nada. No necesita API, tienda ni admin levantados.
+#
+# Pasos y duración medida (2026-11-18, secuencial). En total, 568s en frío y
+# 340s con las cachés calientes. La columna es la primera medición:
+#    1. packages/db  build       prisma generate + tsup -> dist/   ~107s
+#       Va primero: el typecheck usa generated/ y la API usa dist/ (R-2).
+#    2. packages/db  lint        biome check                        ~8s
+#    3. packages/db  typecheck   tsc --noEmit                       ~19s
+#    4. api/rest     typecheck   tsc --noEmit                       ~79s
+#    5. api/rest     lint        eslint SIN --fix                   ~76s
+#       `yarn lint` lleva --fix: dejaría el gate verde sobre un árbol reescrito.
+#    6. admin/rest   lint        eslint src                         ~32s
+#    7. shop         lint        eslint src                         ~171s
+#    8. api/rest     test        vitest (mockea @safari/db)         ~68s
+#    9. packages/db  test        vitest de integración, Postgres    ~127s
+#   10. scraper      db-test     pipeline contra Postgres           ~5s
+#
+# Fuera del gate, y por qué:
+#   - Builds de Next y de la API: van en `just check-full`.
+#   - Build de la tienda: prerenderiza por HTTP contra la API en :9001, y el
+#     gate no depende de servicios levantados a mano.
+#   - `tsc` de shop y admin: no son scripts del repo; `next build` ya
+#     comprueba los tipos.
+#   - Tests de frontend: no existen.
+#   - Variante GraphQL: congelada (US-12).
+[group('verify')]
+[doc('Gate local (US-10): lint, typecheck y tests del monorepo; corta al primer rojo (~6-10 min)')]
+check:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    falta=0
+    precondicion() { echo "PRECONDICIÓN  $1 -> corre '$2'"; falta=1; }
+    for d in apps/node_modules apps/api/rest/node_modules packages/db/node_modules; do
+      [ -d "$d" ] || precondicion "falta $d" "just install / just db-build"
+    done
+    if ! docker compose exec -T postgres pg_isready -U safari -d safari_scraper >/dev/null 2>&1; then
+      precondicion "Postgres no responde en :5433" "just db-up"
+    fi
+    [ -x "{{VENV_BIN}}/python" ] || [ -x "{{VENV_BIN}}/python.exe" ] || precondicion "falta el venv del scraper" "just scraper-install"
+    [ "$falta" -eq 0 ] || { echo "check: NO se ejecutó ningún paso"; exit 2; }
+
+    # `cd "$(pwd)/..."` deja la unidad en mayúscula vía MSYS: con c:\ vitest
+    # carga dos veces el módulo y da 0 tests (ver la receta db-check).
+    raiz="$(pwd)"
+    pasos=(
+      "packages/db build|packages/db|npm run build"
+      "packages/db lint|packages/db|npm run lint"
+      "packages/db typecheck|packages/db|npm run typecheck"
+      "api/rest typecheck|apps/api/rest|npx tsc --noEmit -p tsconfig.json"
+      "api/rest lint|apps/api/rest|npx eslint \"{src,apps,libs,test}/**/*.ts\""
+      "admin/rest lint|apps/admin/rest|yarn lint"
+      "shop lint|apps/shop|yarn lint"
+      "api/rest test|apps/api/rest|npx vitest run"
+      "packages/db test|packages/db|npm test"
+      "scraper db-test|.|just db-test"
+    )
+    total=${#pasos[@]}
+    resumen=()
+    inicio=$(date +%s)
+    for i in "${!pasos[@]}"; do
+      IFS='|' read -r nombre dir cmd <<< "${pasos[$i]}"
+      n=$((i + 1))
+      echo ""
+      echo "━━━ [$n/$total] $nombre ($cmd)"
+      t0=$(date +%s)
+      (cd "$raiz/$dir" && eval "$cmd")
+      rc=$?
+      dt=$(( $(date +%s) - t0 ))
+      if [ "$rc" -ne 0 ]; then
+        resumen+=("FALLA [$n/$total] $nombre  ${dt}s  (exit $rc)")
+        for j in $(seq $((n + 1)) "$total"); do
+          resumen+=("  --   [$j/$total] $(cut -d'|' -f1 <<< "${pasos[$((j - 1))]}")  no ejecutado")
+        done
+        echo ""; echo "━━━ Resumen de just check"; printf '%s\n' "${resumen[@]}"
+        echo "check: ROJO en '$nombre'"
+        exit 1
+      fi
+      resumen+=("OK    [$n/$total] $nombre  ${dt}s")
+    done
+    echo ""; echo "━━━ Resumen de just check"; printf '%s\n' "${resumen[@]}"
+    echo "check: VERDE ($total pasos, $(( $(date +%s) - inicio ))s)"
+
+# `check` más los builds de la API (nest build, ~45-54s) y del admin (next
+# build, ~195s; no necesita la API). Sin el de la tienda: ese sí (ver `check`)
+[group('verify')]
+[doc('check + build de la API y del admin (sin la tienda: necesita la API levantada)')]
+check-full: check build-api build-admin
+    @echo "check-full: VERDE (check + build-api + build-admin)"
 
 
 # ────────────────────── base de datos ────────────────────────

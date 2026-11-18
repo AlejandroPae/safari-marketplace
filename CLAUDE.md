@@ -33,6 +33,10 @@ just admin-dev         # admin   -> http://localhost:3002
 just verify            # los 3 responden con contenido real (cuenta product-cards)
 just check-ports       # diagnóstico de puertos ocupados (Zscaler usa el 9000)
 
+# Gate local (US-10). Pide install + db-up + scraper-install; no pide servidores
+just check             # lint + typecheck + tests de todo el repo, ~6-10 min, corta al primer rojo
+just check-full        # check + build-api + build-admin (la tienda no: necesita la API)
+
 # Base de datos (Postgres 16 en Docker, puerto 5433)
 just db-up             # levanta el contenedor + aplica db/schema.sql + db/seed.sql
 just db-shell          # psql interactivo
@@ -60,16 +64,17 @@ just build             # shop + admin. Desde Next 16 `next dev` escribe en
 just build-api         # compila la API a dist/
 ```
 
-No hay gate de tests repo-wide todavía (construir el agregador `just check`
-es US-10 del backlog, Épico 9). Hoy existen y pasan dos suites automatizadas:
+El gate repo-wide es `just check` (US-10). Corre 10 pasos en orden; la lista,
+la duración de cada uno y lo que queda fuera están en el comentario de la
+receta. Las piezas, por separado:
 
 - `just db-check` — vitest de integración en `packages/db` (requiere
-  `just db-up` antes). Es el único gate envuelto en una receta de `just`.
-- `cd apps/api/rest && npx vitest run` — 34 archivos / 565 tests (medido el
-  2026-11-17 en `main` @ `37d5120`). Ninguna receta de `just` lo envuelve.
+  `just db-up` antes).
+- `cd apps/api/rest && npx vitest run` — 44 archivos / 710 tests (medido el
+  2026-11-18).
   Vitest 4 con `unplugin-swc` (Nest necesita `emitDecoratorMetadata`, que
   esbuild no emite); `vitest.config.ts` mapea `#db/*` a `src/db/pickbazar/`
-  y `#src/*` a `src/`. 31 de los 34 specs mockean `@safari/db`, así que no
+  y `#src/*` a `src/`. 37 de los 44 specs mockean `@safari/db`, así que no
   necesitan Postgres levantado. La red de tipos es aparte:
   `npx tsc --noEmit -p tsconfig.json` (Vitest no comprueba tipos).
 - Lint de la API: `npx eslint "{src,apps,libs,test}/**/*.ts"`. **No** uses
