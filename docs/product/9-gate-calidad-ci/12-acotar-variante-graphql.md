@@ -7,7 +7,7 @@
 
 **Épico:** [Épico 9](./README.md)
 **Fecha:** 2026-08-25
-**Status:** Listo para ejecución
+**Status:** Implementado (2026-11-18)
 **Depende de:** ninguna
 **LOC est.:** ~100 (mayormente docs/justfile; 0 LOC de aplicación si la decisión es "congelar")
 
@@ -71,10 +71,88 @@ Feature: Variante GraphQL acotada
 | `justfile` | solo si la decisión exige recetas nuevas o comentarios de estado |
 
 ## Definición de Done
-- [ ] Decisión del dueño citada textual en el reporte.
-- [ ] Diff de docs/justfile pegado.
-- [ ] Salida real de `just verify` en verde.
-- [ ] Status de esta US actualizado y fila del épico marcada.
+- [x] Decisión del dueño citada textual en el reporte.
+- [x] Diff de docs/justfile pegado.
+- [x] Salida real de `just verify` en verde.
+- [x] Status de esta US actualizado y fila del épico marcada.
+
+## Resultado (2026-11-18, rama `docs/us-12-congelar-graphql` sobre `main` @ `89fb994`)
+
+### CA-1 — Decisión del dueño
+
+Respuestas textuales del dueño, tomadas antes de tocar ningún archivo:
+
+- Destino de la variante: «Congelar como referencia (Recomendado)».
+- Dependencias de `admin/graphql` mientras se congele: «Solo si comparte
+  lockfile (Recomendado)».
+
+Quedan registradas, con fecha y razones, en la sección «Variante GraphQL:
+congelada como referencia (US-12)» de `apps/README.md`.
+
+### CA-2 — Orquestación coherente
+
+```diff
+--- a/apps/README.md
++++ b/apps/README.md
+ `shop` y `admin/rest` consumen la API vía `NEXT_PUBLIC_REST_API_ENDPOINT`.
+-Existe además una variante GraphQL (`api/graphql` + `dev:gql`) que depende de
+-codegen con `graphql-let`; no es necesaria para el stack REST.
++El único stack soportado es REST. La variante GraphQL está **congelada**: ver
++la sección siguiente.
++
++## Variante GraphQL: congelada como referencia (US-12)
++(sección nueva: decisión, qué es la variante, qué significa congelarla,
++política de dependencias y cómo revertir)
+@@
+-cd apps          && yarn install    # shop + admin/rest + admin/graphql (~11 min)
++cd apps          && yarn install    # shop + admin/rest + admin/graphql, que está congelada (~11 min)
+
+--- a/justfile
++++ b/justfile
+-# Workspace del frontend: shop + admin/rest + admin/graphql (~11 min)
++# Workspace del frontend: shop + admin/rest + admin/graphql (~11 min).
++# La variante GraphQL está congelada (US-12): se instala pero ninguna receta
++# la arranca, construye ni verifica. Ver apps/README.md.
+```
+
+Revisión de las demás menciones (`git grep` de `dev:gql`, `build:gql`,
+`admin/graphql`, `api/graphql` y `graphql-let` en los `.md` y el `justfile`,
+fuera de `docs/product/` y de los cambios archivados de `openspec/`):
+
+- `justfile`: `clean` y `clean-all` borran el `.next` de `admin/graphql` y el
+  `node_modules` de `api/graphql`. Son limpieza de artefactos y no sugieren
+  que la variante esté soportada. Se quedan.
+- `CLAUDE.md` ya la describe como «no usada en el stack REST». Es del dueño y
+  no se tocó.
+
+No hay recetas nuevas: congelar no las pide. El workspace de yarn no se tocó.
+
+### CA-3 — El stack REST no se ve afectado
+
+```
+just verify
+OK   API    :9001/api/settings  200  5503B  559ms
+OK   Shop   :3003/en  200  191897B  7433ms  cards:30
+OK   Admin  :3002/en/login  200  72554B  217ms  cards:1
+```
+
+El primer `just verify` falló (`FALLA API :9001 ECONNREFUSED`, y la tienda dio
+500). `nest start --watch` detectó cambios de archivo varias veces mientras
+arrancaban la tienda y el admin, y relanzó la API. Una de las relanzadas murió
+con `EADDRINUSE :::9001` porque la instancia anterior seguía con el puerto, y
+`verify` corrió en ese hueco. Las dos instancias eran del mismo `api-dev`, sin
+procesos ajenos. La instancia superviviente respondía 200 y el segundo
+`verify` pasó. La US solo toca docs y un comentario del `justfile`, así que no
+puede causar esto.
+
+### Fuera de alcance, mencionado
+
+- Sacar `admin/graphql` del workspace de yarn, que ahorraría instalación y
+  CI, o borrar la variante: cada cosa necesita su propia US.
+- La tabla de arquitectura de `apps/README.md` dice «NestJS 9» para
+  `api/rest`, que está en Nest 12 desde US-88..US-91. Es una línea ajena a
+  esta US.
+- `CLAUDE.md` no menciona que la variante está congelada.
 
 ## Notas para el agente ejecutor
 - Esta es una US de gobernanza: el valor está en eliminar ambigüedad, no en
