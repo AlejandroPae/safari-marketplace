@@ -147,6 +147,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
 
       const result = await service.getMyStaffs(
         rawQuery({ limit: 30, page: 1 }),
+        currentUser(1),
       );
 
       expect(result.current_page).toBe(0);
@@ -155,26 +156,46 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
       expect(result.data).toEqual([]);
     });
 
-    it('my-staffs y all-staffs filtran el mismo permiso "staff" pero conservan su propia url (A2/V-7)', async () => {
+    it('my-staffs y all-staffs salen de shop_staff (US-42) y conservan su propia url', async () => {
       listUsersWithRelationsMock.mockResolvedValue({ items: [], total: 0 });
 
       const myStaffsResult = await service.getMyStaffs(
         rawQuery({ limit: 30, page: 1 }),
+        currentUser(1),
+        '1',
       );
       const allStaffsResult = await service.getAllStaffs(
         rawQuery({ limit: 30, page: 1 }),
       );
 
+      // my-staffs: staff de las tiendas del que llama, acotado por shop_id.
       expect(listUsersWithRelationsMock.mock.calls[0][0]).toMatchObject({
-        permissionName: 'staff',
+        permissionName: undefined,
+        staffOf: { ownerId: 1, shopId: 1 },
       });
+      // all-staffs: cualquier usuario con fila en shop_staff.
       expect(listUsersWithRelationsMock.mock.calls[1][0]).toMatchObject({
-        permissionName: 'staff',
+        permissionName: undefined,
+        staffOf: {},
       });
       expect(myStaffsResult.first_page_url).toContain('/my-staffs/list?limit=');
       expect(allStaffsResult.first_page_url).toContain(
         '/all-staffs/list?limit=',
       );
+    });
+
+    it('my-staffs con shop_id inválido no llega a BigInt: lista vacía (US-31)', async () => {
+      listUsersWithRelationsMock.mockResolvedValue({ items: [], total: 0 });
+
+      await service.getMyStaffs(
+        rawQuery({ limit: 30, page: 1 }),
+        currentUser(1),
+        'abc',
+      );
+
+      expect(listUsersWithRelationsMock.mock.calls[0][0]).toMatchObject({
+        staffOf: { shopId: 0 },
+      });
     });
 
     it('admin/vendors/customers filtran por el permiso correcto', async () => {

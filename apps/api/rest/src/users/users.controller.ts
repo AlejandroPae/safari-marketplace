@@ -126,8 +126,12 @@ export class MyStaffsController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  getAllMyStaffs(@Query() query: GetUsersDto) {
-    return this.usersService.getMyStaffs(query);
+  getAllMyStaffs(
+    @Query() query: GetUsersDto,
+    @Query('shop_id') shopId: unknown,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.usersService.getMyStaffs(query, user, shopId);
   }
 }
 @Permissions(...ADMIN_ONLY)

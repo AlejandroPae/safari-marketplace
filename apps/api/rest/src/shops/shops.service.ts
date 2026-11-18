@@ -1,19 +1,26 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import bcrypt from 'bcryptjs';
 import {
   createShop,
+  createShopStaff,
+  DuplicateEmailError,
   findShopBySlug,
   findShopOwnerById,
+  findUserWithRelations,
   getUserFriendlyMessage,
   isPrismaConnectionError,
   listShops,
   listShopsNear,
+  listUsersWithRelations,
+  removeShopStaff,
   setShopActive,
   updateShop,
   type CreateShopInput,
@@ -22,7 +29,15 @@ import {
   type ShopNearRecord,
   type ShopRecord,
   type UpdateShopInput,
+  type UserWithRelations,
 } from '@safari/db';
+import { UserPaginator } from '#src/users/dto/get-users.dto.js';
+import { User } from '#src/users/entities/user.entity.js';
+// Ciclo de imports a sabiendas: `user-dto.mapper` importa `toShopDto` de
+// este archivo. Es seguro en ESM porque los dos solo se usan dentro de
+// funciones, nunca al cargar el módulo.
+import { toUserDto } from '#src/users/user-dto.mapper.js';
+import { CreateStaffDto } from './dto/create-staff.dto.js';
 import { toWriteHttpException } from '#src/common/errors/domain-error.mapper.js';
 import { CurrentUserPayload } from '#src/auth/decorators/current-user.decorator.js';
 import { CreateShopDto } from './dto/create-shop.dto.js';
@@ -32,6 +47,27 @@ import { GetShopsDto, ShopPaginator } from './dto/get-shops.dto.js';
 import { paginate } from '#src/common/pagination/paginate.js';
 import { GetStaffsDto } from './dto/get-staffs.dto.js';
 import { parseSearch } from '#src/common/search/parse-search.js';
+
+function isSuperAdmin(user: CurrentUserPayload): boolean {
+  return user.permissions.includes('super_admin');
+}
+
+/** Dueño cuyas tiendas acotan el staff (US-42); el super admin no acota. */
+function managedBy(user: CurrentUserPayload): number | undefined {
+  return isSuperAdmin(user) ? undefined : user.sub;
+}
+
+/**
+ * Id opcional de query o body (US-42). Ausente o `''` ⇒ `undefined`; un
+ * entero positivo seguro ⇒ el número; cualquier otra cosa ⇒ `null` (la
+ * guarda de US-31: nunca llega a `BigInt`).
+ */
+function parseOptionalId(raw: unknown): number | null | undefined {
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  if (typeof raw !== 'number' && typeof raw !== 'string') return null;
+  const id = Number(raw);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
 
 /**
  * `ShopRecord` (camelCase, `@safari/db`) → proyección de 16 claves
@@ -213,18 +249,46 @@ export class ShopsService {
   }
 
   /**
-   * `D30-10`/CA-4: sin relación staff↔tienda en el DDL (Out of Scope del
-   * spec) — ya no lee `shops.json`, mismo `paginate()` de hoy (nunca
-   * `buildPaginator`), mismo key-set y mismo tipo de `per_page` (el
-   * `limit` crudo, sin coerción).
+   * Staff de tienda desde `shop_staff` (US-42). Mismo `paginate()` de antes
+   * (nunca `buildPaginator`), mismo key-set y mismo tipo de `per_page` (el
+   * `limit` crudo, sin coerción): solo cambia de dónde sale `data`.
+   *
+   * Acotado por quien llama, sin tocar el guard: el super admin ve el staff
+   * de cualquier tienda y un dueño solo el de las suyas. Una tienda ajena o
+   * un `shop_id` inválido dan la lista vacía, porque la consulta no
+   * encuentra filas.
    */
-  getStaffs({ limit, page }: GetStaffsDto) {
+  async getStaffs(
+    { limit, page, shop_id }: GetStaffsDto,
+    user: CurrentUserPayload,
+  ): Promise<UserPaginator> {
     const url = `/staffs?limit=${limit}`;
+    const shopId = parseOptionalId(shop_id);
 
-    return {
-      data: [],
-      ...paginate(0, page, limit, 0, url),
+    let result: { items: UserWithRelations[]; total: number } = {
+      items: [],
+      total: 0,
     };
+    if (shopId !== null) {
+      try {
+        result = await listUsersWithRelations({
+          page: Number(page) || 1,
+          limit: Number(limit) || 10,
+          staffOf: { shopId, ownerId: managedBy(user) },
+        });
+      } catch (error) {
+        if (isPrismaConnectionError(error)) {
+          throw new ServiceUnavailableException(getUserFriendlyMessage(error));
+        }
+        throw new InternalServerErrorException(getUserFriendlyMessage(error));
+      }
+    }
+
+    const data = result.items.map(toUserDto);
+    return {
+      data,
+      ...paginate(result.total, page, limit, data.length, url),
+    } as UserPaginator;
   }
 
   async getShop(slug: string): Promise<Shop> {
@@ -345,24 +409,141 @@ export class ShopsService {
   }
 
   /**
-   * Stubs declarados (`DD30-8`): `POST /staffs`/`PUT /staffs/:id` reusaban
-   * `create()`/`update()` con la aridad de ayer; al migrarlas a
-   * `(dto, user)` dejaban de compilar (`TS2554`). Pasarles `@CurrentUser()`
-   * crearía/editaría una tienda real desde una ruta sin relación
-   * staff↔tienda en el DDL (Out of Scope del spec) — inaceptable. Se
-   * preserva el comportamiento de stub (no escriben nada); el cuerpo
-   * byte-a-byte de la fila 0 del mock es irreproducible una vez que
-   * `shops.json` sale del servicio (CA-6), y ningún consumidor lo lee
-   * (`useAddStaffMutation`, `apps/admin/rest/src/data/staff.ts:37-38`, con
-   * `onSuccess: () => {}` sin parámetro).
+   * `POST /staffs` (US-42): el formulario «Add staff» del admin manda
+   * `{ name, email, password, shop_id }` y da de alta un usuario nuevo como
+   * staff de esa tienda (permiso `customer`, como el registro).
+   *
+   * - Cuerpo incompleto o `shop_id` inválido: 400.
+   * - Un dueño sobre una tienda ajena: 403. Tienda inexistente: 400.
+   * - El email ya es staff de esa tienda: idempotente, devuelve el usuario
+   *   sin tocarlo.
+   * - El email es de otro usuario que no es staff de esa tienda: 409.
    */
-  createStaff(): null {
+  async createStaff(
+    body: CreateStaffDto,
+    user: CurrentUserPayload,
+  ): Promise<User> {
+    const name = typeof body?.name === 'string' ? body.name.trim() : '';
+    const email = typeof body?.email === 'string' ? body.email.trim() : '';
+    const password = typeof body?.password === 'string' ? body.password : '';
+    const shopId = parseOptionalId(body?.shop_id);
+    if (
+      !name ||
+      !email ||
+      !password ||
+      shopId === null ||
+      shopId === undefined
+    ) {
+      throw new BadRequestException(
+        'Faltan datos del staff: name, email, password y shop_id son obligatorios.',
+      );
+    }
+
+    if (!isSuperAdmin(user)) {
+      const ownerId = await findShopOwnerById(shopId);
+      if (ownerId === null) {
+        throw new BadRequestException(
+          `\`staff.shop_id\` referencia un registro inexistente (\`${shopId}\`).`,
+        );
+      }
+      if (ownerId !== user.sub) {
+        throw new ForbiddenException(
+          `No tienes permisos sobre la tienda ${shopId}.`,
+        );
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    let userId: number;
+    try {
+      ({ userId } = await createShopStaff({
+        name,
+        email,
+        passwordHash,
+        shopId,
+      }));
+    } catch (error) {
+      if (error instanceof DuplicateEmailError) {
+        throw new ConflictException(error.message);
+      }
+      throw toWriteHttpException(error);
+    }
+    return this.staffUser(userId);
+  }
+
+  /**
+   * `PUT /staffs/:id` sigue sin escribir nada (`DD30-8`): el pivote
+   * `shop_staff` no tiene columnas que editar y el admin no llama a esta
+   * ruta. Llenarla sería inventar un contrato (US-42).
+   */
+  updateStaff(): null {
     return null;
   }
 
-  /** Idéntico criterio que `createStaff()` — ver `DD30-8`. */
-  updateStaff(): null {
-    return null;
+  /**
+   * `DELETE /staffs/:id` (US-42): el admin manda solo el id del usuario. Se
+   * borran sus filas de `shop_staff` en las tiendas que gestiona quien
+   * llama: todas si es super admin y las suyas si es dueño. `?shop_id`
+   * opcional acota a una tienda. El usuario no se borra.
+   *
+   * - `id` o `shop_id` inválidos: 404 (guarda de US-31).
+   * - Un dueño con `shop_id` de una tienda ajena: 403.
+   * - Nada que retirar: 404.
+   */
+  async removeStaff(
+    rawId: string,
+    rawShopId: unknown,
+    user: CurrentUserPayload,
+  ): Promise<User> {
+    const id = Number(rawId);
+    const shopId = parseOptionalId(rawShopId);
+    if (!Number.isSafeInteger(id) || id <= 0 || shopId === null) {
+      throw new NotFoundException(`No existe un staff con id ${rawId}.`);
+    }
+
+    if (shopId !== undefined && !isSuperAdmin(user)) {
+      const ownerId = await findShopOwnerById(shopId);
+      if (ownerId === null) {
+        throw new NotFoundException(`No existe una tienda con id ${shopId}.`);
+      }
+      if (ownerId !== user.sub) {
+        throw new ForbiddenException(
+          `No tienes permisos sobre la tienda ${shopId}.`,
+        );
+      }
+    }
+
+    const removed = await this.staffUser(id);
+    let count: number;
+    try {
+      count = await removeShopStaff({
+        userId: id,
+        shopId,
+        ownerId: managedBy(user),
+      });
+    } catch (error) {
+      throw toWriteHttpException(error);
+    }
+    if (count === 0) {
+      throw new NotFoundException(
+        `El usuario ${id} no es staff de ninguna tienda que gestiones.`,
+      );
+    }
+    return removed;
+  }
+
+  /** El usuario con sus relaciones, en la forma de `toUserDto`; 404 si no existe. */
+  private async staffUser(id: number): Promise<User> {
+    let record: UserWithRelations | null;
+    try {
+      record = await findUserWithRelations(id);
+    } catch (error) {
+      throw toWriteHttpException(error);
+    }
+    if (!record) {
+      throw new NotFoundException(`No existe un staff con id ${id}.`);
+    }
+    return toUserDto(record);
   }
 
   /**

@@ -17,6 +17,7 @@ import {
   listUsers,
   listUsersWithRelations,
   setUserActive,
+  type ListUsersInput,
   type UserWithRelations,
 } from '@safari/db';
 import type { CurrentUserPayload } from '#src/auth/decorators/current-user.decorator.js';
@@ -259,17 +260,36 @@ export class UsersService {
   }
 
   /**
-   * Alias declarado de `getAllStaffs` (A2/V-7): sin tabla staff↔tienda, la
-   * única relación disponible es `shops.owner_id`, así que ambos filtran el
-   * mismo permiso `staff`. Cada uno conserva su propia `url` en el
-   * envoltorio.
+   * Staff de las tiendas de las que quien llama es dueño, desde
+   * `shop_staff` (US-42); `?shop_id` acota a una. Un `shop_id` inválido da
+   * la lista vacía. Antes filtraba el permiso global `staff`, que nadie
+   * tiene en el seed. Mismo envoltorio y misma `url` que antes.
    */
-  async getMyStaffs(query: GetUsersDto): Promise<UserPaginator> {
-    return this._listByPermission(query, '/my-staffs/list', 'staff');
+  async getMyStaffs(
+    query: GetUsersDto,
+    user: CurrentUserPayload,
+    rawShopId?: unknown,
+  ): Promise<UserPaginator> {
+    const shopId =
+      rawShopId === undefined || rawShopId === ''
+        ? undefined
+        : Number(rawShopId);
+    if (shopId !== undefined && !(Number.isSafeInteger(shopId) && shopId > 0)) {
+      // Guarda de US-31: no llega a `BigInt`. La tienda 0 no existe, así que
+      // la consulta no encuentra filas y el envoltorio es el de siempre.
+      return this._listByPermission(query, '/my-staffs/list', undefined, {
+        shopId: 0,
+      });
+    }
+    return this._listByPermission(query, '/my-staffs/list', undefined, {
+      ownerId: user.sub,
+      shopId,
+    });
   }
 
+  /** Todos los usuarios con al menos una fila en `shop_staff` (US-42). */
   async getAllStaffs(query: GetUsersDto): Promise<UserPaginator> {
-    return this._listByPermission(query, '/all-staffs/list', 'staff');
+    return this._listByPermission(query, '/all-staffs/list', undefined, {});
   }
 
   /**
@@ -289,6 +309,7 @@ export class UsersService {
     { text, limit, page, search }: GetUsersDto,
     url: string,
     permissionName?: string,
+    staffOf?: ListUsersInput['staffOf'],
   ): Promise<UserPaginator> {
     if (!page) page = 1;
     if (!limit) limit = 30;
@@ -302,6 +323,7 @@ export class UsersService {
         limit: Number(limit) || 30,
         text: resolvedText,
         permissionName,
+        staffOf,
       }),
     );
 

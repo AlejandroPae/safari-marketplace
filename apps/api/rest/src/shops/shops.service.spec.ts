@@ -41,7 +41,6 @@ import {
 } from '@safari/db';
 import { ShopsService, toShopDto } from './shops.service.js';
 import { GetShopsDto } from './dto/get-shops.dto.js';
-import { GetStaffsDto } from './dto/get-staffs.dto.js';
 import { CreateShopDto } from './dto/create-shop.dto.js';
 import { UpdateShopDto } from './dto/update-shop.dto.js';
 import type { CurrentUserPayload } from '#src/auth/decorators/current-user.decorator.js';
@@ -668,67 +667,5 @@ describe("ShopsService.approveShop / disapproveShop — frontera numérica de `@
     await service.approveShop('20');
 
     expect(setShopActiveMock).toHaveBeenCalledWith(20, true);
-  });
-});
-
-/**
- * Stubs de `DD30-8`: `createStaff()`/`updateStaff()` preservan el
- * comportamiento de stub de ayer (devuelven `null`, sin `@CurrentUser()`
- * pass-through) — NINGUNA de las dos rutas de `StaffsController` crea ni
- * edita una tienda real, porque no hay relación staff↔tienda en el DDL.
- */
-describe('ShopsService.createStaff / updateStaff — stubs preservados (DD30-8)', () => {
-  let service: ShopsService;
-
-  beforeEach(() => {
-    createShopMock.mockReset();
-    updateShopMock.mockReset();
-    service = new ShopsService();
-  });
-
-  it('createStaff() devuelve `null` y no crea una tienda', () => {
-    expect(service.createStaff()).toBeNull();
-    expect(createShopMock).not.toHaveBeenCalled();
-  });
-
-  it('updateStaff() devuelve `null` y no edita una tienda', () => {
-    expect(service.updateStaff()).toBeNull();
-    expect(updateShopMock).not.toHaveBeenCalled();
-  });
-});
-
-/**
- * CA-4 — `getStaffs` ya no lee `shops.json` (migrado en PR#3) pero MUST
- * preservar exactamente el mismo key-set y el mismo tipo de `per_page`
- * (pass-through del `limit` crudo, sin coerción) que el contrato de ayer.
- */
-describe('ShopsService.getStaffs — mismo contrato tras desmockear (CA-4)', () => {
-  it('key-set idéntico (`data: []` + `paginate()`, nunca `buildPaginator`) y `per_page` sin coerción', () => {
-    const service = new ShopsService();
-
-    const result = service.getStaffs({
-      limit: '15',
-      page: '1',
-    } as unknown as GetStaffsDto);
-
-    expect(Object.keys(result)).toEqual([
-      'data',
-      'total',
-      'current_page',
-      'count',
-      'last_page',
-      'firstItem',
-      'lastItem',
-      'per_page',
-      'first_page_url',
-      'last_page_url',
-      'next_page_url',
-      'prev_page_url',
-    ]);
-    expect(result.data).toEqual([]);
-    // `per_page` es el `limit` crudo pasado tal cual — sin `Number(...)`
-    // (design.md CA-4): si llega string, sale string.
-    expect(result.per_page).toBe('15');
-    expect(typeof result.per_page).toBe('string');
   });
 });

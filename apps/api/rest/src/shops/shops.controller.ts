@@ -13,6 +13,7 @@ import { CreateShopDto } from './dto/create-shop.dto.js';
 import { UpdateShopDto } from './dto/update-shop.dto.js';
 import { GetShopsDto, ShopPaginator } from './dto/get-shops.dto.js';
 import { GetStaffsDto } from './dto/get-staffs.dto.js';
+import { CreateStaffDto } from './dto/create-staff.dto.js';
 import { UserPaginator } from '#src/users/dto/get-users.dto.js';
 import { Public } from '#src/auth/decorators/public.decorator.js';
 import {
@@ -101,13 +102,19 @@ export class StaffsController {
   constructor(private readonly shopsService: ShopsService) {}
 
   @Post()
-  create(@Body() _createShopDto: CreateShopDto) {
-    return this.shopsService.createStaff();
+  create(
+    @Body() createStaffDto: CreateStaffDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.shopsService.createStaff(createStaffDto, user);
   }
 
   @Get()
-  async getStaffs(@Query() query: GetStaffsDto): Promise<UserPaginator> {
-    return this.shopsService.getStaffs(query);
+  async getStaffs(
+    @Query() query: GetStaffsDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ): Promise<UserPaginator> {
+    return this.shopsService.getStaffs(query, user);
   }
 
   @Get(':slug')
@@ -121,8 +128,12 @@ export class StaffsController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.shopsService.remove(+id);
+  remove(
+    @Param('id') id: string,
+    @Query('shop_id') shopId: unknown,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.shopsService.removeStaff(id, shopId, user);
   }
 }
 
