@@ -80,10 +80,12 @@ describe('listStoreNotices / findStoreNoticeById — seed', () => {
 
   it('el detalle trae creador con permisos, destinatarios y lecturas en orden fijo', async () => {
     const notice = await findStoreNoticeById(2);
+    // `staff` desde US-101: el admin del seed tiene fila en `shop_staff`.
     expect(notice?.creator.permissions.map((p) => p.name)).toEqual([
       'super_admin',
       'customer',
       'store_owner',
+      'staff',
     ]);
     expect(notice?.recipients.map((u) => u.id)).toEqual([ADMIN, OWNER]);
     expect(notice?.reads.map((r) => [r.user.id, r.isRead])).toEqual([

@@ -150,12 +150,19 @@ describe('listUsersWithRelations', () => {
     expect(owner?.shops).toHaveLength(12);
   });
 
-  it('un permiso sin titulares (staff) devuelve total 0, no un error', async () => {
+  it('un permiso sin titulares devuelve total 0, no un error', async () => {
+    // Desde US-101 `staff` tiene titulares; se usa un nombre fuera del
+    // catálogo para seguir comprobando el caso vacío.
     const { items, total } = await listUsersWithRelations({
-      permissionName: 'staff',
+      permissionName: 'zz-sin-titulares',
     });
     expect(total).toBe(0);
     expect(items).toEqual([]);
+  });
+
+  it('staff: los usuarios con fila en shop_staff del seed (US-101)', async () => {
+    const { items } = await listUsersWithRelations({ permissionName: 'staff' });
+    expect(items.map((u) => u.id)).toEqual([2, 3]);
   });
 });
 

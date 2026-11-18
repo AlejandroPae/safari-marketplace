@@ -8,12 +8,20 @@
  * Reloj (US-32): el usuario nuevo y su fila del pivote fijan `createdAt` y
  * `updatedAt` desde `clock.ts`. Retirar staff borra filas del pivote, que no
  * tiene `updated_at`, y no toca `users`.
+ *
+ * Permiso (US-101): el permiso global `staff` refleja si el usuario es staff
+ * de alguna tienda. El alta lo concede; retirar la última tienda lo quita.
+ * El seed sigue la misma regla.
  */
 
+import type { Prisma } from '../../generated/prisma/client/client';
 import { prisma } from '../client';
 import { now } from '../clock';
 import { InvalidReferenceError } from '../domain-errors';
+import { _toShopRecord, type ShopRecord } from '../records';
 import { DuplicateEmailError } from './users.repository';
+
+const STAFF_PERMISSION = 'staff';
 
 export interface CreateShopStaffInput {
   name: string;
@@ -73,6 +81,9 @@ export async function createShopStaff(
       });
       if (existing) {
         if (existing.staffShops.length > 0) {
+          // Idempotente, pero garantiza el permiso: un staff de antes de
+          // US-101 puede no tenerlo.
+          await _grantStaffPermission(tx, existing.id);
           return { userId: Number(existing.id), created: false };
         }
         throw new DuplicateEmailError(input.email);
@@ -87,8 +98,12 @@ export async function createShopStaff(
           isActive: true,
           createdAt: at,
           updatedAt: at,
+          // US-101: `staff` para que pueda entrar al admin.
           permissions: {
-            create: [{ permission: { connect: { name: 'customer' } } }],
+            create: [
+              { permission: { connect: { name: 'customer' } } },
+              { permission: { connect: { name: STAFF_PERMISSION } } },
+            ],
           },
           staffShops: { create: { shopId: input.shopId, createdAt: at } },
         },
@@ -114,21 +129,67 @@ export interface RemoveShopStaffInput {
 
 /**
  * Retira a un usuario del staff: borra sus filas de `shop_staff` en las
- * tiendas que pasan el filtro. El usuario NO se borra. Devuelve cuántas
- * filas se borraron; 0 si no había nada que retirar (el caller decide el
- * 404).
+ * tiendas que pasan el filtro. El usuario NO se borra. Si se queda sin
+ * ninguna tienda, pierde el permiso `staff` en la misma transacción
+ * (US-101). Devuelve cuántas filas se borraron; 0 si no había nada que
+ * retirar (el caller decide el 404).
  */
 export async function removeShopStaff(
   input: RemoveShopStaffInput
 ): Promise<number> {
-  const { count } = await prisma.shopStaff.deleteMany({
-    where: {
-      userId: input.userId,
-      ...(input.shopId !== undefined && { shopId: input.shopId }),
-      ...(input.ownerId !== undefined && {
-        shop: { ownerId: input.ownerId },
-      }),
-    },
+  return prisma.$transaction(async (tx) => {
+    const { count } = await tx.shopStaff.deleteMany({
+      where: {
+        userId: input.userId,
+        ...(input.shopId !== undefined && { shopId: input.shopId }),
+        ...(input.ownerId !== undefined && {
+          shop: { ownerId: input.ownerId },
+        }),
+      },
+    });
+    if (count > 0) {
+      const remaining = await tx.shopStaff.count({
+        where: { userId: input.userId },
+      });
+      if (remaining === 0) {
+        await tx.permissionUser.deleteMany({
+          where: {
+            userId: input.userId,
+            permission: { name: STAFF_PERMISSION },
+          },
+        });
+      }
+    }
+    return count;
   });
-  return count;
+}
+
+/**
+ * Tiendas de las que el usuario es staff (fila en `shop_staff`), por
+ * `shop_id` ascendente. `/me` las suma a las suyas para que el admin le deje
+ * entrar a cada una (US-101).
+ */
+export async function listStaffShops(userId: number): Promise<ShopRecord[]> {
+  const rows = await prisma.shopStaff.findMany({
+    where: { userId },
+    include: { shop: true },
+    orderBy: { shopId: 'asc' },
+  });
+  return rows.map((row) => _toShopRecord(row.shop));
+}
+
+/** Concede `staff` si no lo tiene. El catálogo de permisos es estático. */
+async function _grantStaffPermission(
+  tx: Prisma.TransactionClient,
+  userId: bigint
+): Promise<void> {
+  const permission = await tx.permission.findUniqueOrThrow({
+    where: { name: STAFF_PERMISSION },
+    select: { id: true },
+  });
+  await tx.permissionUser.upsert({
+    where: { userId_permissionId: { userId, permissionId: permission.id } },
+    create: { userId, permissionId: permission.id },
+    update: {},
+  });
 }

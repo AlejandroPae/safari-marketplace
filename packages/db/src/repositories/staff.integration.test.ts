@@ -15,7 +15,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { prisma } from '../client';
 import { _setNowProvider } from '../clock';
 import { InvalidReferenceError } from '../domain-errors';
-import { createShopStaff, removeShopStaff } from './staff.repository';
+import {
+  createShopStaff,
+  listStaffShops,
+  removeShopStaff,
+} from './staff.repository';
 import {
   DuplicateEmailError,
   listUsersWithRelations,
@@ -53,6 +57,16 @@ const pivot = async (userId: number) =>
     })
   ).map((r) => Number(r.shopId));
 
+const permissionNames = async (userId: number) =>
+  (
+    await prisma.permissionUser.findMany({
+      where: { userId },
+      include: { permission: true },
+    })
+  )
+    .map((p) => p.permission.name)
+    .sort();
+
 describe('createShopStaff', () => {
   it('crea el usuario con permiso customer y su fila; fija las fechas desde clock.ts', async () => {
     const future = new Date('2030-01-01T00:00:00.000Z');
@@ -70,8 +84,10 @@ describe('createShopStaff', () => {
       include: { permissions: { include: { permission: true } } },
     });
     expect(user.passwordHash).toBe('hash-de-prueba');
-    expect(user.permissions.map((p) => p.permission.name)).toEqual([
+    // US-101: `staff` para poder entrar al admin.
+    expect(user.permissions.map((p) => p.permission.name).sort()).toEqual([
       'customer',
+      'staff',
     ]);
     expect(user.updatedAt.toJSON()).toBe(future.toJSON());
     expect(await pivot(result.userId)).toEqual([6]);
@@ -115,6 +131,43 @@ describe('createShopStaff', () => {
     expect(
       await prisma.user.count({ where: { email: `sin-tienda${DOMAIN}` } })
     ).toBe(0);
+  });
+});
+
+describe('permiso staff (US-101)', () => {
+  it('el alta repetida garantiza el permiso a un staff que no lo tenía', async () => {
+    const { userId } = await createShopStaff(input('sin-permiso'));
+    await prisma.permissionUser.deleteMany({
+      where: { userId, permission: { name: 'staff' } },
+    });
+    expect(await permissionNames(userId)).toEqual(['customer']);
+
+    await createShopStaff(input('sin-permiso'));
+    expect(await permissionNames(userId)).toEqual(['customer', 'staff']);
+  });
+
+  it('retirar una de dos tiendas conserva el permiso; retirar la última lo quita', async () => {
+    const { userId } = await createShopStaff(input('dos-tiendas', 6));
+    await prisma.shopStaff.create({ data: { userId, shopId: 9 } });
+
+    expect(await removeShopStaff({ userId, shopId: 9 })).toBe(1);
+    expect(await permissionNames(userId)).toEqual(['customer', 'staff']);
+
+    expect(await removeShopStaff({ userId, shopId: 6 })).toBe(1);
+    expect(await permissionNames(userId)).toEqual(['customer']);
+  });
+
+  it('retirar nada no toca el permiso', async () => {
+    const { userId } = await createShopStaff(input('nada', 6));
+    expect(await removeShopStaff({ userId, ownerId: OWNER_OF_NONE })).toBe(0);
+    expect(await permissionNames(userId)).toEqual(['customer', 'staff']);
+  });
+
+  it('listStaffShops da las tiendas del pivote, shop_id asc', async () => {
+    const { userId } = await createShopStaff(input('lista', 9));
+    await prisma.shopStaff.create({ data: { userId, shopId: 6 } });
+    expect((await listStaffShops(userId)).map((s) => s.id)).toEqual([6, 9]);
+    expect(await listStaffShops(999_999)).toEqual([]);
   });
 });
 

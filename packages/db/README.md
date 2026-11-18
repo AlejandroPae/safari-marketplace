@@ -396,16 +396,24 @@ el CRUD de `/staffs` es US-42.
   staff de cualquier tienda. Pagina usuarios, no filas: el que es staff de
   dos tiendas sale una vez.
 - **`createShopStaff({ name, email, passwordHash, shopId })`.** En un
-  `$transaction` crea el usuario (permiso `customer`) y su fila del pivote.
-  Fija `createdAt` y `updatedAt` desde `clock.ts`. Según el caso:
+  `$transaction` crea el usuario (permisos `customer` y `staff`, US-101) y
+  su fila del pivote. Fija `createdAt` y `updatedAt` desde `clock.ts`. Según
+  el caso:
   - tienda inexistente: `InvalidReferenceError`;
   - el email (sin distinguir mayúsculas) ya es staff de esa tienda:
-    idempotente, `{ created: false }`, sin tocar nada;
+    idempotente, `{ created: false }`. No cambia nombre ni password, pero
+    garantiza el permiso `staff`;
   - el email es de otro usuario: `DuplicateEmailError`. No se ata un
     usuario existente en silencio.
-- **`removeShopStaff({ userId, shopId?, ownerId? })`.** Borra las filas del
-  pivote que pasan el filtro y devuelve cuántas borró. El usuario no se
-  borra. El pivote no tiene `updated_at`.
+- **`removeShopStaff({ userId, shopId?, ownerId? })`.** En un
+  `$transaction`, borra las filas del pivote que pasan el filtro y devuelve
+  cuántas borró. Si el usuario se queda sin ninguna tienda, pierde el permiso
+  `staff` (US-101). El usuario no se borra. El pivote no tiene `updated_at`.
+- **`listStaffShops(userId)`** (US-101). Las tiendas de las que el usuario es
+  staff, `shop_id` asc. `/me` las suma a `shops`.
+
+El permiso global `staff` refleja si el usuario es staff de alguna tienda. El
+seed sigue la misma regla.
 
 ### Mensajería (US-56, Épico 46) — `conversations.repository.ts`
 

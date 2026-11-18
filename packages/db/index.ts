@@ -424,7 +424,11 @@ export type {
   CreateShopStaffResult,
   RemoveShopStaffInput,
 } from './src/repositories/staff.repository';
-export { createShopStaff, removeShopStaff } from './src/repositories/staff.repository';
+export {
+  createShopStaff,
+  listStaffShops,
+  removeShopStaff,
+} from './src/repositories/staff.repository';
 export type {
   CreateStoreNoticeInput,
   ListStoreNoticesInput,
