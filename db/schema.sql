@@ -1238,6 +1238,40 @@ CREATE TABLE IF NOT EXISTS flash_sale_products (
 
 
 -- =====================================================================
+-- Solicitudes de vendedores para ventas flash (US-97, Épico 95) —
+-- flash_sale_requests + flash_sale_request_products.
+--
+-- Un dueño de tienda (o su staff) pide que unos productos suyos entren en
+-- una venta. No hay mock: las tablas nacen vacías (DA-4). shop_id se deduce
+-- de los productos (todos de la misma tienda) y no viene en el cuerpo.
+-- status es texto (DA-5): con un booleano no se distinguirían «pendiente»
+-- y «rechazada». La API emite el request_status booleano del admin como
+-- status = 'approved'. Aprobar y rechazar (US-98) escriben en
+-- flash_sale_products; estas tablas solo guardan la solicitud.
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS flash_sale_requests (
+    id             bigserial    PRIMARY KEY,
+    title          text         NOT NULL,
+    flash_sale_id  bigint       NOT NULL REFERENCES flash_sales(id) ON DELETE CASCADE,
+    shop_id        bigint       NOT NULL REFERENCES shops(id)       ON DELETE CASCADE,
+    created_by     bigint                REFERENCES users(id)       ON DELETE SET NULL,
+    note           text         NOT NULL,
+    status         text         NOT NULL DEFAULT 'pending',
+    language       text         NOT NULL DEFAULT 'es',
+    created_at     timestamptz  NOT NULL DEFAULT now(),
+    updated_at     timestamptz  NOT NULL DEFAULT now(),
+    CONSTRAINT flash_sale_requests_status_check CHECK (status IN ('pending', 'approved', 'rejected'))
+);
+
+CREATE TABLE IF NOT EXISTS flash_sale_request_products (
+    request_id  bigint  NOT NULL REFERENCES flash_sale_requests(id) ON DELETE CASCADE,
+    product_id  bigint  NOT NULL REFERENCES products(id)            ON DELETE CASCADE,
+    PRIMARY KEY (request_id, product_id)
+);
+
+
+-- =====================================================================
 -- Índices.
 --
 -- No son decorativos: cada uno responde a un filtro que el frontend
@@ -1373,6 +1407,13 @@ CREATE INDEX IF NOT EXISTS ownership_transfers_created_by_idx ON ownership_trans
 -- Ventas flash (US-94): la PK cubre flash_sale_id; product_id sirve a su FK
 -- (borrar un producto busca sus filas puente).
 CREATE INDEX IF NOT EXISTS flash_sale_products_product_idx    ON flash_sale_products (product_id);
+
+-- Solicitudes de venta flash (US-97): las FK hacia la venta y la tienda
+-- (borrarlas busca sus solicitudes) y el filtro por tienda del listado. La
+-- PK de la tabla puente cubre request_id; product_id sirve a su FK.
+CREATE INDEX IF NOT EXISTS flash_sale_requests_flash_sale_idx         ON flash_sale_requests (flash_sale_id);
+CREATE INDEX IF NOT EXISTS flash_sale_requests_shop_idx               ON flash_sale_requests (shop_id);
+CREATE INDEX IF NOT EXISTS flash_sale_request_products_product_idx    ON flash_sale_request_products (product_id);
 
 
 -- ---------------------------------------------------------------------

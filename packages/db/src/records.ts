@@ -28,6 +28,7 @@ import type {
   Coupon,
   Faq,
   FlashSale,
+  FlashSaleRequest,
   Manufacturer,
   Message,
   Order,
@@ -183,6 +184,29 @@ export interface FlashSaleRecord {
   createdAt: Date;
   updatedAt: Date;
   products: ProductRecord[];
+}
+
+/** Estado de una solicitud de venta flash (US-97, DA-5): texto, no booleano. */
+export type FlashSaleRequestStatus = 'pending' | 'approved' | 'rejected';
+
+/**
+ * Solicitud de un vendedor para meter productos en una venta flash (US-97).
+ * `products` son los productos pedidos, en orden de `product_id`;
+ * `flashSale`, la venta con sus propios productos.
+ */
+export interface FlashSaleRequestRecord {
+  id: number;
+  title: string;
+  flashSaleId: number;
+  shopId: number;
+  createdBy: number | null;
+  note: string;
+  status: FlashSaleRequestStatus;
+  language: string;
+  createdAt: Date;
+  updatedAt: Date;
+  products: ProductRecord[];
+  flashSale: FlashSaleRecord;
 }
 
 export interface ManufacturerRecord {
@@ -740,6 +764,29 @@ export function _toFlashSaleRecord(
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     products,
+  };
+}
+
+/** Fila de `flash_sale_requests` + productos y venta ya hidratados (los pasa el repositorio). */
+export function _toFlashSaleRequestRecord(
+  row: FlashSaleRequest,
+  products: ProductRecord[],
+  flashSale: FlashSaleRecord
+): FlashSaleRequestRecord {
+  return {
+    id: _id(row.id),
+    title: row.title,
+    flashSaleId: _id(row.flashSaleId),
+    shopId: _id(row.shopId),
+    createdBy: _id(row.createdBy),
+    note: row.note,
+    // El CHECK flash_sale_requests_status_check garantiza el dominio.
+    status: row.status as FlashSaleRequestStatus,
+    language: row.language,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    products,
+    flashSale,
   };
 }
 

@@ -1505,7 +1505,7 @@ L.push(
   '-- mock, así que hay que adelantar las secuencias o el primer INSERT nuevo',
   '-- chocaría con una clave existente.'
 );
-for (const t of ['types', 'users', 'permissions', 'shops', 'categories', 'manufacturers', 'tags', 'products', 'faqs', 'terms_and_conditions', 'refund_policies', 'refund_reasons', 'taxes', 'shippings', 'attributes', 'attribute_values', 'store_notices', 'coupons', 'reviews', 'abusive_reports', 'questions', 'conversations', 'messages', 'order_statuses', 'orders', 'order_files', 'withdraws', 'ownership_transfers', 'authors', 'flash_sales']) {
+for (const t of ['types', 'users', 'permissions', 'shops', 'categories', 'manufacturers', 'tags', 'products', 'faqs', 'terms_and_conditions', 'refund_policies', 'refund_reasons', 'taxes', 'shippings', 'attributes', 'attribute_values', 'store_notices', 'coupons', 'reviews', 'abusive_reports', 'questions', 'conversations', 'messages', 'order_statuses', 'orders', 'order_files', 'withdraws', 'ownership_transfers', 'authors', 'flash_sales', 'flash_sale_requests']) {
   L.push(`SELECT setval('${t}_id_seq', GREATEST((SELECT COALESCE(max(id), 1) FROM ${t}), 1));`);
 }
 

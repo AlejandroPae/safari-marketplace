@@ -44,7 +44,8 @@
 //     authors_products_count_check (≥ 0), y desde US-94 flash_sales_type_check
 //     (∈ percentage|fixed_rate), flash_sales_rate_check (≥ 0),
 //     flash_sales_dates_check (end_date ≥ start_date) y
-//     flash_sales_sale_status_check (∈ 0|1). Los repositorios los validan antes de escribir y
+//     flash_sales_sale_status_check (∈ 0|1), y desde US-97
+//     flash_sale_requests_status_check (∈ pending|approved|rejected). Los repositorios los validan antes de escribir y
 //     traducen la violación a errores de dominio.
 //   · El índice único parcial de expresión users_email_lower_idx
 //     (unique btree (lower(email))): garantiza el email case-insensitive
@@ -130,6 +131,7 @@ model Shop {
   orders             Order[]
   withdraws          Withdraw[]
   ownershipTransfers OwnershipTransfer[]
+  flashSaleRequests  FlashSaleRequest[]
 
   @@map("shops")
 }
@@ -230,16 +232,17 @@ model Product {
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  manufacturer Manufacturer?     @relation(fields: [manufacturerId], references: [id], onUpdate: NoAction)
-  shop         Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  type         Type              @relation(fields: [typeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  categories   CategoryProduct[]
-  tags         ProductTag[]
-  wishlists    Wishlist[]
-  reviews      Review[]
-  questions    Question[]
-  orderLines   OrderProduct[]
-  flashSales   FlashSaleProduct[]
+  manufacturer      Manufacturer?             @relation(fields: [manufacturerId], references: [id], onUpdate: NoAction)
+  shop              Shop                      @relation(fields: [shopId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  type              Type                      @relation(fields: [typeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categories        CategoryProduct[]
+  tags              ProductTag[]
+  wishlists         Wishlist[]
+  reviews           Review[]
+  questions         Question[]
+  orderLines        OrderProduct[]
+  flashSales        FlashSaleProduct[]
+  flashSaleRequests FlashSaleRequestProduct[]
 
   @@unique([sourceStore, sourceProductId], map: "products_procedencia_key", where: raw("(source_store IS NOT NULL)"))
   @@index([manufacturerId], map: "products_manufacturer_idx")
@@ -317,6 +320,7 @@ model User {
   transfersTo         OwnershipTransfer[]  @relation("OwnershipTransferCurrentOwner")
   transfersCreated    OwnershipTransfer[]  @relation("OwnershipTransferCreator")
   conversationReads   ConversationRead[]
+  flashSaleRequests   FlashSaleRequest[]
 
   @@map("users")
 }
@@ -1007,6 +1011,7 @@ model FlashSale {
   updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   products FlashSaleProduct[]
+  requests FlashSaleRequest[]
 
   @@map("flash_sales")
 }
@@ -1021,4 +1026,38 @@ model FlashSaleProduct {
   @@id([flashSaleId, productId])
   @@index([productId], map: "flash_sale_products_product_idx")
   @@map("flash_sale_products")
+}
+
+model FlashSaleRequest {
+  id          BigInt   @id @default(autoincrement())
+  title       String
+  flashSaleId BigInt   @map("flash_sale_id")
+  shopId      BigInt   @map("shop_id")
+  createdBy   BigInt?  @map("created_by")
+  note        String
+  status      String   @default("pending")
+  language    String   @default("es")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  flashSale FlashSale                 @relation(fields: [flashSaleId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  shop      Shop                      @relation(fields: [shopId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  creator   User?                     @relation(fields: [createdBy], references: [id], onUpdate: NoAction)
+  products  FlashSaleRequestProduct[]
+
+  @@index([flashSaleId], map: "flash_sale_requests_flash_sale_idx")
+  @@index([shopId], map: "flash_sale_requests_shop_idx")
+  @@map("flash_sale_requests")
+}
+
+model FlashSaleRequestProduct {
+  requestId BigInt @map("request_id")
+  productId BigInt @map("product_id")
+
+  request FlashSaleRequest @relation(fields: [requestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product Product          @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([requestId, productId])
+  @@index([productId], map: "flash_sale_request_products_product_idx")
+  @@map("flash_sale_request_products")
 }

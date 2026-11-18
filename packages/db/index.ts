@@ -39,6 +39,8 @@ export type {
   CategoryRecord,
   ConversationRecord,
   FlashSaleRecord,
+  FlashSaleRequestRecord,
+  FlashSaleRequestStatus,
   CouponRecord,
   FaqRecord,
   ManufacturerRecord,
@@ -155,6 +157,24 @@ export {
   listProductFlashSales,
   updateFlashSale,
 } from './src/repositories/flash-sale.repository';
+export type {
+  CreateFlashSaleRequestInput,
+  ListFlashSaleRequestProductsInput,
+  ListFlashSaleRequestsInput,
+  UpdateFlashSaleRequestInput,
+} from './src/repositories/flash-sale-requests.repository';
+export {
+  createFlashSaleRequest,
+  deleteFlashSaleRequest,
+  FLASH_SALE_REQUEST_STATUSES,
+  FlashSaleRequestStateError,
+  findFlashSaleRequestById,
+  InvalidFlashSaleRequestError,
+  listFlashSaleRequestProducts,
+  listFlashSaleRequests,
+  resolveFlashSaleRequestShop,
+  updateFlashSaleRequest,
+} from './src/repositories/flash-sale-requests.repository';
 export type { UpdateBecomeSellerInput } from './src/repositories/become-seller.repository';
 export {
   getBecomeSeller,

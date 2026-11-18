@@ -35,8 +35,12 @@ import {
 
 const AGGREGATE = 'flash_sales';
 
-/** Include de una venta con sus productos hidratados, en orden de `product_id`. */
-const FLASH_SALE_INCLUDE = {
+/**
+ * Include de una venta con sus productos hidratados, en orden de `product_id`.
+ * Exportado para `flash-sale-requests.repository.ts` (US-97); no está en el
+ * barrel.
+ */
+export const FLASH_SALE_INCLUDE = {
   products: {
     orderBy: { productId: 'asc' as const },
     include: { product: { include: PRODUCT_INCLUDE } },
@@ -48,7 +52,7 @@ type FlashSalePayload = Prisma.FlashSaleGetPayload<{
 }>;
 
 /** Un producto que se está borrando en cascada se descarta (como `listProducts`). */
-function _toRecord(row: FlashSalePayload): FlashSaleRecord {
+export function _toHydratedFlashSale(row: FlashSalePayload): FlashSaleRecord {
   const products = row.products
     .map((link) => _toProductRecord(link.product))
     .filter((record): record is ProductRecord => record !== null);
@@ -91,7 +95,7 @@ export async function listFlashSales(
     }),
     prisma.flashSale.count({ where }),
   ]);
-  return { items: rows.map(_toRecord), total };
+  return { items: rows.map(_toHydratedFlashSale), total };
 }
 
 /** Una venta por slug, con sus productos. `null` si no existe. */
@@ -102,7 +106,7 @@ export async function findFlashSaleBySlug(
     where: { slug },
     include: FLASH_SALE_INCLUDE,
   });
-  return row ? _toRecord(row) : null;
+  return row ? _toHydratedFlashSale(row) : null;
 }
 
 /**
@@ -124,7 +128,7 @@ export async function listProductFlashSales(
     orderBy: { id: 'desc' },
     include: FLASH_SALE_INCLUDE,
   });
-  return rows.map(_toRecord);
+  return rows.map(_toHydratedFlashSale);
 }
 
 export interface ListFlashSaleProductsInput {
@@ -346,7 +350,7 @@ export async function createFlashSale(
         include: FLASH_SALE_INCLUDE,
       });
     });
-    return _toRecord(row);
+    return _toHydratedFlashSale(row);
   } catch (error) {
     throw translateCatalogWriteError(error, { aggregate: AGGREGATE });
   }
@@ -432,7 +436,7 @@ export async function updateFlashSale(
         include: FLASH_SALE_INCLUDE,
       });
     });
-    return _toRecord(row);
+    return _toHydratedFlashSale(row);
   } catch (error) {
     throw translateCatalogWriteError(error, { aggregate: AGGREGATE, id });
   }
@@ -453,7 +457,7 @@ export async function deleteFlashSale(id: number): Promise<FlashSaleRecord> {
 
   try {
     await prisma.flashSale.delete({ where: { id } });
-    return _toRecord(existing);
+    return _toHydratedFlashSale(existing);
   } catch (error) {
     throw translateCatalogWriteError(error, { aggregate: AGGREGATE, id });
   }

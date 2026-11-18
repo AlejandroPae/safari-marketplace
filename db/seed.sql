@@ -2463,5 +2463,6 @@ SELECT setval('withdraws_id_seq', GREATEST((SELECT COALESCE(max(id), 1) FROM wit
 SELECT setval('ownership_transfers_id_seq', GREATEST((SELECT COALESCE(max(id), 1) FROM ownership_transfers), 1));
 SELECT setval('authors_id_seq', GREATEST((SELECT COALESCE(max(id), 1) FROM authors), 1));
 SELECT setval('flash_sales_id_seq', GREATEST((SELECT COALESCE(max(id), 1) FROM flash_sales), 1));
+SELECT setval('flash_sale_requests_id_seq', GREATEST((SELECT COALESCE(max(id), 1) FROM flash_sale_requests), 1));
 
 COMMIT;
