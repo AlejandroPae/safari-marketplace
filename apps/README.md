@@ -11,8 +11,46 @@ Guía verificada en Windows 11 + Node 22.14 + yarn 1.22.22 (2026-08-24).
 | Admin | `admin/rest` | Next.js 16.4 (pages router, webpack) + React 19.3 | `3002` |
 
 `shop` y `admin/rest` consumen la API vía `NEXT_PUBLIC_REST_API_ENDPOINT`.
-Existe además una variante GraphQL (`api/graphql` + `dev:gql`) que depende de
-codegen con `graphql-let`; no es necesaria para el stack REST.
+El único stack soportado es REST. La variante GraphQL está **congelada**: ver
+la sección siguiente.
+
+## Variante GraphQL: congelada como referencia (US-12)
+
+**Decisión del dueño (2026-11-18):** «Congelar como referencia». Para las
+dependencias: «Solo si comparte lockfile».
+
+**Qué es la variante GraphQL:**
+
+- `api/graphql`: el mock GraphQL original de Pickbazar (NestJS 9 y
+  `@nestjs/graphql` 10, con datos en JSON). No se toca desde el commit inicial
+  y nunca se migró a Postgres.
+- `admin/graphql`: el admin que consume esa API. Arranca con `dev` en el
+  puerto 3004.
+- En el shop, los scripts `dev:gql` y `build:gql`. Los dos corren antes el
+  codegen de `graphql-let`.
+
+**Qué significa congelarla:**
+
+- Se queda en el repo como referencia didáctica: sirve para comparar el mismo
+  frontend sobre REST y sobre GraphQL. No se borra código.
+- **No está soportada.** Ninguna receta del `justfile` la arranca, la
+  construye, la prueba ni la verifica, y `just verify` no la mira. No hay
+  garantía de que `dev:gql`, `build:gql` o `admin/graphql` funcionen. Si no
+  funcionan, no es un bug que vaya a arreglarse.
+- `api/graphql` sirve datos del mock, no la base de Postgres que usa el stack
+  REST. Aunque arrancara, su catálogo no coincide con el de la tienda.
+- `admin/graphql` sigue en el workspace de yarn (`admin/*`), así que
+  `yarn install` la instala. Sacarla del workspace no entra en US-12.
+
+**Dependencias:** mientras `admin/graphql` siga en el workspace, una
+actualización solo la toca para que `yarn.lock` tenga una sola copia de un
+paquete compartido (como `next`, o React con `resolutions`). No se le dedica
+trabajo propio: ni lint, ni build, ni migraciones. `api/graphql` está fuera
+del workspace y no se actualiza.
+
+**Para revertir:** mantenerla operativa (recetas `*-gql` que funcionen) o
+eliminarla requiere una US nueva. Si se elimina, esa US trae su plan de
+remoción.
 
 ## Atajo: `just`
 
@@ -79,7 +117,7 @@ Son **dos instalaciones separadas**: `api/rest` no forma parte del workspace de
 `apps/`.
 
 ```bash
-cd apps          && yarn install    # shop + admin/rest + admin/graphql (~11 min)
+cd apps          && yarn install    # shop + admin/rest + admin/graphql, que está congelada (~11 min)
 cd apps/api/rest && yarn install    # API NestJS (~4 min)
 ```
 

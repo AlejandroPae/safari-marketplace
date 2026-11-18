@@ -104,7 +104,9 @@ set-api-port:
 [group('setup')]
 install: install-apps install-api
 
-# Workspace del frontend: shop + admin/rest + admin/graphql (~11 min)
+# Workspace del frontend: shop + admin/rest + admin/graphql (~11 min).
+# La variante GraphQL está congelada (US-12): se instala pero ninguna receta
+# la arranca, construye ni verifica. Ver apps/README.md.
 [group('setup')]
 [working-directory: 'apps']
 install-apps:
