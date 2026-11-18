@@ -229,6 +229,7 @@ US-70    Login con Google opcional en el shop     → standalone ✅ (2026-10-24
 US-71    El shop no expulsa por un 401/403        → standalone ✅ (2026-10-24) ← interceptor solo 401 con token; tienda y avisos solo en /shops/[slug]; R-6 intacto
 US-72    Higiene agéntica (hooks .env y node_modules) → standalone ✅ (2026-10-24) ← DA-1..DA-4 (a); hooks PreToolUse activos en .claude/settings.json; .editorconfig sin end_of_line
 US-99    console.log heredados al Logger      → standalone ✅ (2026-11-18) ← DA-1..DA-4 por defecto; no-console en el lint de la API; ya no se registra el access_token del login social
+US-100   Órdenes acotadas por tienda          → standalone ✅ (2026-11-18) ← dueño/staff solo ven y tocan órdenes de sus tiendas; «Mis pedidos» del dueño ya no lista los de todos; previa a US-101
 ```
 
 Las US-64 a US-69 salen de los «NO incluye» y hallazgos del Épico 46 (US-52
