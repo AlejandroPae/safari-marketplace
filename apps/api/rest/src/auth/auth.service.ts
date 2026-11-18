@@ -23,6 +23,7 @@ import {
   findUserWithRelations,
   getUserFriendlyMessage,
   isPrismaConnectionError,
+  listStaffShops,
   updateUserPasswordHash,
 } from '@safari/db';
 import {
@@ -466,11 +467,31 @@ export class AuthService {
     };
   }
 
+  /**
+   * US-101, Decisión B: en `/me`, `shops` son las tiendas que el usuario
+   * gestiona. Primero las suyas como dueño y después aquellas de las que es
+   * staff (`shop_staff`, `shop_id` asc), sin duplicados. Las páginas
+   * `[shop]/*` del admin dejan entrar si la tienda está en `me.shops`, así
+   * que un staff de varias tiendas entra a todas sin tocar el frontend.
+   * `managed_shop` sigue sin emitirse.
+   *
+   * Solo aquí, no en `toUserDto`: en `/staffs` y `/users`, `shops` sigue
+   * significando «es dueño». Los botones de dueño dependen del permiso, no de
+   * `shops`.
+   */
   async me(userId: number): Promise<User> {
-    const record = await this.withPrismaErrorTranslation(() =>
-      findUserWithRelations(userId),
+    const [record, staffShops] = await this.withPrismaErrorTranslation(() =>
+      Promise.all([findUserWithRelations(userId), listStaffShops(userId)]),
     );
-    return toUserDto(record);
+    if (!record) return toUserDto(record);
+    const owned = new Set(record.shops.map((shop) => shop.id));
+    return toUserDto({
+      ...record,
+      shops: [
+        ...record.shops,
+        ...staffShops.filter((shop) => !owned.has(shop.id)),
+      ],
+    });
   }
 
   /**

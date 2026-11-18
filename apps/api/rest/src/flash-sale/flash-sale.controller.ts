@@ -14,7 +14,7 @@ import { CreateFlashSaleDto } from './dto/create-flash-sale.dto.js';
 import { UpdateFlashSaleDto } from './dto/update-flash-sale.dto.js';
 import { Public } from '#src/auth/decorators/public.decorator.js';
 import {
-  ADMIN_OWNER_AND_STAFF,
+  ADMIN_ONLY,
   Permissions,
 } from '#src/auth/decorators/permissions.decorator.js';
 
@@ -22,7 +22,7 @@ import {
 export class FlashSaleController {
   constructor(private flashSaleService: FlashSaleService) {}
 
-  @Permissions(...ADMIN_OWNER_AND_STAFF)
+  @Permissions(...ADMIN_ONLY)
   @Post()
   createFlashSale(@Body() createFlashSaleDto: CreateFlashSaleDto) {
     return this.flashSaleService.create(createFlashSaleDto);
@@ -43,7 +43,7 @@ export class FlashSaleController {
     return this.flashSaleService.getFlashSale(param, language);
   }
 
-  @Permissions(...ADMIN_OWNER_AND_STAFF)
+  @Permissions(...ADMIN_ONLY)
   @Put(':id')
   update(
     @Param('id') id: string,
@@ -53,7 +53,7 @@ export class FlashSaleController {
     return this.flashSaleService.update(+id, updateFlashSaleDto);
   }
 
-  @Permissions(...ADMIN_OWNER_AND_STAFF)
+  @Permissions(...ADMIN_ONLY)
   @Delete(':id')
   deleteFlashSale(@Param('id') id: string) {
     return this.flashSaleService.remove(+id);

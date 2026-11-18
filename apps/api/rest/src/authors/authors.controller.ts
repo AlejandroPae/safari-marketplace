@@ -16,7 +16,8 @@ import { UpdateAuthorDto } from './dto/update-author.dto.js';
 import { CreateAuthorDto } from './dto/create-author.dto.js';
 import { Public } from '#src/auth/decorators/public.decorator.js';
 import {
-  ADMIN_OWNER_AND_STAFF,
+  ADMIN_AND_OWNER,
+  ADMIN_ONLY,
   Permissions,
 } from '#src/auth/decorators/permissions.decorator.js';
 
@@ -24,7 +25,7 @@ import {
 export class AuthorsController {
   constructor(private readonly authorsService: AuthorsService) {}
 
-  @Permissions(...ADMIN_OWNER_AND_STAFF)
+  @Permissions(...ADMIN_AND_OWNER)
   @Post()
   createAuthor(@Body() createAuthorDto: CreateAuthorDto) {
     return this.authorsService.create(createAuthorDto);
@@ -42,13 +43,13 @@ export class AuthorsController {
     return this.authorsService.getAuthorBySlug(slug);
   }
 
-  @Permissions(...ADMIN_OWNER_AND_STAFF)
+  @Permissions(...ADMIN_ONLY)
   @Put(':id')
   update(@Param('id') id: string, @Body() updateAuthorDto: UpdateAuthorDto) {
     return this.authorsService.update(+id, updateAuthorDto);
   }
 
-  @Permissions(...ADMIN_OWNER_AND_STAFF)
+  @Permissions(...ADMIN_ONLY)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.authorsService.remove(+id);

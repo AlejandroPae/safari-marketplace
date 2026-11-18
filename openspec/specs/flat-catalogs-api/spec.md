@@ -486,9 +486,12 @@ el driver.)
 
 ### Requirement: Permisos de escritura de `tags` y `manufacturers` sin cambios (CA-5)
 
-`POST`/`PUT`/`DELETE /api/tags` MUST seguir exigiendo `ADMIN_ONLY`; los
-mismos verbos en `/api/manufacturers`, `ADMIN_OWNER_AND_STAFF`. Sin token →
-401. Token `customer` → 403 en las 6 rutas. `store_owner` → 403/200.
+`POST`/`PUT`/`DELETE /api/tags` MUST seguir exigiendo `ADMIN_ONLY`. En
+`/api/manufacturers`, `POST` exige `ADMIN_AND_OWNER` y `PUT`/`DELETE`
+`ADMIN_ONLY` (US-101, que también aplica este reparto a `/api/authors`; antes
+los tres verbos eran `ADMIN_OWNER_AND_STAFF`). Sin token → 401. Token
+`customer` o `staff` → 403 en las 6 rutas. `store_owner` → 403 en tags y en
+`PUT`/`DELETE` de manufacturers; 201 en `POST /api/manufacturers`.
 
 #### Scenario: CA-5 — matriz de permisos
 - GIVEN las 6 rutas

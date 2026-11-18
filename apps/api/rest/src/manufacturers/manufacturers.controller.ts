@@ -19,7 +19,8 @@ import { CreateManufacturerDto } from './dto/create-manufacturer.dto.js';
 import { UpdateManufacturerDto } from './dto/update-manufacturer.dto.js';
 import { Public } from '#src/auth/decorators/public.decorator.js';
 import {
-  ADMIN_OWNER_AND_STAFF,
+  ADMIN_AND_OWNER,
+  ADMIN_ONLY,
   Permissions,
 } from '#src/auth/decorators/permissions.decorator.js';
 
@@ -27,7 +28,7 @@ import {
 export class ManufacturersController {
   constructor(private readonly manufacturersService: ManufacturersService) {}
 
-  @Permissions(...ADMIN_OWNER_AND_STAFF)
+  @Permissions(...ADMIN_AND_OWNER)
   @Post()
   createProduct(@Body() createManufactureDto: CreateManufacturerDto) {
     return this.manufacturersService.create(createManufactureDto);
@@ -49,7 +50,7 @@ export class ManufacturersController {
     return this.manufacturersService.getManufacturesBySlug(slug);
   }
 
-  @Permissions(...ADMIN_OWNER_AND_STAFF)
+  @Permissions(...ADMIN_ONLY)
   @Put(':id')
   update(
     @Param('id') id: string,
@@ -58,7 +59,7 @@ export class ManufacturersController {
     return this.manufacturersService.update(+id, updateManufacturerDto);
   }
 
-  @Permissions(...ADMIN_OWNER_AND_STAFF)
+  @Permissions(...ADMIN_ONLY)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.manufacturersService.remove(+id);
