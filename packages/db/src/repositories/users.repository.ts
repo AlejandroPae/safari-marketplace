@@ -53,6 +53,12 @@ export interface ListUsersInput {
   text?: string;
   /** Filtra por el nombre del permiso asignado (p. ej. 'super_admin'). */
   permissionName?: string;
+  /**
+   * Solo usuarios con fila en `shop_staff` (US-42). `{}` = staff de
+   * cualquier tienda; `shopId` acota a una tienda y `ownerId` a las tiendas
+   * de ese dueño. Combinables.
+   */
+  staffOf?: { shopId?: number; ownerId?: number };
 }
 
 export interface CreateUserInput {
@@ -208,6 +214,18 @@ function _usersWhere(input: ListUsersInput): Prisma.UserWhereInput {
   return {
     ...(input.permissionName && {
       permissions: { some: { permission: { name: input.permissionName } } },
+    }),
+    ...(input.staffOf && {
+      staffShops: {
+        some: {
+          ...(input.staffOf.shopId !== undefined && {
+            shopId: input.staffOf.shopId,
+          }),
+          ...(input.staffOf.ownerId !== undefined && {
+            shop: { ownerId: input.staffOf.ownerId },
+          }),
+        },
+      },
     }),
     ...(input.text && {
       OR: [

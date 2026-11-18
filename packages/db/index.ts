@@ -420,6 +420,12 @@ export {
   updateShop,
 } from './src/repositories/shops.repository';
 export type {
+  CreateShopStaffInput,
+  CreateShopStaffResult,
+  RemoveShopStaffInput,
+} from './src/repositories/staff.repository';
+export { createShopStaff, removeShopStaff } from './src/repositories/staff.repository';
+export type {
   CreateStoreNoticeInput,
   ListStoreNoticesInput,
   StoreNoticeSortField,

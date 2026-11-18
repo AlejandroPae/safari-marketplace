@@ -388,6 +388,25 @@ dice si hay fila en `shop_staff`. Ser dueño no cuenta, y con ids no
 válidos devuelve `false` sin lanzar. Es solo la consulta de pertenencia:
 el CRUD de `/staffs` es US-42.
 
+### Staff de tienda (US-42, Épico 40) — `staff.repository.ts`
+
+- **Listados.** No tienen función propia. `listUsersWithRelations` acepta
+  `staffOf: { shopId?, ownerId? }`: usuarios con fila en `shop_staff`,
+  acotados a una tienda, a las tiendas de un dueño o a ambas. `{}` da el
+  staff de cualquier tienda. Pagina usuarios, no filas: el que es staff de
+  dos tiendas sale una vez.
+- **`createShopStaff({ name, email, passwordHash, shopId })`.** En un
+  `$transaction` crea el usuario (permiso `customer`) y su fila del pivote.
+  Fija `createdAt` y `updatedAt` desde `clock.ts`. Según el caso:
+  - tienda inexistente: `InvalidReferenceError`;
+  - el email (sin distinguir mayúsculas) ya es staff de esa tienda:
+    idempotente, `{ created: false }`, sin tocar nada;
+  - el email es de otro usuario: `DuplicateEmailError`. No se ata un
+    usuario existente en silencio.
+- **`removeShopStaff({ userId, shopId?, ownerId? })`.** Borra las filas del
+  pivote que pasan el filtro y devuelve cuántas borró. El usuario no se
+  borra. El pivote no tiene `updated_at`.
+
 ### Mensajería (US-56, Épico 46) — `conversations.repository.ts`
 
 Un solo repositorio para el agregado. `ConversationRecord` y `MessageRecord`
