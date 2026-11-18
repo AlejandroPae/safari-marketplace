@@ -212,7 +212,7 @@ Feature: …
 Épico 19 Autenticación y autorización         → US-20 … US-25  (completado)
 Épico 26 Escrituras del catálogo desde Postgres → US-27a … US-30  (completado 2026-09-11)
 Épico 33 Contenido y configuración desde Postgres → REEMPLAZADO por el Épico 46 (2026-10-20)
-Épico 40 Identidad extendida desde Postgres      → US-41 ✅, US-42, US-44 ✅   ← US-43 reemplazada por US-63 del Épico 46
+Épico 40 Identidad extendida desde Postgres      → US-41 ✅, US-42 ✅, US-44 ✅ (completado 2026-11-18)   ← US-43 reemplazada por US-63 del Épico 46
 Épico 46 API sin mocks JSON (19 controladores)   → US-47 … US-63 ✅ (completado 2026-10-23) ← SECUENCIAL; cada US trae su DDL + seed + db-reset; levanta la exclusión de db/schema.sql:13-16
 Épico 75 Actualización de dependencias          → US-76 … 78, 80 … 86, 88 … 91 ✅; US-79 reemplazada por US-88 … US-91 (Nest 12 = ESM + Vitest + TS 6); queda US-87 ← una mayor por US; API (77→79) y frontend (80→83) en paralelo; DA-1..DA-6 con propuesta por defecto
 Épico 92 authors y flash-sale desde Postgres    → US-93, US-94   ← SECUENCIAL; reabre la decisión 2 del Épico 46 solo para estos dos (2026-11-17); pagos siguen mock hasta US-87

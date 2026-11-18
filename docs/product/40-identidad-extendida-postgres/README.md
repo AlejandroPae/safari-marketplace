@@ -6,7 +6,7 @@
 > `db/schema.sql:13-16`.
 
 **Fecha:** 2026-09-15
-**Status:** Refinado
+**Status:** Implementado (2026-11-18): US-41, US-42 y US-44; US-43 reemplazada por US-63
 
 Origen: [`_backlog/api-mock-restante-dominio-transaccional.md`](../_backlog/api-mock-restante-dominio-transaccional.md),
 Fase 2 de su secuencia propuesta. El dueño la priorizó el 2026-09-15.
@@ -25,7 +25,7 @@ sus tres dominios cuelgan de `users` y `shops`, ya migradas en el Épico 19.
 | US | Título | Releasable solo | Depende de | LOC est. | Status |
 |----|--------|-----------------|------------|----------|--------|
 | [US-41](./41-esquema-identidad-extendida.md) | Esquema y capa de datos de identidad extendida | No (habilitadora) | ninguna | ~700 | ✅ Implementada |
-| [US-42](./42-staffs-postgres.md) | `staffs` desde Postgres (`/staffs`, `/my-staffs`, `/all-staffs`) | Sí | US-41 | ~1200 | |
+| [US-42](./42-staffs-postgres.md) | `staffs` desde Postgres (`/staffs`, `/my-staffs`, `/all-staffs`) | Sí | US-41 | ~1200 | ✅ Implementada (2026-11-18) |
 | [US-43](./43-ownership-transfer-postgres.md) | `ownership-transfer` desde Postgres | — | — | ~1300 | ⏭️ **Reemplazada por [US-63](../46-api-sin-mocks-json/63-ownership-transfer-postgres.md)** (Épico 46, 2026-10-20) |
 | [US-44](./44-become-seller-postgres.md) | `become-seller` desde Postgres | Sí | US-41 | ~500 | ✅ Implementada (corte 2/2, `us-44-corte-2-servicio`, 2026-09-18) |
 
