@@ -322,7 +322,7 @@ db-shell:
 # Cuantos productos hay, por tienda y por categoria
 [group('bd')]
 db-count:
-    docker compose exec -T postgres psql -U safari -d safari_scraper -c "SELECT tienda, categoria, count(*) AS n, round(avg(precio)) AS precio_medio FROM productos GROUP BY ROLLUP (tienda, categoria) ORDER BY tienda NULLS LAST, n DESC;"
+    docker compose exec -T postgres psql -U safari -d safari_scraper -c "SELECT CASE WHEN grouping(tienda) = 1 THEN '(total)' ELSE tienda END AS tienda, CASE WHEN grouping(categoria) = 1 THEN '(todas)' ELSE categoria END AS categoria, count(*) AS n, round(avg(price)) AS precio_medio FROM (SELECT coalesce(p.source_store, '(seed)') AS tienda, coalesce(c.slug, '(sin categoria)') AS categoria, p.price FROM products p LEFT JOIN category_product cp ON cp.product_id = p.id LEFT JOIN categories c ON c.id = cp.category_id) t GROUP BY ROLLUP (tienda, categoria) ORDER BY grouping(tienda), tienda, grouping(categoria), n DESC;"
 
 # Prueba el pipeline contra la base, sin salir a internet
 [group('bd')]
