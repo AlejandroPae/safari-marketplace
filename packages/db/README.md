@@ -580,6 +580,14 @@ puente, en orden de `product_id`, hidratados con `PRODUCT_INCLUDE` como en
 - **`listFlashSaleProducts({slug, page, limit})`**: productos de la venta,
   en `id ASC`. Sin `slug`, los de todas las ventas sin repetir. Slug
   inexistente: `null`.
+- **`listProductFlashSales(productId)`** (US-96): las ventas en las que
+  está el producto, en `id DESC`, con sus productos. `[]` si no está en
+  ninguna; producto inexistente: `null`.
+
+`ProductRecord.inFlashSale` (US-96) es `true` si el producto tiene alguna
+fila en `flash_sale_products`. Sale de un `_count` en `PRODUCT_INCLUDE`, así
+que lo traen todos los repositorios que devuelven productos. No mira la
+vigencia de la venta.
 - **`createFlashSale(input)`**: slug con `generateSlug(title)`. Valida los
   CHECKs (`InvalidFieldValueError`) y que existan todos los `productIds`
   (`InvalidReferenceError`) antes de escribir; la venta y sus filas puente

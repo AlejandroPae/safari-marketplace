@@ -152,6 +152,7 @@ export {
   findFlashSaleBySlug,
   listFlashSaleProducts,
   listFlashSales,
+  listProductFlashSales,
   updateFlashSale,
 } from './src/repositories/flash-sale.repository';
 export type { UpdateBecomeSellerInput } from './src/repositories/become-seller.repository';

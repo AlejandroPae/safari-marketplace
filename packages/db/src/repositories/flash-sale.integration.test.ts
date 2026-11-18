@@ -25,8 +25,10 @@ import {
   findFlashSaleBySlug,
   listFlashSaleProducts,
   listFlashSales,
+  listProductFlashSales,
   updateFlashSale,
 } from './flash-sale.repository';
+import { findProductBySlug, listProducts } from './products.repository';
 
 const SENTINEL_PREFIX = 'zz-flash-';
 
@@ -124,6 +126,37 @@ describe('listFlashSaleProducts', () => {
 
   it('slug inexistente ⇒ null', async () => {
     expect(await listFlashSaleProducts({ slug: 'no-existe' })).toBeNull();
+  });
+});
+
+describe('listProductFlashSales (US-96)', () => {
+  it('las ventas del producto, con sus productos', async () => {
+    const sales = await listProductFlashSales(1013);
+    expect(sales?.map((s) => s.id)).toEqual([1]);
+    expect(sales?.[0].products.map((p) => p.id)).toEqual([1013, 1023]);
+  });
+
+  it('producto fuera de toda venta ⇒ []', async () => {
+    expect(await listProductFlashSales(2)).toEqual([]);
+  });
+
+  it('producto inexistente ⇒ null', async () => {
+    expect(await listProductFlashSales(999_999)).toBeNull();
+  });
+});
+
+describe('inFlashSale en ProductRecord (US-96)', () => {
+  it('true exactamente en los 4 productos de las ventas del seed', async () => {
+    const { items } = await listProducts({ limit: 2000 });
+    expect(items.filter((p) => p.inFlashSale).map((p) => p.id)).toEqual([
+      951, 952, 1013, 1023,
+    ]);
+  });
+
+  it('el detalle por slug también lo trae', async () => {
+    const [sale] = (await listProductFlashSales(951)) ?? [];
+    const slug = sale.products.find((p) => p.id === 951)?.slug ?? '';
+    expect((await findProductBySlug(slug))?.inFlashSale).toBe(true);
   });
 });
 

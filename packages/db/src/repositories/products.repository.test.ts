@@ -133,6 +133,7 @@ function makeRow(overrides: Partial<ProductPayload> = {}): ProductPayload {
     manufacturer: null,
     categories: [CATEGORY_LINK],
     tags: [TAG_LINK],
+    _count: { flashSales: 0 },
     ...overrides,
   };
 }
@@ -154,7 +155,14 @@ describe('_toProductRecord — fila sana', () => {
     expect(record?.manufacturer).toBeNull();
     expect(record?.categories.map((c) => c.slug)).toEqual(['fruits']);
     expect(record?.tags.map((t) => t.slug)).toEqual(['baby-milk']);
+    expect(record?.inFlashSale).toBe(false);
     expect(() => JSON.stringify(record)).not.toThrow();
+  });
+
+  it('`_count.flashSales > 0` → `inFlashSale: true` (US-96)', () => {
+    const record = _toProductRecord(makeRow({ _count: { flashSales: 2 } }));
+
+    expect(record?.inFlashSale).toBe(true);
   });
 });
 

@@ -56,6 +56,10 @@ export const PRODUCT_INCLUDE = {
   manufacturer: true,
   categories: { include: { category: true } },
   tags: { include: { tag: true } },
+  // `in_flash_sale` (US-96): cuántas filas de `flash_sale_products` tiene el
+  // producto. Un `COUNT` correlacionado por fila, servido por el índice
+  // `flash_sale_products_product_idx`.
+  _count: { select: { flashSales: true } },
 } satisfies Prisma.ProductInclude;
 
 type ProductPayload = Prisma.ProductGetPayload<{
@@ -82,6 +86,8 @@ export interface ProductRecord {
   quantity: number;
   inStock: boolean;
   soldQuantity: number;
+  /** Está en alguna venta flash (`flash_sale_products`), sin mirar su vigencia (US-96). */
+  inFlashSale: boolean;
   sku: string | null;
   unit: string;
   status: string;
@@ -1076,6 +1082,7 @@ export function _toProductRecord(row: ProductPayload): ProductRecord | null {
     quantity: row.quantity,
     inStock: row.inStock,
     soldQuantity: row.soldQuantity,
+    inFlashSale: row._count.flashSales > 0,
     sku: row.sku,
     unit: row.unit,
     status: row.status,

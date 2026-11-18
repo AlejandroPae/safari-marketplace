@@ -105,6 +105,28 @@ export async function findFlashSaleBySlug(
   return row ? _toRecord(row) : null;
 }
 
+/**
+ * Ventas en las que está un producto, `id DESC` como el listado, con sus
+ * productos (US-96, `product-flash-sale-info`). `[]` si no está en
+ * ninguna; `null` si el producto no existe (el servicio responde 404).
+ */
+export async function listProductFlashSales(
+  productId: number
+): Promise<FlashSaleRecord[] | null> {
+  const product = await prisma.product.findUnique({
+    where: { id: BigInt(productId) },
+    select: { id: true },
+  });
+  if (!product) return null;
+
+  const rows = await prisma.flashSale.findMany({
+    where: { products: { some: { productId: product.id } } },
+    orderBy: { id: 'desc' },
+    include: FLASH_SALE_INCLUDE,
+  });
+  return rows.map(_toRecord);
+}
+
 export interface ListFlashSaleProductsInput {
   /** Venta de la que listar productos. Ausente ⇒ los de todas, sin repetir. */
   slug?: string;
