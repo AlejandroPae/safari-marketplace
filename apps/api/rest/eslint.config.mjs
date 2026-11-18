@@ -51,4 +51,13 @@ export default defineConfig(
       ],
     },
   },
+  // US-99: todo log de la API pasa por el Logger de Nest (timestamp, nivel
+  // y contexto; US-17). Un `console.*` se salta ese formato y ya filtró el
+  // access_token del login social. Los specs quedan fuera porque espían la
+  // consola.
+  {
+    files: ['src/**/*.ts'],
+    ignores: ['src/**/*.spec.ts'],
+    rules: { 'no-console': 'error' },
+  },
 );

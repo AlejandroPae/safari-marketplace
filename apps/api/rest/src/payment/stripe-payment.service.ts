@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { errorDetails } from '#src/common/logging.js';
 import settingJson from '#db/settings.json' with { type: 'json' };
 import { Setting } from '#src/settings/entities/setting.entity.js';
 import { plainToClass } from 'class-transformer';
@@ -24,6 +25,8 @@ const paymentGateways = plainToClass(PaymentGateWay, paymentGatewayJson);
 const setting = plainToClass(Setting, settingJson);
 @Injectable()
 export class StripePaymentService {
+  private readonly logger = new Logger(StripePaymentService.name);
+
   private paymentGateways: PaymentGateWay[] = paymentGateways;
 
   constructor(@InjectStripe() private readonly stripeClient: Stripe) {}
@@ -38,7 +41,7 @@ export class StripePaymentService {
     try {
       return await this.stripeClient.customers.create(createCustomerDto);
     } catch (error) {
-      console.log(error);
+      this.logger.error(...errorDetails(error));
     }
   }
 
@@ -50,7 +53,7 @@ export class StripePaymentService {
     try {
       return await this.stripeClient.customers.retrieve(id);
     } catch (error) {
-      console.log(error);
+      this.logger.error(...errorDetails(error));
     }
   }
 
@@ -61,7 +64,7 @@ export class StripePaymentService {
     try {
       return await this.stripeClient.customers.list();
     } catch (error) {
-      console.log(error);
+      this.logger.error(...errorDetails(error));
     }
   }
 
@@ -81,7 +84,7 @@ export class StripePaymentService {
       const { ...newPaymentMethod }: StripePaymentMethod = paymentMethod;
       return newPaymentMethod;
     } catch (error) {
-      console.log(error);
+      this.logger.error(...errorDetails(error));
     }
   }
 
@@ -95,7 +98,7 @@ export class StripePaymentService {
     try {
       return await this.stripeClient.paymentMethods.retrieve(method_key);
     } catch (error) {
-      console.log(error);
+      this.logger.error(...errorDetails(error));
     }
   }
 
@@ -115,7 +118,7 @@ export class StripePaymentService {
       );
       return data;
     } catch (error) {
-      console.log(error);
+      this.logger.error(...errorDetails(error));
     }
   }
 
@@ -134,7 +137,7 @@ export class StripePaymentService {
         customer: customer_id,
       });
     } catch (error) {
-      console.log(error);
+      this.logger.error(...errorDetails(error));
     }
   }
 
@@ -148,7 +151,7 @@ export class StripePaymentService {
     try {
       return await this.stripeClient.paymentMethods.detach(method_id);
     } catch (error) {
-      console.log(error);
+      this.logger.error(...errorDetails(error));
     }
   }
 
@@ -166,7 +169,7 @@ export class StripePaymentService {
       const { ...newIntent }: StripePaymentIntent = paymentIntent;
       return newIntent;
     } catch (error) {
-      console.log(error);
+      this.logger.error(...errorDetails(error));
     }
   }
 
@@ -180,7 +183,7 @@ export class StripePaymentService {
     try {
       return await this.stripeClient.paymentIntents.retrieve(payment_id);
     } catch (error) {
-      console.log(error);
+      this.logger.error(...errorDetails(error));
     }
   }
 

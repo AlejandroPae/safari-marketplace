@@ -317,8 +317,10 @@ Logs:
 - Los errores de Prisma salen como `ERROR [Prisma]` en una sola línea. Antes
   eran un bloque `prisma:error` suelto (`setPrismaLogSink` de `@safari/db`).
 - Lo único que sigue sin prefijo son las líneas de continuación de una entrada
-  multilínea (el stack de un `ERROR [ExceptionsHandler]`) y los `console.log`
-  heredados de Pickbazar (pagos, stubs, `users`, `auth`).
+  multilínea, como el stack de un `ERROR [ExceptionsHandler]`.
+- No hay `console.*` en `src/` (US-99): `no-console` del lint de la API lo
+  impide, salvo en los `*.spec.ts`. Los stubs registran un `WARN` sin el
+  cuerpo del request, y los errores de pago, mensaje y stack.
 
 ## Verificación
 

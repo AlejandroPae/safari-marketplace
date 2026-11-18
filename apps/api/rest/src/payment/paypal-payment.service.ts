@@ -1,10 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { errorDetails } from '#src/common/logging.js';
 import Paypal from '@paypal/checkout-server-sdk';
 import { Order } from '#src/orders/entities/order.entity.js';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class PaypalPaymentService {
+  private readonly logger = new Logger(PaypalPaymentService.name);
+
   private clientId: string;
   private clientSecret: string;
   private environment: any;
@@ -39,7 +42,7 @@ export class PaypalPaymentService {
         id: id,
       };
     } catch (error) {
-      console.log(error);
+      this.logger.error(...errorDetails(error));
     }
   }
 

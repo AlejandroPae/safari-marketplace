@@ -43,6 +43,7 @@ import {
 import { resolveRecoveryOptions } from './recovery-options.js';
 import { User } from '#src/users/entities/user.entity.js';
 import { toUserDto } from '#src/users/user-dto.mapper.js';
+import { oneLine } from '#src/common/logging.js';
 
 // Un solo mensaje para los tres casos que no deben distinguirse (D-4 del
 // épico, extendido por el spec): contraseña mala, email inexistente,
@@ -318,7 +319,11 @@ export class AuthService {
   // Stub declarado por D-11 del épico: requiere credenciales OAuth externas. La
   // respuesta fija de abajo no cambia.
   async socialLogin(socialLoginDto: SocialLoginDto): Promise<AuthResponse> {
-    console.log(socialLoginDto);
+    // US-99, DA-1: solo el proveedor. Nunca el `access_token`: con el login
+    // de Google de US-70 activo, es el token real del usuario.
+    this.logger.warn(
+      `social-login es un stub (D-11): provider=${oneLine(String(socialLoginDto?.provider ?? ''))}`,
+    );
     return {
       token: 'jwt token',
       permissions: ['super_admin', 'customer'],

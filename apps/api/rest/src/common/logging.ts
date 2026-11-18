@@ -29,6 +29,16 @@ export function logPrisma(level: 'error' | 'warn', message: string) {
   prismaLogger[level](oneLine(message));
 }
 
+/**
+ * Mensaje y stack de un error, para `logger.error(message, stack)` (US-99).
+ * Nunca el objeto entero: el de Stripe o PayPal trae la respuesta cruda y sus
+ * cabeceras.
+ */
+export function errorDetails(error: unknown): [string, string | undefined] {
+  if (error instanceof Error) return [oneLine(error.message), error.stack];
+  return [oneLine(typeof error === 'string' ? error : undefined), undefined];
+}
+
 const httpLogger = new Logger('HTTP');
 
 /**

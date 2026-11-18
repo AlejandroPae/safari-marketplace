@@ -7,8 +7,10 @@ import {
   Param,
   Delete,
   Query,
+  Logger,
 } from '@nestjs/common';
 import { UsersService } from './users.service.js';
+import { oneLine } from '#src/common/logging.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { CreateProfileDto } from './dto/create-profile.dto.js';
@@ -80,16 +82,22 @@ export class UsersController {
 @Permissions(...ADMIN_ONLY)
 @Controller('profiles')
 export class ProfilesController {
+  private readonly logger = new Logger(ProfilesController.name);
+
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  createProfile(@Body() createProfileDto: CreateProfileDto) {
-    console.log(createProfileDto);
+  // US-99, DA-2: stub; nunca el cuerpo (contacto, bio, redes: datos personales).
+  createProfile(@Body() _createProfileDto: CreateProfileDto) {
+    this.logger.warn('POST /profiles es un stub: no guarda nada');
   }
 
   @Put(':id')
-  updateProfile(@Body() updateProfileDto: UpdateProfileDto) {
-    console.log(updateProfileDto);
+  updateProfile(
+    @Param('id') id: string,
+    @Body() _updateProfileDto: UpdateProfileDto,
+  ) {
+    this.logger.warn(`PUT /profiles/${oneLine(id)} es un stub: no guarda nada`);
   }
 
   @Delete(':id')

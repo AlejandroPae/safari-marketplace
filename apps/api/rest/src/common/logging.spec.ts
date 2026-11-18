@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /** Tests unitarios del logging de la API (US-17). */
-import { IsoConsoleLogger, oneLine } from './logging.js';
+import { errorDetails, IsoConsoleLogger, oneLine } from './logging.js';
 
 describe('IsoConsoleLogger', () => {
   it('cada línea lleva timestamp ISO 8601 en UTC y el nivel', () => {
@@ -35,5 +35,26 @@ describe('oneLine', () => {
   it('un mensaje vacío o ausente no deja la línea vacía', () => {
     expect(oneLine('  \n ')).toBe('(sin detalle)');
     expect(oneLine(undefined)).toBe('(sin detalle)');
+  });
+});
+
+describe('errorDetails (US-99, DA-3)', () => {
+  it('da mensaje y stack, nunca el resto del objeto de error', () => {
+    // Forma de un error de Stripe: trae la respuesta cruda y sus cabeceras.
+    const error = Object.assign(new Error('Your card was declined.'), {
+      raw: { headers: { 'request-id': 'zz-cabecera' } },
+    });
+    const [message, stack] = errorDetails(error);
+    expect(message).toBe('Your card was declined.');
+    expect(stack).toContain('Your card was declined.');
+    expect(`${message}${stack}`).not.toContain('zz-cabecera');
+  });
+
+  it('un valor que no es Error no rompe el log', () => {
+    expect(errorDetails('fallo')).toEqual(['fallo', undefined]);
+    expect(errorDetails({ secreto: 'zz' })).toEqual([
+      '(sin detalle)',
+      undefined,
+    ]);
   });
 });

@@ -7,7 +7,6 @@ export class PaymentIntentController {
   constructor(private readonly paymentIntentService: PaymentIntentService) {}
   @Get()
   async getPaymentIntent(@Query() query: GetPaymentIntentDto) {
-    console.log('payment_intent', 'payment_intent');
     return this.paymentIntentService.getPaymentIntent(query);
   }
 }

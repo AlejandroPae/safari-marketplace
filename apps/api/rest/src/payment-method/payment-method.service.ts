@@ -1,6 +1,7 @@
 import paymentGatewayJson from '#db/payment-gateway.json' with { type: 'json' };
 import cards from '#db/payment-methods.json' with { type: 'json' };
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { errorDetails } from '#src/common/logging.js';
 import { plainToClass } from 'class-transformer';
 import { AuthService } from '#src/auth/auth.service.js';
 import {
@@ -20,6 +21,8 @@ const paymentMethods = plainToClass(PaymentMethod, cards);
 const paymentGateways = plainToClass(PaymentGateWay, paymentGatewayJson);
 @Injectable()
 export class PaymentMethodService {
+  private readonly logger = new Logger(PaymentMethodService.name);
+
   private paymentMethods: PaymentMethod[] = paymentMethods;
   constructor(
     private readonly authService: AuthService,
@@ -46,7 +49,7 @@ export class PaymentMethodService {
       const paymentGateway: string = PaymentGatewayType.STRIPE as string;
       return await this.saveCard(createPaymentMethodDto, paymentGateway);
     } catch (error) {
-      console.log(error);
+      this.logger.error(...errorDetails(error));
       return this.paymentMethods[0];
     }
   }
@@ -91,7 +94,7 @@ export class PaymentMethodService {
     try {
       return this.saveCard(createPaymentMethodDto, paymentGateway);
     } catch (err) {
-      console.log(err);
+      this.logger.error(...errorDetails(err));
     }
   }
 
