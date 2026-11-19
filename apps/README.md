@@ -10,7 +10,9 @@ Guía verificada en Windows 11 + Node 22.14 + yarn 1.22.22 (2026-08-24).
 | Tienda | `shop` | Next.js 16.4 (pages router, webpack) + React 19.3 | `3003` |
 | Admin | `admin/rest` | Next.js 16.4 (pages router, webpack) + React 19.3 | `3002` |
 
-`shop` y `admin/rest` consumen la API vía `NEXT_PUBLIC_REST_API_ENDPOINT`.
+`shop` y `admin/rest` consumen la API desde el navegador por el prefijo
+relativo `/backend`, y el SSR del shop por `API_INTERNAL_URL` (US-102; ver
+«Notas para el despliegue en nube»).
 El único stack soportado es REST. La variante GraphQL está **congelada**: ver
 la sección siguiente.
 
@@ -94,13 +96,15 @@ cp api/rest/.env.example    api/rest/.env
 ```
 
 Luego ajusta el **puerto de la API** (ver *Puerto 9000 ocupado* abajo) y, en
-`shop/.env`, estos tres valores que vienen como placeholder:
+`shop/.env`, estos dos valores que vienen como placeholder:
 
 ```env
-NEXT_PUBLIC_ADMIN_URL="http://localhost:3002"
 NEXTAUTH_URL=http://localhost:3003
 SECRET=<cualquier-cadena-para-desarrollo>
 ```
+
+`just env` los rellena, y añade `API_INTERNAL_URL` a los `.env` del shop y del
+admin si falta, también en un `.env` que ya existía (US-102).
 
 `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` son **opcionales** (US-70). Si
 falta alguna, el shop no registra el proveedor de Google, `/api/auth/*`
@@ -369,12 +373,12 @@ A mano, hay que cambiarlo en **tres** sitios, y deben coincidir:
 
 ```env
 apps/api/rest/.env      PORT=9001
-apps/shop/.env          NEXT_PUBLIC_REST_API_ENDPOINT="http://localhost:9001/api"
-apps/admin/rest/.env    NEXT_PUBLIC_REST_API_ENDPOINT="http://localhost:9001/api"
+apps/shop/.env          API_INTERNAL_URL="http://localhost:9001/api"
+apps/admin/rest/.env    API_INTERNAL_URL="http://localhost:9001/api"
 ```
 
-(`admin/rest/.env` deriva `NEXT_PUBLIC_BROADCAST_AUTH_URL` del endpoint, así que
-se actualiza solo.)
+(El navegador no ve ese puerto: habla con `/backend`, que el rewrite de
+`next dev` manda a `API_INTERNAL_URL`.)
 
 ### `TS2688: Cannot find type definition file for 'minimatch'`
 
@@ -420,8 +424,33 @@ start` el shop da errores de hidratación (#418). Ver la US-83.
 - `shop` y `admin` sí son stateless: solo consumen la API por HTTP.
 - `api/rest` lee `PORT` del entorno (fallback `5000`), lo que encaja con
   App Service / Cloud Run / Heroku sin cambios.
-- Las `NEXT_PUBLIC_*` se inlinean **en build time**: hay que fijarlas antes de
-  `next build`, no en el arranque del contenedor.
+- Las `NEXT_PUBLIC_*` se inlinean **en build time**: Next escribe su valor
+  dentro del JavaScript en `next build`, y cambiarlas obliga a reconstruir.
+  Por eso la dirección de la API **ya no es una `NEXT_PUBLIC_*`** (US-102):
+
+  | Variable | App | Cuándo se lee | Para qué |
+  |---|---|---|---|
+  | `/backend` (constante, no variable) | shop y admin | build (queda en el JS) | prefijo relativo con el que el **navegador** habla con la API, en el mismo origen que la página; igual en todos los entornos |
+  | `API_INTERNAL_URL` | shop | **ejecución** | URL de la API para el **SSR/ISR**, por la red interna (p. ej. `http://safari-api:9001/api`). Si falta, la página falla con un error que la nombra |
+  | `API_INTERNAL_URL` | admin | solo `next dev` | destino del rewrite de `/backend` en desarrollo; el admin no llama a la API desde el servidor |
+  | `NEXT_PUBLIC_SHOP_URL` | admin | build | enlaces «ver en la tienda»; pasa a ejecución en US-103 |
+
+  En `next dev`, un `rewrites()` de `next.config.js` manda `/backend/*` a
+  `API_INTERNAL_URL`; no hace falta proxy. En `next build`/`next start` ese
+  rewrite no existe: `/backend` lo enruta el reverse proxy de delante.
+- **Dominios en Dokploy** (Traefik, https://docs.dokploy.com/docs/core/domains).
+  Por cada app (shop y admin), dos dominios sobre el **mismo host**:
+
+  | Servicio | Host | Path | Strip Path | Internal Path |
+  |---|---|---|---|---|
+  | shop (o admin) | `tienda.example.com` | `/` | no | — |
+  | API | `tienda.example.com` | `/backend` | **sí** | `/api` |
+
+  Así `GET tienda.example.com/backend/settings` llega a la API como
+  `/api/settings`, y `/api/*` del dominio sigue siendo de Next (next-auth en el
+  shop). No mandes `/api` del dominio de la tienda a la API: rompería el login
+  con Google (`/api/auth/*`). El contenedor del shop recibe además
+  `API_INTERNAL_URL` con la dirección interna de la API.
 - `next.config.js` tiene una allowlist de `images.remotePatterns`. Cualquier
   host nuevo de imágenes debe añadirse ahí o `next/image` fallará en
   producción. `localhost` y `127.0.0.1` solo se optimizan fuera de producción
