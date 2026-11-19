@@ -6,7 +6,7 @@
 > en nube (Épico 16).
 
 **Fecha:** 2026-08-25
-**Status:** Refinado
+**Status:** Completado (2026-11-19): las cinco US implementadas.
 
 ## Contexto verificado (2026-08-25)
 
@@ -32,7 +32,7 @@
 | [US-102](./102-urls-configurables-en-ejecucion.md) ✅ | URL de la API configurable en ejecución (prefijo `/backend`) | Sí | ninguna | ~220 |
 | [US-103](./103-shop-url-en-ejecucion-admin.md) ✅ | URL de la tienda configurable en ejecución en el admin | Sí | US-102 | ~120 |
 | [US-104](./104-build-shop-sin-api.md) ✅ | `next build` de la tienda sin la API viva | Sí | US-102 | ~250 |
-| [US-15](./15-compose-stack-completo.md) | Compose del stack completo con healthchecks | Sí | US-14, US-102, US-104 | ~250 |
+| [US-15](./15-compose-stack-completo.md) ✅ | Compose del stack completo con healthchecks | Sí | US-14, US-102, US-104 | ~250 |
 
 **Orden sugerido:** US-14 → US-15 (US-15 dockeriza shop/admin dentro de su
 propio alcance; si en el design crece de más, partirla antes de ejecutar).
