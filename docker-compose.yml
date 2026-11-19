@@ -41,6 +41,9 @@ services:
         - extra_ca
     image: safari-api
     container_name: safari-api
+    # Node como PID 1 ignora SIGTERM (no hay handler) y `docker compose stop`
+    # lo mataba a los 10 s con exit 137. tini (init) reenvía la señal.
+    init: true
     depends_on:
       postgres:
         condition: service_healthy
