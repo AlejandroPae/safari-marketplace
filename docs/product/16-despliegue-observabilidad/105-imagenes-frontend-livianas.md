@@ -11,7 +11,7 @@
 
 **Épico:** [Épico 16](./README.md)
 **Fecha:** 2026-11-19
-**Status:** Listo para ejecución. Promovida desde `_backlog/` el 2026-11-19,
+**Status:** Implementado (2026-11-19). Promovida desde `_backlog/` el 2026-11-19,
 tras la revisión del sub-agente fable 5. El dueño la partió en US-105 y
 US-106, fijó el standalone condicionado (D-1) y la ubicó en el Épico 16.
 **Depende de:** ninguna. US-106 va **después**: las dos tocan
@@ -230,10 +230,10 @@ Feature: Imágenes de frontend livianas sin cambiar el comportamiento
 
 ## Definición de Done
 
-- [ ] CA-0 a CA-11 verificados, con la salida real pegada en «Resultado».
-- [ ] Tabla final de tamaños en `apps/README.md`.
-- [ ] `just check-full` y `yarn lint` en 0 en tienda y admin, con la salida pegada.
-- [ ] Status de esta US en `Implementado` y fila del Épico 16 marcada.
+- [x] CA-0 a CA-11 verificados, con la salida real pegada en «Resultado».
+- [x] Tabla final de tamaños en `apps/README.md`.
+- [x] `just check-full` y `yarn lint` en 0 en tienda y admin, con la salida pegada.
+- [x] Status de esta US en `Implementado` y fila del Épico 16 marcada.
 
 ## Riesgos
 
@@ -274,3 +274,245 @@ Feature: Imágenes de frontend livianas sin cambiar el comportamiento
   documentación de Next 16, **detente y pregunta**.
 - Esta US prepara las imágenes que los estudiantes de Sistemas Distribuidos
   publicarán en Docker Hub y desplegarán en Dokploy.
+
+## Resultado (2026-11-19, rama `feat/us-105-imagenes-frontend-livianas` sobre `main` @ `93b30b5`)
+
+### Qué cambió
+
+| Archivo | Cambio |
+|---|---|
+| `apps/shop/next.config.js`, `apps/admin/rest/next.config.js` | `output: 'standalone'` + `outputFileTracingRoot` (`apps/`), solo con `NEXT_OUTPUT=standalone` (D-1). El hook de prettier del repo reformateó además el `return [...]` de `backendRewrites` (3 líneas, sin cambio de comportamiento) |
+| `apps/shop/Dockerfile`, `apps/admin/rest/Dockerfile` | sin la etapa `prod-deps`; `NEXT_OUTPUT=standalone` en el build; runtime con el standalone copiado sobre `/repo/apps`, más `.next/static`, `public` y `next-i18next.config.js`, todo `--chown=node:node`; `HOSTNAME=0.0.0.0`, `PORT=3000`; `CMD node server.js`; `NODE_IMAGE` fija; cabeceras al día |
+| `apps/api/rest/Dockerfile` | solo `ARG NODE_IMAGE=node:22.22.3-alpine3.23` |
+| `docker-compose.yml` | `postgres:16.14-alpine3.23` (×2) y `caddy:2.11.9-alpine` |
+| `apps/README.md` | tabla de servicios con los tags, «Versiones fijas», «Imágenes standalone», y pesos antes/después |
+
+### Decisión tomada al ejecutar
+
+- **Postgres 16.14, no 16.9.** En caché local estaba la 16.9, pero en Docker
+  Hub hay parches hasta la 16.14 (`docker manifest inspect` de 16.10 a
+  16.14). Fijar la 16.9 habría congelado un año de correcciones. R-7 ya
+  contemplaba este caso: el volumen creado con la 16.9 arrancó sin cambios
+  (`PostgreSQL 16.14 on x86_64-pc-linux-musl`). Caddy no tiene versión más
+  nueva que la 2.11.9 (`2.11.10`, `2.11.11` y `2.12.0` no existen).
+
+### Corrección a la US
+
+- **El ISR de Next 16.4.5 no escribe en `.next/server/pages`**, como decían
+  D-3, R-2 y CA-5 siguiendo la revisión. Las páginas que se generan en
+  ejecución van a `.next/server/route-cache/PAGES/<hash>/$/...`, y las
+  imágenes optimizadas a `.next/cache/images`. Como todo `.next` es de
+  `node`, no cambia nada. CA-5 se verificó en la ruta real (abajo).
+
+### CA-0 — Línea base (imágenes de `main` @ `a0e5d44`, etiquetadas `:base`)
+
+```text
+safari-admin:latest 2.07GB
+safari-shop:latest 1.86GB
+safari-api:latest 1.47GB
+OK   API    :9001/api/settings  200  5503B  550ms
+OK   Shop   :3003/en  200  192788B  24ms  cards:30
+OK   Admin  :3002/en/login  200  73118B  13ms  cards:1
+```
+
+La tabla de CA-3, CA-4 y CA-6 la generó el mismo script antes y después. La
+salida de antes es idéntica a la de después, que se pega abajo:
+`diff` → «idéntico a la línea base».
+
+### CA-1 — Tamaños
+
+```text
+$ docker images
+safari-shop:latest   377MB      (antes 1.86GB)
+safari-admin:latest  409MB      (antes 2.07GB)
+```
+
+| Imagen | Antes | Después | Reducción | D-5 |
+|---|---|---|---|---|
+| tienda | 1.86 GB | **377 MB** | −80 % | ≤ 500 MB ✅ |
+| admin | 2.07 GB | **409 MB** | −80 % | ≤ 500 MB ✅ |
+
+Los `node_modules` del runtime pasan de 904 MB, el workspace entero, a
+~87 MB trazados por Next (CA-7).
+
+### CA-2 — El stack sigue vivo
+
+```text
+$ time just stack-up
+NAME              STATUS
+safari-admin      Up 9 seconds (healthy)
+safari-api        Up 15 seconds (healthy)
+safari-postgres   Up 27 seconds (healthy)
+safari-proxy      Up 3 seconds
+safari-shop       Up 9 seconds (healthy)
+real    1m6.005s
+$ just verify
+OK   API    :9001/api/settings  200  5503B  543ms
+OK   Shop   :3003/en  200  192788B  24ms  cards:30
+OK   Admin  :3002/en/login  200  73118B  14ms  cards:1
+```
+
+El HTML de `/en` y de `/en/login` mide lo mismo que en CA-0, byte a byte.
+
+### CA-3, CA-4 y CA-6 — Sin regresión, optimizador y traducciones
+
+```text
+== CA-3
+backend/settings tienda: 200  admin: 200
+tienda /api/auth/providers: 200
+admin runtime-config: {"shopUrl":"http://localhost:3003"}
+admin runtime-config con SHOP_URL=https://tienda-b.example: {"shopUrl":"https://tienda-b.example"}
+admin runtime-config restaurado: {"shopUrl":"http://localhost:3003"}
+visita previa /en/products/apples: 200
+API parada -> producto nunca visitado /en/products/lucy-minerals-foundation: 500
+API parada -> /en/products/apples: 200  /en: 200
+API de vuelta -> /en/products/lucy-minerals-foundation: 200
+/en/products/no-existe: 404
+estáticos con localhost:9001|api:9001: 0 archivos
+== CA-4
+optimizador w=256: 200 image/png 1235B
+logs de la tienda con sharp|EACCES: 0
+== CA-6
+http://localhost:3003/en common: 553 claves; 404-heading = "Error code: 404"
+http://localhost:3002/en/login common: 553 claves; text-guest = "Guest"
+logs con Cannot find module|unable to find a user config: 0
+```
+
+### CA-5 — ISR escribe en ejecución
+
+```text
+antes:   2026-11-19 19:38:04.435201536 +0000 node
+petición tras 65 s: 200
+segunda petición: 200
+después: 2026-11-19 19:39:43.783734887 +0000 node
+logs EACCES|EPERM: 0
+```
+
+La ruta es `.next/server/route-cache/PAGES/<hash>/$/en/products/lucy-minerals-foundation.html`.
+Pasado el `revalidate` (60 s), la primera petición sirve la página vieja y
+dispara la regeneración, que reescribe el archivo como `node`.
+
+### CA-7 — Standalone de verdad
+
+```text
+== safari-shop
+cwd: /repo/apps/shop  usuario: node  node: v22.22.3
+@next/swc-*: 0
+.next/cache/webpack: 0
+existe server.js
+existe next-i18next.config.js
+existe public/locales
+existe .next/static
+existe .next/server/pages
+tiny-invariant desde aquí: /repo/apps/node_modules/tiny-invariant/dist/tiny-invariant.cjs.js
+dueño de .next: node / server/pages: node
+86.7M   /repo/apps/node_modules
+21.8M   .
+== safari-admin
+cwd: /repo/apps/admin/rest  usuario: node  node: v22.22.3
+@next/swc-*: 0
+.next/cache/webpack: 0
+existe server.js
+existe next-i18next.config.js
+existe public/locales
+existe .next/static
+existe .next/server/pages
+tiny-invariant desde aquí: /repo/apps/node_modules/tiny-invariant/dist/tiny-invariant.cjs.js
+dueño de .next: node / server/pages: node
+87.4M   /repo/apps/node_modules
+49.9M   .
+```
+
+### CA-8 — Versiones fijas
+
+```text
+$ grep -n "NODE_IMAGE=\|image:" apps/shop/Dockerfile apps/admin/rest/Dockerfile apps/api/rest/Dockerfile docker-compose.yml
+apps/shop/Dockerfile:22:ARG NODE_IMAGE=node:22.22.3-alpine3.23
+apps/admin/rest/Dockerfile:22:ARG NODE_IMAGE=node:22.22.3-alpine3.23
+apps/api/rest/Dockerfile:25:ARG NODE_IMAGE=node:22.22.3-alpine3.23
+docker-compose.yml:15:    image: postgres:16.14-alpine3.23
+docker-compose.yml:39:    image: postgres:16.14-alpine3.23
+docker-compose.yml:71:    image: safari-api
+docker-compose.yml:108:    image: safari-shop
+docker-compose.yml:141:    image: safari-admin
+docker-compose.yml:163:    image: caddy:2.11.9-alpine
+$ docker run --rm --entrypoint node <img> -v
+safari-shop v22.22.3 | safari-admin v22.22.3 | safari-api v22.22.3
+```
+
+Los `image: safari-*` son los nombres de las imágenes que se construyen, no
+tags de base.
+
+### CA-9 — Parada limpia
+
+```text
+$ docker compose stop shop admin api
+stop tardó 1879 ms
+safari-admin Exited (143) 2 seconds ago
+safari-api Exited (143) 1 second ago
+safari-shop Exited (143) 2 seconds ago
+```
+
+### CA-10 — El flujo nativo no cambia
+
+```text
+$ time just check-full
+OK    [1/10] packages/db build  84s
+OK    [2/10] packages/db lint  3s
+OK    [3/10] packages/db typecheck  12s
+OK    [4/10] api/rest typecheck  65s
+OK    [5/10] api/rest lint  75s
+OK    [6/10] admin/rest lint  132s       ($ eslint src  Done in 129.40s.)
+OK    [7/10] shop lint  47s              ($ eslint src  Done in 44.76s.)
+OK    [8/10] api/rest test  66s          (Test Files 44 passed, Tests 710 passed)
+OK    [9/10] packages/db test  82s       (Test Files 38 passed, Tests 499 passed)
+OK    [10/10] scraper db-test  4s
+check: VERDE (10 pasos, 570s)
+✓ Generating static pages using 11 workers (77/77) in 11.9s     (admin, nativo)
+✓ Generating static pages using 11 workers (29/29) in 11.4s     (tienda, nativo)
+check-full: VERDE (check + build-api + build-admin + build-shop)
+real    15m41.426s
+$ ls -d apps/shop/.next/standalone apps/admin/rest/.next/standalone
+ls: cannot access 'apps/shop/.next/standalone': No such file or directory
+ls: cannot access 'apps/admin/rest/.next/standalone': No such file or directory
+```
+
+Con el stack de Docker abajo, salvo la API en contenedor (`just api-docker`,
+que no comparte puertos con los frontends), `just shop-dev` y
+`just admin-dev`:
+
+```text
+OK   API    :9001/api/settings  200  5503B  595ms
+OK   Shop   :3003/en  200  191897B  946ms  cards:30
+OK   Admin  :3002/en/login  200  72554B  78ms  cards:1
+```
+
+### CA-11 — Tiempos
+
+```text
+$ time docker compose build --progress=plain shop admin api      (base nueva: sin caché)
+#38 [admin deps 7/7] RUN ... yarn install --frozen-lockfile ...   DONE 210.1s   (una vez, para las dos)
+#51 Running TypeScript ... Finished TypeScript in 33.9s ...       (tienda; el admin: Skipping validation of types)
+#51 ✓ Generating static pages using 11 workers (29/29) in 2.8s
+#53 ✓ Generating static pages using 11 workers (77/77) in 6.1s
+#20 [api api-build 5/7] RUN ... yarn install                      DONE 142.2s
+#16 [api runtime 8/9] RUN ... yarn install --production           DONE 137.3s
+real    13m37.211s
+```
+
+Antes (US-15): tienda 23 min 20 s y admin 6 min 43 s, por separado; la API
+~15 min (US-14). Ahora las tres juntas tardan 13 min 37 s. Parte de la mejora
+es la etapa `prod-deps`, que ya no existe; el resto depende de la red del
+día, así que es un dato, no una comparación controlada.
+
+Al terminar se apagaron los servidores `*-dev` (por su PID raíz) y el stack,
+y se borraron las etiquetas `:base`. Los puertos quedaron libres.
+
+### Hallazgos que no se accionaron (NO incluye)
+
+- **El `sharp@0.32.6` de los `package.json` sigue sin uso**, y su
+  `postinstall` descarga libvips en cada install de `deps`. Quitarlo
+  aceleraría el build.
+- **La API sigue en 1.47 GB:** es US-106, que puede ejecutarse ya.
+- **CLAUDE.md** sigue diciendo Next 16.4.1 (el código tiene 16.4.5) y que
+  `docker-compose.yml` es «Solo Postgres 16». Es del dueño.

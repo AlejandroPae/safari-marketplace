@@ -190,16 +190,23 @@ demo, no el camino para desarrollar.
 
 | Servicio | Imagen | Qué hace | Healthcheck |
 |---|---|---|---|
-| `postgres` | `postgres:16-alpine` | la base, en 5433 | `pg_isready` |
-| `db-init` | `postgres:16-alpine` | corre `db/schema.sql` + `db/seed.sql` (montados) y termina | — (la API espera a que acabe con éxito) |
+| `postgres` | `postgres:16.14-alpine3.23` | la base, en 5433 | `pg_isready` |
+| `db-init` | `postgres:16.14-alpine3.23` | corre `db/schema.sql` + `db/seed.sql` (montados) y termina | — (la API espera a que acabe con éxito) |
 | `api` | `apps/api/rest/Dockerfile` | API en 9001 | `/api/health/ready`, que consulta la base |
-| `shop` | `apps/shop/Dockerfile` | `next start`, solo en la red interna | `/en` |
-| `admin` | `apps/admin/rest/Dockerfile` | `next start`, solo en la red interna | `/en/login` |
-| `proxy` | `caddy:2-alpine` + `docker/Caddyfile` | publica 3003 y 3002; `/backend/*` va a `api:9001/api/*` | — |
+| `shop` | `apps/shop/Dockerfile` | `node server.js` (standalone), solo en la red interna | `/en` |
+| `admin` | `apps/admin/rest/Dockerfile` | `node server.js` (standalone), solo en la red interna | `/en/login` |
+| `proxy` | `caddy:2.11.9-alpine` + `docker/Caddyfile` | publica 3003 y 3002; `/backend/*` va a `api:9001/api/*` | — |
 
+- **Versiones fijas (US-105).** Las imágenes base llevan versión exacta:
+  `node:22.22.3-alpine3.23` en los tres Dockerfiles, más los tags de Postgres
+  y Caddy de la tabla. Un tag de solo major (`22-alpine`, `16-alpine`)
+  cambia de contenido sin aviso. Así, dos builds del mismo commit dan lo
+  mismo, aunque los haga otro grupo en otra máquina. Subir de versión es
+  editar ese tag y reconstruir.
 - **El proxy hace lo que Dokploy en la nube** (ver «Dominios en Dokploy»,
   abajo). El navegador habla con la API por `/backend`, en el mismo origen
-  que la página (US-102), y en `next start` no hay rewrite que lo resuelva.
+  que la página (US-102), y el servidor de Next en producción no tiene un
+  rewrite que lo resuelva.
   Sin proxy, el SSR funcionaría, pero el login, el carrito y el admin entero
   darían 404.
 - **Orden de arranque:** postgres healthy → db-init termina → api healthy →
@@ -221,18 +228,38 @@ demo, no el camino para desarrollar.
 - **Zscaler:** el CA de `NODE_EXTRA_CA_CERTS` entra en el build (descargas de
   yarn y de sharp) y también en el runtime de tienda y admin, porque el
   optimizador de imágenes de Next descarga las fotos del seed desde S3.
-- **Tiempos de build** medidos tras Zscaler (R-2 del épico):
+- **Imágenes standalone (US-105).** Tienda y admin se construyen con
+  `output: 'standalone'` de Next. La imagen lleva `server.js` y solo los
+  `node_modules` que el servidor usa (~87 MB, trazados por Next), no los
+  904 MB de todo el workspace. Tampoco lleva la caché de compilación
+  (`.next/cache`). Lo activa la variable `NEXT_OUTPUT=standalone`, que solo
+  define el Dockerfile: `just build` y `next start` siguen como antes,
+  porque `next start` no funciona con standalone. Tres detalles que no van
+  solos:
+  - **`HOSTNAME=0.0.0.0` en el Dockerfile.** Docker fija `HOSTNAME` al id del
+    contenedor, y `server.js` escucharía solo en esa IP: fallarían el
+    healthcheck y next-auth.
+  - **Copias a mano:** `.next/static`, `public` (con las traducciones de
+    `public/locales`) y `next-i18next.config.js`, que `serverSideTranslations`
+    carga por ruta en ejecución.
+  - **Permisos:** todo `.next` es del usuario `node`. En ejecución, Next
+    escribe las páginas que genera en `.next/server/route-cache/` y las
+    imágenes optimizadas en `.next/cache/images`.
+- **Pesos y tiempos de build**, medidos tras Zscaler (R-2 del épico):
 
-  | Imagen | Primer build | Peso |
-  |---|---|---|
-  | tienda | 23 min 20 s (install del workspace 10 min, install de producción 8.7 min en paralelo, `next build` 3.4 min) | 1.86 GB |
-  | admin | 6 min 43 s (los installs salen de la caché de la tienda) | 2.07 GB |
-  | API | ~15 min (US-14) | 1.47 GB |
+  | Imagen | Antes (US-15) | Ahora (US-105) | Primer build |
+  |---|---|---|---|
+  | tienda | 1.86 GB | **377 MB** (−80 %) | US-15: 23 min 20 s |
+  | admin | 2.07 GB | **409 MB** (−80 %) | US-15: 6 min 43 s (los installs salen de la caché de la tienda) |
+  | API | 1.47 GB | 1.47 GB (la adelgaza US-106) | US-14: ~15 min |
 
-  Los Dockerfiles de tienda y admin repiten **byte a byte** sus dos etapas de
-  dependencias para que BuildKit las comparta. Si se cambia una, hay que
-  cambiar la otra igual. Con las imágenes hechas, `just stack-up` tarda
-  ~40-60 s.
+  En US-105, las tres juntas con la base nueva y sin caché previa tardaron
+  13 min 37 s (`docker compose build shop admin api`).
+
+  Los Dockerfiles de tienda y admin repiten **byte a byte** su etapa `deps`
+  para que BuildKit la comparta: el install del workspace se hace una vez.
+  Si se cambia una, hay que cambiar la otra igual. Con las imágenes hechas,
+  `just stack-up` tarda ~40-60 s.
 
 ### 4. Credenciales
 
