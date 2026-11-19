@@ -20,7 +20,9 @@
 #
 #   docker build --secret id=extra_ca,src="$NODE_EXTRA_CA_CERTS" ...
 
-ARG NODE_IMAGE=node:22-alpine
+# Versión exacta, la misma en los tres Dockerfiles (US-105): un tag de solo
+# major cambia de contenido sin aviso.
+ARG NODE_IMAGE=node:22.22.3-alpine3.23
 
 # --- 1. Capa de datos: npm ci + prisma generate + tsup -> packages/db/dist
 FROM ${NODE_IMAGE} AS db-build

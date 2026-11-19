@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+const path = require('path');
 const { i18n } = require('./next-i18next.config');
 
 // US-102: `/backend/*` en `next dev` va a la API local (API_INTERNAL_URL),
@@ -14,9 +15,7 @@ function backendRewrites() {
       'API_INTERNAL_URL is not defined: next dev needs it to proxy /backend to the API (run just env)',
     );
   }
-  return [
-    { source: '/backend/:path*', destination: `${api}/:path*` },
-  ];
+  return [{ source: '/backend/:path*', destination: `${api}/:path*` }];
 }
 
 // const runtimeCaching = require('next-pwa/cache');
@@ -31,6 +30,14 @@ module.exports = {
   i18n,
   // Next 16 escribe un AGENTS.md en la app en cada `next dev`; no se versiona.
   agentRules: false,
+  // US-105: build mínimo para la imagen Docker, solo cuando el Dockerfile lo
+  // pide (NEXT_OUTPUT=standalone). `just build` y `next start` quedan como
+  // estaban: `next start` no funciona con standalone. La raíz del trazado es
+  // el workspace de yarn (apps/), de donde salen los node_modules.
+  ...(process.env.NEXT_OUTPUT === 'standalone' && {
+    output: 'standalone',
+    outputFileTracingRoot: path.join(__dirname, '..'),
+  }),
   async rewrites() {
     return backendRewrites();
   },

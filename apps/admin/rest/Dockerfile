@@ -1,19 +1,25 @@
-# Admin REST (Next.js, pages router) en contenedor — US-15.
+# Admin REST (Next.js, pages router) en contenedor — US-15, adelgazada en US-105.
 #
 # Contexto de build: la RAÍZ del repo. El admin es un workspace de yarn
 # (apps/package.json) y su tailwind.config.js lee apps/tailwind-v3-colors.js.
 #
 #   docker build -f apps/admin/rest/Dockerfile .
 #
-# Las etapas `deps` y `prod-deps` son IDÉNTICAS, byte a byte, a las de
-# apps/shop/Dockerfile: BuildKit cachea por contenido, así que el install del
-# workspace (el paso más lento) se hace una vez para las dos imágenes. Si se
-# cambian aquí, cambiarlas allí igual.
+# La etapa `deps` es IDÉNTICA, byte a byte, a la de apps/shop/Dockerfile:
+# BuildKit cachea por contenido, así que el install del workspace (el paso
+# más lento) se hace una vez para las dos imágenes. Si se cambia aquí,
+# cambiarla allí igual.
+#
+# El runtime es el build `standalone` de Next (US-105): server.js más solo
+# los node_modules que el servidor usa, trazados por Next. Ni el resto del
+# workspace ni la caché de compilación (.next/cache) viajan en la imagen.
 #
 # Detrás de Zscaler, el CA corporativo entra como secreto opcional
 # `extra_ca`, igual que en la imagen de la API (ver apps/api/rest/Dockerfile).
 
-ARG NODE_IMAGE=node:22-alpine
+# Versión exacta, la misma en los tres Dockerfiles (US-105): un tag de solo
+# major cambia de contenido sin aviso.
+ARG NODE_IMAGE=node:22.22.3-alpine3.23
 
 # --- 1. Dependencias del workspace, con devDependencies (para el build)
 FROM ${NODE_IMAGE} AS deps
@@ -30,22 +36,10 @@ RUN --mount=type=secret,id=extra_ca,required=false \
     yarn install --frozen-lockfile --non-interactive --network-timeout 600000 \
  && yarn cache clean
 
-# --- 2. Dependencias de producción (las que se embarcan)
-FROM ${NODE_IMAGE} AS prod-deps
-WORKDIR /repo/apps
-COPY apps/package.json apps/yarn.lock ./
-COPY apps/shop/package.json shop/
-COPY apps/admin/rest/package.json admin/rest/
-COPY apps/admin/graphql/package.json admin/graphql/
-RUN --mount=type=secret,id=extra_ca,required=false \
-    NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca \
-    yarn install --frozen-lockfile --production --non-interactive --network-timeout 600000 \
- && yarn cache clean
-
 # --- Configuración pública, compartida por el build y el runtime
 #
 # Las NEXT_PUBLIC_* se inlinean en el JavaScript durante `next build`; además
-# next-i18next.config.js las lee al arrancar `next start`. Por eso van en una
+# next-i18next.config.js las lee al arrancar el servidor. Por eso van en una
 # etapa base de la que salen las dos. Ni la URL de la API (US-102: /backend)
 # ni la de la tienda (US-103: SHOP_URL, de ejecución) están aquí.
 FROM ${NODE_IMAGE} AS config
@@ -79,32 +73,47 @@ ENV NEXT_PUBLIC_AUTH_TOKEN_KEY=${NEXT_PUBLIC_AUTH_TOKEN_KEY} \
     NEXT_PUBLIC_VERSION=${NEXT_PUBLIC_VERSION} \
     NEXT_TELEMETRY_DISABLED=1
 
-# --- 3. Build: next build
+# --- 2. Build: next build (standalone)
 #
 # CON APPLICATION_MODE=production, a propósito (decisión del dueño, US-15):
 # next.config.js lo traduce en `typescript.ignoreBuildErrors`. El admin no
 # pasa hoy el chequeo de tipos: `tsc` falla con
 #   TS2688: Cannot find type definition file for 'minimatch'
-# (hallazgo de US-10, ver apps/README.md). Cuando eso se arregle, quitar esta
-# línea para que el build vuelva a comprobar tipos, como el de la tienda.
+# (hallazgo de US-10, ver apps/README.md). Cuando eso se arregle, quitar esa
+# variable para que el build vuelva a comprobar tipos, como el de la tienda.
+# NEXT_OUTPUT activa `output: 'standalone'` en next.config.js (solo aquí, no
+# en `just build`).
 FROM config AS build
-ENV APPLICATION_MODE=production
+ENV APPLICATION_MODE=production \
+    NEXT_OUTPUT=standalone
 COPY --from=deps /repo/apps /repo/apps
 COPY apps/tailwind-v3-colors.js /repo/apps/
 COPY apps/admin/rest/ /repo/apps/admin/rest/
 WORKDIR /repo/apps/admin/rest
 RUN yarn build
 
-# --- 4. Runtime: dependencias de producción + .next + public
+# --- 3. Runtime: el standalone, más lo que Next no copia solo
+#
+# .next/standalone reproduce el workspace desde su raíz (apps/): node_modules
+# trazados y admin/rest/ con server.js. Se copia sobre /repo/apps para
+# conservar las rutas. Encima van .next/static, public (con las traducciones
+# de public/locales) y next-i18next.config.js, que serverSideTranslations
+# carga en ejecución por ruta y el trazado no ve. Todo es del usuario node:
+# el ISR escribe en .next/server/pages y el optimizador, en .next/cache.
 FROM config AS runtime
-ENV NODE_ENV=production
-COPY --from=prod-deps /repo/apps /repo/apps
+# HOSTNAME explícito: Docker lo fija al id del contenedor y server.js
+# escucharía solo en esa IP, no en 127.0.0.1 (healthcheck).
+ENV NODE_ENV=production \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000
+WORKDIR /repo/apps
+COPY --from=build --chown=node:node /repo/apps/admin/rest/.next/standalone ./
+COPY --from=build --chown=node:node /repo/apps/admin/rest/.next/static ./admin/rest/.next/static
+COPY --from=build --chown=node:node /repo/apps/admin/rest/public ./admin/rest/public
+COPY --from=build --chown=node:node /repo/apps/admin/rest/next-i18next.config.js ./admin/rest/
 WORKDIR /repo/apps/admin/rest
-COPY --from=build /repo/apps/admin/rest/package.json /repo/apps/admin/rest/next.config.js /repo/apps/admin/rest/next-i18next.config.js ./
-COPY --from=build /repo/apps/admin/rest/public ./public
-COPY --from=build --chown=node:node /repo/apps/admin/rest/.next ./.next
 USER node
 EXPOSE 3000
 # Sin yarn delante: así la señal de parada llega a Next (con init: true en
 # el compose).
-CMD ["node", "/repo/apps/node_modules/next/dist/bin/next", "start", "-p", "3000"]
+CMD ["node", "server.js"]
