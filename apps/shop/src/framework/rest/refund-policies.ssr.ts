@@ -4,6 +4,7 @@ import type { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/pages/serverSideTranslations';
 import { QueryClient, dehydrate } from '@tanstack/react-query';
 import client from './client';
+import { warnFailedQueries } from './ssr-resilience';
 import { API_ENDPOINTS } from './client/api-endpoints';
 
 export const getCustomerStaticProps: GetStaticProps = async ({ locale }) => {
@@ -27,11 +28,15 @@ export const getCustomerStaticProps: GetStaticProps = async ({ locale }) => {
       client.refundPolicies.all(queryKey[1] as RefundPolicyQueryOptions),
     initialPageParam: undefined,
   });
+  warnFailedQueries(queryClient, 'customer-refund-policies');
   return {
     props: {
       ...(await serverSideTranslations(locale!, ['common'])),
       dehydratedState: JSON.parse(JSON.stringify(dehydrate(queryClient))),
     },
+    // D-3 (US-104): se regenera con datos reales en vez de quedar congelada
+    // con los del build.
+    revalidate: 60,
   };
 };
 
@@ -51,6 +56,7 @@ export const getVendorStaticProps: GetStaticProps = async ({ locale }) => {
       client.refundPolicies.all(queryKey[1] as RefundPolicyQueryOptions),
     initialPageParam: undefined,
   });
+  warnFailedQueries(queryClient, 'vendor-refund-policies');
   return {
     props: {
       ...(await serverSideTranslations(locale!, ['common'])),

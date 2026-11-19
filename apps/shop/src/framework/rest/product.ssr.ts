@@ -1,8 +1,8 @@
 import type { Product } from '@/types';
 import type { GetStaticPaths, GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/pages/serverSideTranslations';
-import invariant from 'tiny-invariant';
 import client from './client';
+import { isNotFound, warnFailedQueries } from './ssr-resilience';
 import { dehydrate, QueryClient } from '@tanstack/react-query';
 import { API_ENDPOINTS } from '@/framework/client/api-endpoints';
 import { SettingsQueryOptions } from '@/types';
@@ -11,19 +11,13 @@ import { SettingsQueryOptions } from '@/types';
 type ParsedQueryParams = {
   slug: string;
 };
-export const getStaticPaths: GetStaticPaths<ParsedQueryParams> = async ({
-  locales,
-}) => {
-  invariant(locales, 'locales is not defined');
-  const { data } = await client.products.all({ limit: 100 });
-  const paths = data?.flatMap((product) =>
-    locales?.map((locale) => ({ params: { slug: product.slug }, locale })),
-  );
-  return {
-    paths,
-    fallback: 'blocking',
-  };
-};
+// D-1 (US-104): sin prerender de rutas dinámicas. El build no llama a la API;
+// cada página se genera en su primera visita, con datos del entorno donde
+// corre.
+export const getStaticPaths: GetStaticPaths<ParsedQueryParams> = async () => ({
+  paths: [],
+  fallback: 'blocking',
+});
 type PageProps = {
   product: Product;
 };
@@ -43,6 +37,7 @@ export const getStaticProps: GetStaticProps<
 
   try {
     const product = await client.products.get({ slug, language: locale });
+    warnFailedQueries(queryClient, `product/${slug}`);
     return {
       props: {
         product,
@@ -52,8 +47,10 @@ export const getStaticProps: GetStaticProps<
       revalidate: 60,
     };
   } catch (error) {
-    return {
-      notFound: true,
-    };
+    // D-4 (US-104): 404 solo si la API dice que no existe. Red caída, timeout
+    // o 5xx se lanzan: Next no cachea la respuesta y conserva la última
+    // página buena.
+    if (isNotFound(error)) return { notFound: true };
+    throw error;
   }
 };

@@ -3,6 +3,7 @@ import type { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/pages/serverSideTranslations';
 import { QueryClient, dehydrate } from '@tanstack/react-query';
 import client from './client';
+import { warnFailedQueries } from './ssr-resilience';
 import { API_ENDPOINTS } from './client/api-endpoints';
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => {
@@ -17,6 +18,7 @@ export const getStaticProps: GetStaticProps = async ({ locale }) => {
     queryFn: ({ queryKey }) =>
       client.notifyLogs.all(queryKey[1] as NotifyLogsQueryOptions),
   });
+  warnFailedQueries(queryClient, 'notification');
   try {
     return {
       props: {

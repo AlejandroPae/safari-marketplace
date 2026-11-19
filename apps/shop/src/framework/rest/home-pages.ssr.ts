@@ -9,7 +9,6 @@ import type {
 import type { GetStaticPaths, GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/pages/serverSideTranslations';
 import { QueryClient, dehydrate } from '@tanstack/react-query';
-import invariant from 'tiny-invariant';
 import client from './client';
 import { API_ENDPOINTS } from './client/api-endpoints';
 import {
@@ -22,23 +21,14 @@ type ParsedQueryParams = {
   pages: string[];
 };
 
-// This function gets called at build time
-export const getStaticPaths: GetStaticPaths<ParsedQueryParams> = async ({
-  locales,
-}) => {
-  invariant(locales, 'locales is not defined');
-  const data = await client.types.all({ limit: 100 });
-  const paths = data?.flatMap((type) =>
-    locales?.map((locale) => ({ params: { pages: [type.slug] }, locale })),
-  );
-  // We'll pre-render only these paths at build time also with the slash route.
-  return {
-    paths: paths.concat(
-      locales?.map((locale) => ({ params: { pages: [] }, locale })),
-    ),
-    fallback: 'blocking',
-  };
-};
+// D-1 (US-104): sin prerender de rutas dinámicas. El build no llama a la API;
+// cada página se genera en su primera visita, con datos del entorno donde
+// corre. `[]` también para la raíz del inicio: `[[...pages]]` genera `/` en
+// la primera visita igual que el resto.
+export const getStaticPaths: GetStaticPaths<ParsedQueryParams> = async () => ({
+  paths: [],
+  fallback: 'blocking',
+});
 
 export const getStaticProps: GetStaticProps<
   HomePageProps,

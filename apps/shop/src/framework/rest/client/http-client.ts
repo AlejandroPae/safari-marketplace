@@ -180,8 +180,11 @@ function apiBaseUrl(): string {
   if (typeof window !== 'undefined') return BROWSER_API_PREFIX;
   const url = process.env.API_INTERNAL_URL;
   if (!url) {
-    const error = new Error(
+    // HttpError (US-104): para quien llama es "no se llegó a la API", como un
+    // ECONNREFUSED; el build sin API lo tolera igual que la red caída.
+    const error = new HttpError(
       'API_INTERNAL_URL is not defined: set it to the API address the server can reach (e.g. http://localhost:9001/api)',
+      { code: 'API_INTERNAL_URL_MISSING' },
     );
     if (!missingInternalUrlLogged) {
       missingInternalUrlLogged = true;
@@ -214,8 +217,10 @@ Axios.interceptors.request.use((config) => {
 Axios.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    // Un error que no es de Axios (p. ej. falta API_INTERNAL_URL) no es un
-    // fallo HTTP: se propaga tal cual, con su mensaje.
+    // Un HttpError ya hecho (falta API_INTERNAL_URL) o un error que no es de
+    // Axios se propagan tal cual, con su mensaje. HttpError va primero:
+    // lleva `isAxiosError = true` y `axios.isAxiosError` lo confundiría.
+    if (error instanceof HttpError) return Promise.reject(error);
     if (!axios.isAxiosError(error)) return Promise.reject(error);
     const config = error.config as RetryableConfig | undefined;
 

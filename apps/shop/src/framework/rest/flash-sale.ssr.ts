@@ -6,34 +6,21 @@ import type {
 } from '@/types';
 import type { GetStaticPaths, GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/pages/serverSideTranslations';
-import invariant from 'tiny-invariant';
-import client from './client';
 import { dehydrate, QueryClient } from '@tanstack/react-query';
 import { API_ENDPOINTS } from '@/framework/client/api-endpoints';
 import { SettingsQueryOptions } from '@/types';
-import { SHOPS_LIMIT } from '@/lib/constants';
 
 // This function gets called at build time
 type ParsedQueryParams = {
   slug: string;
 };
-export const getStaticPaths: GetStaticPaths<ParsedQueryParams> = async ({
-  locales,
-  defaultLocale,
-}) => {
-  invariant(locales, 'locales is not defined');
-  const { data } = await client?.flashSale?.all({
-    language: defaultLocale,
-    limit: SHOPS_LIMIT,
-  });
-  const paths = data?.flatMap((flashSale) =>
-    locales?.map((locale) => ({ params: { slug: flashSale?.slug }, locale })),
-  );
-  return {
-    paths,
-    fallback: 'blocking',
-  };
-};
+// D-1 (US-104): sin prerender de rutas dinámicas. El build no llama a la API;
+// cada página se genera en su primera visita, con datos del entorno donde
+// corre.
+export const getStaticPaths: GetStaticPaths<ParsedQueryParams> = async () => ({
+  paths: [],
+  fallback: 'blocking',
+});
 
 type PageProps = {};
 

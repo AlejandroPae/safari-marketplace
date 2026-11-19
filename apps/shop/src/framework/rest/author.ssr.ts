@@ -1,8 +1,8 @@
 import type { Author, SettingsQueryOptions } from '@/types';
 import { GetStaticPaths, GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/pages/serverSideTranslations';
-import invariant from 'tiny-invariant';
 import client from './client';
+import { isNotFound, warnFailedQueries } from './ssr-resilience';
 import { PRODUCTS_PER_PAGE } from './client/variables';
 import { QueryClient, dehydrate } from '@tanstack/react-query';
 import { API_ENDPOINTS } from '@/framework/client/api-endpoints';
@@ -11,19 +11,13 @@ import { API_ENDPOINTS } from '@/framework/client/api-endpoints';
 type ParsedQueryParams = {
   author: string;
 };
-export const getStaticPaths: GetStaticPaths<ParsedQueryParams> = async ({
-  locales,
-}) => {
-  invariant(locales, 'locales is not defined');
-  const { data } = await client.authors.all({ limit: 100 });
-  const paths = data?.flatMap((shop) =>
-    locales?.map((locale) => ({ params: { author: shop.slug }, locale })),
-  );
-  return {
-    paths,
-    fallback: 'blocking',
-  };
-};
+// D-1 (US-104): sin prerender de rutas dinámicas. El build no llama a la API;
+// cada página se genera en su primera visita, con datos del entorno donde
+// corre.
+export const getStaticPaths: GetStaticPaths<ParsedQueryParams> = async () => ({
+  paths: [],
+  fallback: 'blocking',
+});
 type PageProps = {
   author: Author;
 };
@@ -43,6 +37,7 @@ export const getStaticProps: GetStaticProps<
       slug: params!.author,
       language: locale,
     });
+    warnFailedQueries(queryClient, `author/${params!.author}`);
     return {
       props: {
         author,
@@ -56,8 +51,10 @@ export const getStaticProps: GetStaticProps<
       revalidate: 60,
     };
   } catch (error) {
-    return {
-      notFound: true,
-    };
+    // D-4 (US-104): 404 solo si la API dice que no existe. Red caída, timeout
+    // o 5xx se lanzan: Next no cachea la respuesta y conserva la última
+    // página buena.
+    if (isNotFound(error)) return { notFound: true };
+    throw error;
   }
 };

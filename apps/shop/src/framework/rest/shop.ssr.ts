@@ -2,8 +2,8 @@ import type { ProductQueryOptions, Shop } from '@/types';
 import type { GetStaticPaths, GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/pages/serverSideTranslations';
 import { QueryClient, dehydrate } from '@tanstack/react-query';
-import invariant from 'tiny-invariant';
 import client from './client';
+import { isNotFound, warnFailedQueries } from './ssr-resilience';
 import { API_ENDPOINTS } from './client/api-endpoints';
 import { PRODUCTS_PER_PAGE } from './client/variables';
 import { SettingsQueryOptions } from '@/types';
@@ -12,19 +12,13 @@ import { SettingsQueryOptions } from '@/types';
 type ParsedQueryParams = {
   slug: string;
 };
-export const getStaticPaths: GetStaticPaths<ParsedQueryParams> = async ({
-  locales,
-}) => {
-  invariant(locales, 'locales is not defined');
-  const { data } = await client.shops.all({ limit: 100, is_active: 1 });
-  const paths = data?.flatMap((shop) =>
-    locales?.map((locale) => ({ params: { slug: shop.slug }, locale })),
-  );
-  return {
-    paths,
-    fallback: 'blocking',
-  };
-};
+// D-1 (US-104): sin prerender de rutas dinámicas. El build no llama a la API;
+// cada página se genera en su primera visita, con datos del entorno donde
+// corre.
+export const getStaticPaths: GetStaticPaths<ParsedQueryParams> = async () => ({
+  paths: [],
+  fallback: 'blocking',
+});
 type PageProps = {
   shop: Shop;
   variables: {
@@ -55,6 +49,7 @@ export const getStaticProps: GetStaticProps<
         client.products.all(queryKey[1] as ProductQueryOptions),
       initialPageParam: undefined,
     });
+    warnFailedQueries(queryClient, `shop/${slug}`);
     return {
       props: {
         shop,
@@ -68,8 +63,10 @@ export const getStaticProps: GetStaticProps<
       revalidate: 60,
     };
   } catch (error) {
-    return {
-      notFound: true,
-    };
+    // D-4 (US-104): 404 solo si la API dice que no existe. Red caída, timeout
+    // o 5xx se lanzan: Next no cachea la respuesta y conserva la última
+    // página buena.
+    if (isNotFound(error)) return { notFound: true };
+    throw error;
   }
 };

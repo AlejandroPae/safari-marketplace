@@ -3,6 +3,7 @@ import type { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/pages/serverSideTranslations';
 import { QueryClient, useQuery, dehydrate } from '@tanstack/react-query';
 import client from './client';
+import { warnFailedQueries } from './ssr-resilience';
 import { API_ENDPOINTS } from './client/api-endpoints';
 import { TYPES_PER_PAGE } from './client/variables';
 
@@ -26,10 +27,14 @@ export const getStaticProps: GetStaticProps = async ({ locale }) => {
     queryFn: ({ queryKey }) => client.authors.all(queryKey[1] as any),
     initialPageParam: undefined,
   });
+  warnFailedQueries(queryClient, 'authors');
   return {
     props: {
       ...(await serverSideTranslations(locale!, ['common', 'banner'])),
       dehydratedState: JSON.parse(JSON.stringify(dehydrate(queryClient))),
     },
+    // D-3 (US-104): se regenera con datos reales en vez de quedar congelada
+    // con los del build.
+    revalidate: 60,
   };
 };
