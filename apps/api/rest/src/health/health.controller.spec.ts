@@ -8,6 +8,7 @@
  * de `@safari/db`; el controller y el service son reales.
  */
 import 'reflect-metadata';
+import { hostname } from 'node:os';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { pingDatabase } from '@safari/db';
 import { IS_PUBLIC_KEY } from '#src/auth/decorators/public.decorator.js';
@@ -33,8 +34,11 @@ describe('HealthController', () => {
     expect(Reflect.getMetadata(IS_PUBLIC_KEY, HealthController)).toBe(true);
   });
 
-  it('liveness responde ok sin tocar la base', () => {
-    expect(controller.liveness()).toEqual({ status: 'ok' });
+  it('liveness responde ok y la réplica, sin tocar la base', () => {
+    expect(controller.liveness()).toEqual({
+      status: 'ok',
+      instance: hostname(),
+    });
     expect(pingDatabaseMock).not.toHaveBeenCalled();
   });
 

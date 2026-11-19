@@ -10,6 +10,7 @@ import {
   logPrisma,
   requestLogger,
 } from './common/logging.js';
+import { servedBy } from './common/served-by.js';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -17,6 +18,8 @@ async function bootstrap() {
     // US-17: timestamp ISO 8601 y nivel en cada línea de log.
     logger: new IsoConsoleLogger(),
   });
+  // US-107: cada respuesta dice qué réplica la atendió (X-Served-By).
+  app.use(servedBy);
   app.use(requestLogger);
   setPrismaLogSink(logPrisma);
   // US-78: Express 5 cambió el parser de query strings por defecto de `qs`

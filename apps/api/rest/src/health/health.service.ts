@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { pingDatabase } from '@safari/db';
 import { oneLine } from '#src/common/logging.js';
+import { INSTANCE } from '#src/common/served-by.js';
 
 export interface DatabaseCheck {
   status: 'up' | 'down';
@@ -27,8 +28,9 @@ export interface ReadinessReport {
 export class HealthService {
   private readonly logger = new Logger(HealthService.name);
 
+  /** `instance` dice qué réplica respondió (US-107), como `X-Served-By`. */
   liveness() {
-    return { status: 'ok' as const };
+    return { status: 'ok' as const, instance: INSTANCE };
   }
 
   async readiness(): Promise<ReadinessReport> {
