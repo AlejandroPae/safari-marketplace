@@ -29,10 +29,12 @@
 | US | Título | Releasable solo | Depende de | LOC est. |
 |----|--------|-----------------|------------|----------|
 | [US-17](./17-salud-logging-api.md) ✅ | Endpoint de salud y logging con timestamps en la API | Sí | ninguna | ~150 |
+| [US-105](./105-imagenes-frontend-livianas.md) | Imágenes livianas de la tienda y el admin, y versiones fijas | Sí | ninguna | ~150 |
+| [US-106](./106-imagen-api-liviana.md) | Imagen liviana de la API: una sola copia de Prisma, sin el CLI | Sí | US-105 | ~60 |
 | [US-18](./18-terraform-minimo.md) | Terraform mínimo para el stack contenedorizado | Sí | US-15, US-17 | ~300 |
 
 **Orden sugerido:** US-17 (barata, desbloquea healthchecks honestos) →
-US-18 (requiere el stack dockerizado del Épico 13).
+US-105 → US-106 → US-18 (requiere el stack dockerizado del Épico 13).
 
 ## Refinamiento — Decisiones tomadas
 
@@ -61,3 +63,19 @@ US-18 (requiere el stack dockerizado del Épico 13).
 - El README raíz (2 líneas) menciona Terraform: cuando US-18 cierre, alinear
   esa mención con lo que de verdad existe; mientras tanto NO agregar promesas
   nuevas a ningún doc.
+
+## Actualización 2026-11-19: US-105 y US-106
+
+> Sección añadida sin reescribir lo anterior.
+
+- **US-105 y US-106** salen de `_backlog/105-imagenes-docker-livianas.md`,
+  que el dueño partió en dos tras una revisión del sub-agente fable 5. Las
+  dos quedan en «Listo para ejecución» y van en serie: comparten
+  `apps/api/rest/Dockerfile` y `apps/README.md`.
+- **Por qué aquí:** las imágenes del Épico 13 (cerrado el 2026-11-19)
+  funcionan, pero pesan entre 1.5 y 2 GB. Los estudiantes las suben a Docker
+  Hub y las despliegan en Dokploy, y ese peso es el primer obstáculo del
+  despliegue. Encaja con la D-2 de este épico: las imágenes vienen del
+  Épico 13, y aquí se preparan para desplegarse.
+- **No dependen de la decisión abierta del proveedor (decisión 3).** US-18
+  sigue bloqueada por ella; US-105 y US-106 no.
