@@ -31,7 +31,8 @@
 | [US-14](./14-dockerizar-api-rest.md) | Dockerizar la API REST | Sí | ninguna | ~150 |
 | [US-102](./102-urls-configurables-en-ejecucion.md) | URL de la API configurable en ejecución (prefijo `/backend`) | Sí | ninguna | ~220 |
 | [US-103](./103-shop-url-en-ejecucion-admin.md) | URL de la tienda configurable en ejecución en el admin | Sí | US-102 | ~120 |
-| [US-15](./15-compose-stack-completo.md) | Compose del stack completo con healthchecks | Sí | US-14, US-102 | ~250 |
+| [US-104](./104-build-shop-sin-api.md) | `next build` de la tienda sin la API viva | Sí | US-102 | ~250 |
+| [US-15](./15-compose-stack-completo.md) | Compose del stack completo con healthchecks | Sí | US-14, US-102, US-104 | ~250 |
 
 **Orden sugerido:** US-14 → US-15 (US-15 dockeriza shop/admin dentro de su
 propio alcance; si en el design crece de más, partirla antes de ejecutar).
@@ -79,6 +80,11 @@ propio alcance; si en el design crece de más, partirla antes de ejecutar).
   el prefijo relativo `/backend`, que enruta el proxy, y el SSR usa
   `API_INTERNAL_URL`, de ejecución. US-15 ya no necesita args de build para
   `NEXT_PUBLIC_REST_API_ENDPOINT`; US-102 lo anota al cerrarse.
+- **US-104** (`next build` de la tienda sin la API) sale de
+  `_backlog/104-build-shop-sin-api.md`. Se promovió el mismo día tras otra
+  revisión del sub-agente fable 5. Resuelve el R-2 de US-102 y añade el build
+  de la tienda a `just check-full`.
 - **Orden** (confirmado por el dueño el 2026-11-18): US-14 → US-102 → US-103
-  → US-15. US-14 y US-102 no comparten archivos y pueden ir en cualquier
-  orden entre sí.
+  → US-104 → US-15. US-103 y US-104 no van en paralelo: comparten `justfile`
+  y `apps/README.md`. US-14 y US-102 no comparten archivos y pueden ir en
+  cualquier orden entre sí.

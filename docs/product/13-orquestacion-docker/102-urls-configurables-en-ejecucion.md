@@ -14,8 +14,8 @@ Dokploy como base del laboratorio de Sistemas Distribuidos.
 **Status:** Listo para ejecución (promovida desde `_backlog/` el 2026-11-18,
 tras revisión del sub-agente fable 5; decisiones DA-1, DA-3 y DA-4 fijadas por
 el dueño)
-**Depende de:** ninguna. **Bloquea a:** US-103 (comparte plantillas, `justfile`
-y `apps/README.md`) y US-15 (resuelve su R-1).
+**Depende de:** ninguna. **Bloquea a:** US-103 y US-104 (comparten plantillas,
+`justfile` y `apps/README.md`) y US-15 (resuelve su R-1).
 **LOC est.:** ~220
 
 ## Historia
@@ -178,7 +178,8 @@ no devuelve nada, y las plantillas `.env` ya no las declaran.
   admin hoy tiene 1 error ajeno: el stub `@types/minimatch`, ver US-10.
 - `yarn lint` en 0 en ambos; `just check` en verde.
 - `just build-shop` y `just build-admin` en verde. `just build-shop` sigue
-  exigiendo `just api-dev` arriba, igual que hoy (R-2).
+  exigiendo `just api-dev` arriba, igual que hoy (R-2). Queda obsoleto al
+  cerrar [US-104](./104-build-shop-sin-api.md), que lo quita.
 
 ## Escenarios Gherkin
 
@@ -231,6 +232,9 @@ Feature: URL de la API configurable en ejecución
   `API_INTERNAL_URL` existe en el build y esta US **no empeora** el build de
   hoy. Para una imagen Docker hace falta la US que independice el build (aún
   sin escribir). El CA-1 se cumple igual: lo que se comprueba es la ejecución.
+  Esa US es [US-104](./104-build-shop-sin-api.md); este riesgo queda obsoleto
+  cuando cierre. Ojo: el error de D-2 por falta de `API_INTERNAL_URL` se lanza
+  al pedir, no al importar el módulo, o el build sin API de US-104 muere.
 - **R-3 — Rutas con prefijo y `rewrites`.**
   - El `rewrites()` de desarrollo no debe chocar con `/api/auth` (shop) ni con
     el futuro `/api/runtime-config` (admin), ni quedar activo en producción.

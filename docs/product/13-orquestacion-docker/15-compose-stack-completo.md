@@ -7,7 +7,7 @@
 **Épico:** [Épico 13](./README.md)
 **Fecha:** 2026-08-25
 **Status:** Listo para ejecución
-**Depende de:** US-14
+**Depende de:** US-14, [US-102](./102-urls-configurables-en-ejecucion.md) y [US-104](./104-build-shop-sin-api.md) (añadidas el 2026-11-18: URLs en ejecución y build de la tienda sin la API)
 **LOC est.:** ~250
 
 ## Historia
