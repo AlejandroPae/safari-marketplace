@@ -18,6 +18,7 @@ import { StarIcon } from '@/components/icons/star-icon';
 import { NoDataFound } from '@/components/icons/no-data-found';
 import { useModalAction } from '@/components/ui/modal/modal.context';
 import Link from 'next/link';
+import { useShopUrl } from '@/utils/shop-url';
 
 export type IProps = {
   reviews: Review[] | undefined;
@@ -35,6 +36,7 @@ const ReviewList = ({
 }: IProps) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const shopUrl = useShopUrl();
   const { alignLeft } = useIsRTL();
   const { openModal } = useModalAction();
   const [sortingObj, setSortingObj] = useState<{
@@ -107,13 +109,17 @@ const ReviewList = ({
               sizes="(max-width: 768px) 100vw"
             />
           </div>
-          <Link
-            href={`${process.env.NEXT_PUBLIC_SHOP_URL}/products/${product?.slug}`}
-          >
+          {shopUrl ? (
+            <Link href={`${shopUrl}/products/${product?.slug}`}>
+              <span className="truncate whitespace-nowrap font-medium">
+                {product?.name}
+              </span>
+            </Link>
+          ) : (
             <span className="truncate whitespace-nowrap font-medium">
               {product?.name}
             </span>
-          </Link>
+          )}
         </div>
       ),
     },

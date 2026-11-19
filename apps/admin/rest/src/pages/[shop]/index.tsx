@@ -40,9 +40,11 @@ import { useFormatPhoneNumber } from '@/utils/format-phone-number';
 import { useSettingsQuery } from '@/data/settings';
 import { IosArrowDown } from '@/components/icons/ios-arrow-down';
 import { OWNERSHIP_TRANSFER_STATUS } from '@/utils/constants';
+import { useShopUrl } from '@/utils/shop-url';
 
 export default function ShopPage() {
   const router = useRouter();
+  const shopUrl = useShopUrl();
   const { t } = useTranslation();
   const { permissions, role } = getAuthCredentials();
   const { data: me } = useMeQuery();
@@ -150,13 +152,15 @@ export default function ShopPage() {
                 ) : (
                   ''
                 )}
-                <Link
-                  href={Routes.visitStore(`shops/${slug as string}`)}
-                  target="_blank"
-                  className="text-[#666666] transition-colors duration-300 hover:text-[#666666]/60"
-                >
-                  <ExternalLinkIcon />
-                </Link>
+                {shopUrl && (
+                  <Link
+                    href={`${shopUrl}/shops/${slug as string}`}
+                    target="_blank"
+                    className="text-[#666666] transition-colors duration-300 hover:text-[#666666]/60"
+                  >
+                    <ExternalLinkIcon />
+                  </Link>
+                )}
               </div>
               <div className="flex flex-col space-y-3 divide-[#E7E7E7] leading-none xl:flex-row xl:space-y-0 xl:space-x-5 xl:divide-x">
                 {owner?.email ? (

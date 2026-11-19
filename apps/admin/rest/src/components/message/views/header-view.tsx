@@ -12,6 +12,7 @@ import { Routes } from '@/config/routes';
 import { BackIcon } from '@/components/icons/back-icon';
 import { RESPONSIVE_WIDTH } from '@/utils/constants';
 import { ExternalLinkIconNew } from '@/components/icons/external-link';
+import { useShopUrl } from '@/utils/shop-url';
 interface Props {
   className?: string;
   shop: Shop;
@@ -20,6 +21,7 @@ interface Props {
 const HeaderView = ({ className, shop, ...rest }: Props) => {
   const router = useRouter();
   const { locale } = router;
+  const shopUrl = useShopUrl();
   const { width } = useWindowSize();
   const { permissions } = getAuthCredentials();
   let adminPermission = hasAccess(adminOnly, permissions);
@@ -66,14 +68,16 @@ const HeaderView = ({ className, shop, ...rest }: Props) => {
           {shop?.name ? (
             <h2 className="flex items-center gap-2 text-lg font-semibold capitalize text-muted-black">
               {shop?.name}
-              <Link
-                href={`${process.env.NEXT_PUBLIC_SHOP_URL}/${locale}/shops/${shop?.slug}`}
-                target="_blank"
-                className="text-xl text-[#929292] transition-colors duration-300 hover:text-[#929292]/60"
-                title={shop?.name}
-              >
-                <ExternalLinkIconNew />
-              </Link>
+              {shopUrl && (
+                <Link
+                  href={`${shopUrl}/${locale}/shops/${shop?.slug}`}
+                  target="_blank"
+                  className="text-xl text-[#929292] transition-colors duration-300 hover:text-[#929292]/60"
+                  title={shop?.name}
+                >
+                  <ExternalLinkIconNew />
+                </Link>
+              )}
             </h2>
           ) : (
             ''

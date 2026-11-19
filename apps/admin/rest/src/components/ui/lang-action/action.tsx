@@ -1,4 +1,5 @@
 import ActionButtons from '@/components/common/action-buttons';
+import { useShopUrl } from '@/utils/shop-url';
 import { Config } from '@/config';
 import LanguageAction from './language-switcher';
 import shop from '@/components/layouts/shop';
@@ -38,7 +39,8 @@ export default function LanguageSwitcher({
     query: { shop },
   } = useRouter();
 
-  const preview = `${process.env.NEXT_PUBLIC_SHOP_URL}/products/preview/${slug}`;
+  const shopUrl = useShopUrl();
+  const preview = shopUrl && `${shopUrl}/products/preview/${slug}`;
 
   return (
     <>

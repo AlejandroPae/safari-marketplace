@@ -86,6 +86,13 @@ env:
       fi
     done
 
+    # SHOP_URL (US-103): enlaces del admin a la tienda, leídos al ejecutar.
+    # También para un .env que ya existiera, como API_INTERNAL_URL.
+    if ! grep -q '^SHOP_URL=' apps/admin/rest/.env; then
+      printf '\n# URL pública de la tienda para los enlaces del admin (US-103)\nSHOP_URL="http://localhost:{{SHOP_PORT}}"\n' >> apps/admin/rest/.env
+      echo "  + SHOP_URL añadido a apps/admin/rest/.env"
+    fi
+
     # DA-4 de US-102: la URL de broadcasting va por /backend. Un .env anterior
     # la tiene derivada de la URL absoluta de la API, que el build escribiría en
     # el JavaScript del admin.

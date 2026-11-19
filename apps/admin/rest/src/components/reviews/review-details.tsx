@@ -13,6 +13,7 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { ProductType, Review } from '@/types';
 import Link from '@/components/ui/link';
+import { useShopUrl } from '@/utils/shop-url';
 import { StarIcon } from '@/components/icons/star-icon';
 import { CheckedIcon } from '@/components/icons/checked';
 import { LikeIcon } from '@/components/icons/like-icon';
@@ -25,6 +26,7 @@ type IProps = {
 };
 
 const ReviewDetailsView = ({ review }: IProps) => {
+  const shopUrl = useShopUrl();
   const {
     product,
     id,
@@ -143,12 +145,16 @@ const ReviewDetailsView = ({ review }: IProps) => {
         </div>
 
         <div className="flex flex-col space-y-1.5 pe-4 md:pe-5">
-          <Link
-            href={process.env.NEXT_PUBLIC_SHOP_URL + '/products/' + slug}
-            className="text-lg font-semibold text-heading transition-colors hover:text-accent hover:no-underline focus:text-accent-700 focus:no-underline"
-          >
-            {name}
-          </Link>
+          {shopUrl ? (
+            <Link
+              href={`${shopUrl}/products/${slug}`}
+              className="text-lg font-semibold text-heading transition-colors hover:text-accent hover:no-underline focus:text-accent-700 focus:no-underline"
+            >
+              {name}
+            </Link>
+          ) : (
+            <span className="text-lg font-semibold text-heading">{name}</span>
+          )}
 
           {product_type === ProductType.Variable ? (
             <div className="flex items-center">

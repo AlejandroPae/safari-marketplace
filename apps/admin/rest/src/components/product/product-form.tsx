@@ -50,6 +50,7 @@ import OpenAIButton from '@/components/openAI/openAI.button';
 import { ItemProps } from '@/types';
 import { EyeIcon } from '@/components/icons/category/eyes-icon';
 import { LongArrowPrev } from '@/components/icons/long-arrow-prev';
+import { useShopUrl } from '@/utils/shop-url';
 import Link from 'next/link';
 import { formatSlug } from '@/utils/use-slug';
 import ProductFlashSaleBox from '@/components/product/product-flash-sale-box';
@@ -68,6 +69,7 @@ export default function CreateOrUpdateProductForm({
 }: ProductFormProps) {
   const router = useRouter();
   const { query, locale } = router;
+  const shopUrl = useShopUrl();
   const {
     // @ts-ignore
     settings: { options },
@@ -584,9 +586,9 @@ export default function CreateOrUpdateProductForm({
                 </Button>
               )}
               <div className="flex items-center">
-                {showPreviewButton && (
+                {showPreviewButton && shopUrl && (
                   <Link
-                    href={`${process.env.NEXT_PUBLIC_SHOP_URL}/products/preview/${query.productSlug}`}
+                    href={`${shopUrl}/products/preview/${query.productSlug}`}
                     target="_blank"
                     className="inline-flex h-12 shrink-0 items-center justify-center rounded border !border-accent bg-transparent px-5 py-0 text-sm font-semibold leading-none !text-accent outline-hidden transition duration-300 ease-in-out me-4 hover:border-accent hover:bg-accent hover:!text-white focus:shadow focus:outline-hidden focus:ring-1 focus:ring-accent-700 md:text-base"
                   >
@@ -632,14 +634,16 @@ export default function CreateOrUpdateProductForm({
                 </Button>
               )}
               <div className="flex items-center">
-                <Link
-                  href={`${process.env.NEXT_PUBLIC_SHOP_URL}/products/preview/${query.productSlug}`}
-                  target="_blank"
-                  className="inline-flex h-12 shrink-0 items-center justify-center rounded border !border-accent bg-transparent px-5 py-0 font-semibold leading-none !text-accent outline-hidden transition duration-300 ease-in-out me-4 hover:border-accent hover:bg-accent hover:!text-white focus:shadow focus:outline-hidden focus:ring-1 focus:ring-accent-700"
-                >
-                  <EyeIcon className="w-4 h-4 me-2" />
-                  {t('form:button-label-preview-product-on-shop')}
-                </Link>
+                {shopUrl && (
+                  <Link
+                    href={`${shopUrl}/products/preview/${query.productSlug}`}
+                    target="_blank"
+                    className="inline-flex h-12 shrink-0 items-center justify-center rounded border !border-accent bg-transparent px-5 py-0 font-semibold leading-none !text-accent outline-hidden transition duration-300 ease-in-out me-4 hover:border-accent hover:bg-accent hover:!text-white focus:shadow focus:outline-hidden focus:ring-1 focus:ring-accent-700"
+                  >
+                    <EyeIcon className="w-4 h-4 me-2" />
+                    {t('form:button-label-preview-product-on-shop')}
+                  </Link>
+                )}
                 <Button loading={updating || creating} size="medium">
                   {initialValues
                     ? t('form:button-label-update-product')

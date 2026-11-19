@@ -25,6 +25,7 @@ import { LikeIcon } from '@/components/icons/like-icon';
 import { DislikeIcon } from '@/components/icons/dislike-icon';
 import Link from 'next/link';
 import { Routes } from '@/config/routes';
+import { useShopUrl } from '@/utils/shop-url';
 
 export type IProps = {
   questions: Question[] | undefined;
@@ -42,6 +43,7 @@ const QuestionList = ({
 }: IProps) => {
   const { t } = useTranslation();
   const { alignLeft } = useIsRTL();
+  const shopUrl = useShopUrl();
   const router = useRouter();
   const {
     query: { shop },
@@ -110,13 +112,17 @@ const QuestionList = ({
               sizes="(max-width: 768px) 100vw"
             />
           </div>
-          <Link
-            href={`${process.env.NEXT_PUBLIC_SHOP_URL}/products/${product?.slug}`}
-          >
+          {shopUrl ? (
+            <Link href={`${shopUrl}/products/${product?.slug}`}>
+              <span className="truncate whitespace-nowrap font-medium">
+                {product?.name}
+              </span>
+            </Link>
+          ) : (
             <span className="truncate whitespace-nowrap font-medium">
               {product?.name}
             </span>
-          </Link>
+          )}
         </div>
       ),
     },

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useShopUrl } from '@/utils/shop-url';
 import { useTranslation } from 'next-i18next/pages';
 import { useRouter } from 'next/router';
 import { languageMenu } from '@/utils/locals';
@@ -74,7 +75,8 @@ const LanguageSwitcher = ({
     return autoUpdate(refs.reference.current, refs.floating.current, update);
   }, [refs.reference, refs.floating, update]);
 
-  const preview = `${process.env.NEXT_PUBLIC_SHOP_URL}/products/preview/${slug}`;
+  const shopUrl = useShopUrl();
+  const preview = shopUrl && `${shopUrl}/products/preview/${slug}`;
 
   return (
     <div className={`flex w-full items-center justify-end gap-3 ${className}`}>
