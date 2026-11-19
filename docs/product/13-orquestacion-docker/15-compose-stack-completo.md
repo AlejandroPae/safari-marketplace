@@ -34,6 +34,10 @@ yarn.
   `NEXT_PUBLIC_REST_API_ENDPOINT` ya no hacen falta. Quedan en build la
   `NEXT_PUBLIC_SHOP_URL` del admin, hasta US-103, y las demás `NEXT_PUBLIC_*`
   de configuración.
+- **Nota de [US-103](./103-shop-url-en-ejecucion-admin.md) (2026-11-19):** la
+  URL de la tienda en el admin también es de ejecución: `SHOP_URL`, servida
+  por `/api/runtime-config`. El contenedor del admin la recibe por
+  `environment`, no como arg de build.
 
 ## Scope
 **Incluye:** Dockerfiles multi-stage de `apps/shop` y `apps/admin/rest`,

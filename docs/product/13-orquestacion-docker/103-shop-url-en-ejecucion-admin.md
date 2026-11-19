@@ -8,7 +8,7 @@
 
 **Épico:** [Épico 13](./README.md)
 **Fecha:** 2026-11-18
-**Status:** Listo para ejecución (decisión DA-2 fijada por el dueño el 2026-11-18)
+**Status:** Implementado (2026-11-19). Decisión DA-2 fijada por el dueño el 2026-11-18.
 **Depende de:** [US-102](./102-urls-configurables-en-ejecucion.md), que
 comparte las plantillas `.env`, el `justfile` y `apps/README.md`, y fija el
 prefijo `/backend` que deja libre `/api/*` para Next.
@@ -115,8 +115,8 @@ Feature: URL de la tienda en ejecución en el admin
 
 ## Definición de Done
 
-- [ ] CA-1 a CA-4 verificados, con la salida real pegada en "Resultado".
-- [ ] Status en `Implementado` y fila del Épico 13 marcada.
+- [x] CA-1 a CA-4 verificados, con la salida real pegada en "Resultado".
+- [x] Status en `Implementado` y fila del Épico 13 marcada.
 
 ## Riesgos
 
@@ -132,3 +132,158 @@ Feature: URL de la tienda en ejecución en el admin
   puede chocar con el `rewrites()` de desarrollo.
 - Las decisiones están fijadas; si una choca con el código, **detente y
   pregunta**.
+
+## Resultado (2026-11-19, rama `feat/us-103-shop-url` sobre `main` @ `532cb5f`)
+
+### Qué cambió
+
+| Archivo | Cambio |
+|---|---|
+| `apps/admin/rest/src/pages/api/runtime-config.ts` | **Nuevo.** Devuelve `{ shopUrl }` desde `process.env.SHOP_URL` con `Cache-Control: no-store`; sin la variable, 500 con un mensaje que la nombra (DA-2) |
+| `apps/admin/rest/src/utils/shop-url.ts` | **Nuevo.** `useShopUrl()` (React Query, una petición por pestaña, `staleTime: Infinity`, sin reintentos) y `shopUrl(path)` para `routes.ts`, que lee el valor ya cargado |
+| `header-view.tsx`, `product-form.tsx` (2), `question-list.tsx`, `review-details.tsx`, `review-list.tsx`, `lang-action/action.tsx`, `lang-action/language-switcher.tsx` | `useShopUrl()`. Sin URL, no se pinta el enlace: en las listas queda el nombre del producto como texto, y en las vistas previas `previewUrl` llega `undefined` (`ActionButtons` ya lo trataba como opcional) |
+| `config/routes.ts` | `visitStore` usa `shopUrl()`; devuelve `undefined` hasta tener la URL (R-1) |
+| `topbar/visit-store.tsx`, `pages/[shop]/index.tsx` | llaman a `useShopUrl()` y no pintan el enlace sin URL |
+| `apps/admin/rest/.env.template` | `SHOP_URL` en lugar de `NEXT_PUBLIC_SHOP_URL` |
+| `justfile` (`env`) | añade `SHOP_URL` si falta (DA-1′) |
+| `apps/README.md` | fila de `SHOP_URL` en la tabla de variables |
+| `15-compose-stack-completo.md` | nota: el admin recibe `SHOP_URL` por `environment` |
+
+La US hablaba de 8 archivos con `NEXT_PUBLIC_SHOP_URL`; además se tocaron sus
+dos llamadores de `Routes.visitStore` (`visit-store.tsx` y
+`pages/[shop]/index.tsx`). Si no cargan la URL ellos mismos, nadie dispararía
+`useShopUrl()` en esas páginas, y `visitStore` devolvería `undefined` siempre
+(R-1).
+
+### Línea base de `tsc` (CA-4)
+
+```
+antes   (2026-11-18, main):  admin tsc --noEmit -> 1 error: TS2688 Cannot find type definition file for 'minimatch'
+después:                     admin tsc --noEmit -> error TS2688: Cannot find type definition file for 'minimatch'.
+```
+
+### CA-1 — Enlaces del admin a la tienda en ejecución
+
+Un solo `just build-admin`:
+
+```
+✓ Compiled successfully in 94s
+├ ƒ /api/runtime-config
+Done in 432.14s.
+ADMIN_EXIT=0
+$ grep -rlE 'tienda-(a|b)\.example|localhost:3003' apps/admin/rest/.next/static | wc -l
+0
+```
+
+Para cada valor se arranca ese build con `SHOP_URL=… yarn start` (:3002).
+Delante va el proxy local de US-102 (:8081, `/backend` → API), para iniciar
+sesión. Los `href` se leen del DOM con DevTools MCP, con sesión de
+`admin@demo.com`.
+
+```
+=== A: SHOP_URL='https://tienda-a.example'
+HTTP/1.1 200 OK
+cache-control: no-store
+{"shopUrl":"https://tienda-a.example"}
+
+/en/furniture-shop                      Visit Store -> https://tienda-a.example/shops/furniture-shop
+                                        (icono)     -> https://tienda-a.example/shops/furniture-shop
+/en/reviews                             Milan The Story of Love -> https://tienda-a.example/products/milan-the-story-of-love
+/en/questions                           Visit Site -> https://tienda-a.example/
+                                        Sun Tropics Organic Mango Nectar,250ml -> https://tienda-a.example/products/sun-tropics-organic-mango-nectar-250ml
+                                        Wonderful Pomegranate Juice, 300 ml -> https://tienda-a.example/products/wonderful-pomegranate-juice-300-ml
+/en/furniture-shop/products/apples/edit Preview -> https://tienda-a.example/products/preview/apples
+
+=== B: SHOP_URL='https://tienda-b.example'   (mismo build, solo reinicio)
+HTTP/1.1 200 OK
+cache-control: no-store
+{"shopUrl":"https://tienda-b.example"}
+
+/en/furniture-shop                      ["https://tienda-b.example/shops/furniture-shop","https://tienda-b.example/shops/furniture-shop"]
+/en/furniture-shop/products/apples/edit ["https://tienda-b.example/","https://tienda-b.example/products/preview/apples"]
+/en/reviews                             ["https://tienda-b.example/","https://tienda-b.example/products/milan-the-story-of-love",
+                                         "https://tienda-b.example/products/space-force-first-chapter", ...]
+```
+
+La primera lectura con B, en la página de edición, salió vacía. Era la primera
+carga tras el reinicio: con 6 s más de espera aparecieron los enlaces de
+arriba.
+
+### CA-2 — Variable ausente
+
+```
+=== sin-variable: SHOP_URL=''
+HTTP/1.1 500 Internal Server Error
+cache-control: no-store
+{"message":"SHOP_URL is not defined: set it to the public URL of the shop (e.g. http://localhost:3003)"}
+
+/en/furniture-shop/products/apples/edit
+{"formLoaded":true,"linksToShop":[],"previewButtons":0,"visitSite":0}
+```
+
+El formulario carga entero y no pinta ningún enlace roto, ni el botón
+Preview, ni Visit Site.
+
+### CA-3 — Sin restos
+
+```
+$ grep -rn "NEXT_PUBLIC_SHOP_URL" apps/admin/rest/src apps/admin/rest/.env.template
+grep rc=1
+```
+
+### CA-4 — Calidad
+
+`yarn lint` del admin:
+
+```
+$ eslint src
+Done in 66.92s.
+```
+
+`just env` sobre el `.env` existente, dos veces:
+
+```
+  + SHOP_URL añadido a apps/admin/rest/.env
+  * API fijada al puerto 9001 en los tres .env
+--- segunda corrida:
+(no añade nada)
+```
+
+En dev (`just api-dev`, `shop-dev`, `admin-dev`):
+
+```
+$ just verify
+OK   API    :9001/api/settings  200  5503B  701ms
+OK   Shop   :3003/en  200  191897B  108663ms  cards:30
+OK   Admin  :3002/en/login  200  72554B  30477ms  cards:1
+$ curl http://localhost:3002/api/runtime-config
+{"shopUrl":"http://localhost:3003"}  200
+```
+
+R-2 (i18n): todas las páginas probadas llevan el prefijo `/en/` y la
+petición a `/api/runtime-config`, que no lleva idioma, les llega bien.
+
+`just check`, con todos los servidores apagados:
+
+```
+OK    [1/10] packages/db build  110s
+OK    [2/10] packages/db lint  6s
+OK    [3/10] packages/db typecheck  18s
+OK    [4/10] api/rest typecheck  72s
+OK    [5/10] api/rest lint  84s
+OK    [6/10] admin/rest lint  144s
+OK    [7/10] shop lint  31s
+OK    [8/10] api/rest test  89s
+OK    [9/10] packages/db test  115s
+OK    [10/10] scraper db-test  4s
+check: VERDE (10 pasos, 677s)
+```
+
+### Hallazgos que no se accionaron (NO incluye)
+
+- **Una pestaña abierta conserva la URL vieja hasta recargar.** Cambiar
+  `SHOP_URL` y reiniciar el admin no la actualiza: `staleTime: Infinity` la
+  pide una sola vez. Es lo esperado para un valor de despliegue.
+- **El enlace de la tienda en `header-view.tsx`** (mensajes) usa
+  `/${locale}/shops/...` y los demás no llevan idioma. Viene de Pickbazar; no
+  se cambió.

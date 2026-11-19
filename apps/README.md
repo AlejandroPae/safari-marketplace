@@ -433,7 +433,7 @@ start` el shop da errores de hidratación (#418). Ver la US-83.
   | `/backend` (constante, no variable) | shop y admin | build (queda en el JS) | prefijo relativo con el que el **navegador** habla con la API, en el mismo origen que la página; igual en todos los entornos |
   | `API_INTERNAL_URL` | shop | **ejecución** | URL de la API para el **SSR/ISR**, por la red interna (p. ej. `http://safari-api:9001/api`). Si falta, la página falla con un error que la nombra |
   | `API_INTERNAL_URL` | admin | solo `next dev` | destino del rewrite de `/backend` en desarrollo; el admin no llama a la API desde el servidor |
-  | `NEXT_PUBLIC_SHOP_URL` | admin | build | enlaces «ver en la tienda»; pasa a ejecución en US-103 |
+  | `SHOP_URL` | admin | **ejecución** | URL pública de la tienda para los enlaces «ver en la tienda» (US-103). El navegador la pide a `/api/runtime-config` del propio admin; si falta, esa ruta responde 500 nombrándola y los enlaces no se pintan |
 
   En `next dev`, un `rewrites()` de `next.config.js` manda `/backend/*` a
   `API_INTERNAL_URL`; no hace falta proxy. En `next build`/`next start` ese
