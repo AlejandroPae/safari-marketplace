@@ -142,6 +142,40 @@ en el primer request.
 > Next.js compila cada ruta bajo demanda: el primer `GET /` del shop puede
 > tardar 60-90 s. No es un cuelgue.
 
+#### Alternativa: la API en contenedor (US-14)
+
+```bash
+just api-docker        # Postgres sembrado + imagen de la API -> http://localhost:9001/api
+just api-docker-down   # apaga el contenedor de la API; Postgres sigue arriba
+```
+
+Sustituye a `yarn start:dev` (o `just api-dev`), no convive con ella: las dos
+publican el 9001. La tienda y el admin no cambian, porque siguen hablando con
+`localhost:9001`. No hay hot-reload: un cambio en la API pide reconstruir
+(`docker compose up -d --build api`, o `just api-docker` otra vez).
+
+- **La imagen** sale de `apps/api/rest/Dockerfile`, con la **raíz del repo**
+  como contexto, porque construye también `packages/db` (su `dist/` y su
+  `generated/` no se versionan). Tiene tres etapas: capa de datos, build de
+  Nest y runtime con solo dependencias de producción. El `.dockerignore` de la
+  raíz es una lista blanca, así que no entran ni los `node_modules` locales ni
+  ningún `.env`.
+- **La configuración** llega por el `environment` del servicio `api` en
+  `docker-compose.yml`, no por un `.env`. Ahí `DATABASE_URL` apunta a
+  `postgres:5432` (la red interna), no a `localhost:5433`. `JWT_SECRET` trae
+  un valor de desarrollo; para otro, exportarlo antes de levantar.
+- **La imagen no siembra la base.** El servicio espera al healthcheck de
+  Postgres, pero sobre un volumen vacío la API arranca sin tablas y responde
+  500 hasta que corre `just db-migrate`. `just api-docker` lo hace antes de
+  levantarla.
+- **Con Zscaler**, el build falla en `prisma generate` con `unable to get local
+  issuer certificate`. Compose le pasa el CA de `NODE_EXTRA_CA_CERTS` como
+  secreto de build: está montado solo durante las descargas y no queda en la
+  imagen. Sin esa variable se usa el archivo vacío `apps/api/rest/no-extra-ca.txt`.
+- **Tiempos** medidos tras Zscaler: el primer build tarda ~10-15 min, casi
+  todo en los `yarn install` y `npm ci`. Los siguientes reutilizan las capas.
+  La imagen pesa ~1.5 GB.
+
 ### 4. Credenciales
 
 `login`, `register`, `/me` y `change-password` son reales (US-22): la contraseña

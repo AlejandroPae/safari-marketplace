@@ -443,7 +443,8 @@ db-count:
 db-test:
     cd "{{SCRAPER_DIR}}" && DATABASE_URL="{{DB_URL}}" "{{VENV_BIN}}/python" test_pipeline.py
 
-# Apaga Postgres. Los datos sobreviven en el volumen
+# Apaga Postgres (y la API en contenedor, si esta arriba). Los datos sobreviven
+# en el volumen
 [group('bd')]
 db-down:
     docker compose down
@@ -453,6 +454,36 @@ db-down:
 db-reset:
     docker compose down -v
     just db-up
+
+
+# ────────────────────── docker ───────────────────────────────
+
+# API en contenedor (US-14): Postgres sembrado y la imagen de la API, en el
+# 9001. Es el mismo puerto que `just api-dev`: una u otra, no las dos. La
+# primera vez construye la imagen (~15 min tras Zscaler); con Zscaler el build
+# toma el CA de NODE_EXTRA_CA_CERTS (ver apps/api/rest/Dockerfile).
+[group('docker')]
+[doc('API en contenedor en :9001 con Postgres sembrado (en vez de api-dev, no a la vez)')]
+api-docker:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just db-up
+    docker compose up -d --build api
+    echo -n "esperando a la API"
+    for i in $(seq 1 60); do
+      if curl -sf -o /dev/null http://localhost:9001/api/settings; then
+        echo " lista en http://localhost:9001/api"; exit 0
+      fi
+      echo -n "."; sleep 1
+    done
+    echo " no responde; ultimas lineas del log:"
+    docker compose logs --tail 30 api
+    exit 1
+
+# Apaga el contenedor de la API. Postgres sigue arriba
+[group('docker')]
+api-docker-down:
+    docker compose stop api
 
 
 # ────────────────────── capa de datos ────────────────────────
