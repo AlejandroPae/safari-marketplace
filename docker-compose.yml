@@ -29,5 +29,39 @@ services:
       timeout: 5s
       retries: 10
 
+  # API REST (US-14). `just api-docker` la levanta con la base sembrada; el
+  # desarrollo con hot-reload sigue siendo `just api-dev` (usan el mismo
+  # puerto: una u otra). La imagen no siembra la base: eso es `just db-migrate`.
+  api:
+    build:
+      # La raíz, porque la imagen construye también packages/db.
+      context: .
+      dockerfile: apps/api/rest/Dockerfile
+      secrets:
+        - extra_ca
+    image: safari-api
+    container_name: safari-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: "9001"
+      # Dentro de la red de compose la base es el servicio `postgres` en su
+      # puerto interno, no localhost:5433.
+      DATABASE_URL: postgresql://safari:safari@postgres:5432/safari_scraper
+      # Valor de desarrollo, como las credenciales de Postgres de arriba. En
+      # la nube se inyecta uno real (exportar JWT_SECRET antes de `up`).
+      JWT_SECRET: ${JWT_SECRET:-solo-desarrollo-local-no-usar-en-la-nube}
+      SHOP_URL: ${SHOP_URL:-http://localhost:3003}
+    ports:
+      - "9001:9001"
+
+# CA corporativo para el build (ver el Dockerfile de la API). Sin
+# NODE_EXTRA_CA_CERTS en el entorno, el archivo vacío de reemplazo no aporta
+# ningún CA y el build usa los de siempre.
+secrets:
+  extra_ca:
+    file: ${NODE_EXTRA_CA_CERTS:-./apps/api/rest/no-extra-ca.txt}
+
 volumes:
   postgres-data:

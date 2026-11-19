@@ -1,0 +1,3 @@
+# Reemplazo vacío del secreto `extra_ca` (ver docker-compose.yml y el
+# Dockerfile de esta carpeta). No contiene ningún certificado: se usa cuando
+# NODE_EXTRA_CA_CERTS no está definido, porque compose exige un archivo.

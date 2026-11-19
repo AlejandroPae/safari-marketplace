@@ -1,0 +1,23 @@
+# Contexto de build de las imágenes (US-14): la raíz del repo.
+#
+# Lista blanca: se excluye todo y solo se readmite lo que una imagen
+# necesita. Así no entran en el contexto ni los node_modules locales (varios
+# GB entre los workspaces), ni los builds, ni ningún secreto. Una imagen
+# nueva (US-15) añade aquí su carpeta.
+*
+
+# API REST: su código y su capa de datos.
+!apps/api/rest
+!packages/db
+
+# Readmitir una carpeta readmite todo lo que contiene. Lo que sigue lo vuelve
+# a sacar: artefactos que la imagen construye por su cuenta y secretos, que
+# llegan por el environment del compose y nunca se copian a una imagen.
+**/node_modules
+**/dist
+**/generated
+**/coverage
+**/.env
+**/.env.*
+**/*.log
+**/.DS_Store
