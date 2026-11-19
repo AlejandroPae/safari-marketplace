@@ -462,13 +462,15 @@ db-reset:
 # 9001. Es el mismo puerto que `just api-dev`: una u otra, no las dos. La
 # primera vez construye la imagen (~15 min tras Zscaler); con Zscaler el build
 # toma el CA de NODE_EXTRA_CA_CERTS (ver apps/api/rest/Dockerfile). Siembra el
-# servicio db-init del compose (US-15), del que depende la API.
+# servicio db-init del compose (US-15), del que depende la API. El 9001 lo
+# publica el balanceador api-lb (US-107), no la API: por eso se levantan los
+# dos. 3003 y 3002 quedan libres para shop-dev y admin-dev.
 [group('docker')]
 [doc('API en contenedor en :9001 con Postgres sembrado (en vez de api-dev, no a la vez)')]
 api-docker:
     #!/usr/bin/env bash
     set -euo pipefail
-    docker compose up -d --build api
+    docker compose up -d --build api api-lb
     echo -n "esperando a la API"
     for i in $(seq 1 60); do
       if curl -sf -o /dev/null http://localhost:9001/api/settings; then
@@ -480,16 +482,17 @@ api-docker:
     docker compose logs --tail 30 api
     exit 1
 
-# Apaga el contenedor de la API. Postgres sigue arriba
+# Apaga la API y su balanceador. Postgres sigue arriba
 [group('docker')]
 api-docker-down:
-    docker compose stop api
+    docker compose stop api api-lb
 
 # Stack completo en contenedores (US-15): Postgres, siembra (db-init), API,
 # tienda, admin y el proxy que publica 3003 y 3002 y enruta /backend a la API.
 # Mismos puertos que el desarrollo nativo, así que `just verify` sirve de
 # smoke; por lo mismo, no convive con api-dev/shop-dev/admin-dev. La primera
-# vez construye las tres imágenes (ver tiempos en apps/README.md).
+# vez construye las tres imágenes (ver tiempos en apps/README.md). Levanta UNA
+# réplica de la API: si estaba escalada (US-107), vuelve a una.
 [group('docker')]
 [doc('Stack completo en Docker: tienda :3003, admin :3002, API :9001')]
 stack-up:
