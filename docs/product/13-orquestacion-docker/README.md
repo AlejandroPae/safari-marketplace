@@ -29,7 +29,9 @@
 | US | Título | Releasable solo | Depende de | LOC est. |
 |----|--------|-----------------|------------|----------|
 | [US-14](./14-dockerizar-api-rest.md) | Dockerizar la API REST | Sí | ninguna | ~150 |
-| [US-15](./15-compose-stack-completo.md) | Compose del stack completo con healthchecks | Sí | US-14 | ~250 |
+| [US-102](./102-urls-configurables-en-ejecucion.md) | URL de la API configurable en ejecución (prefijo `/backend`) | Sí | ninguna | ~220 |
+| [US-103](./103-shop-url-en-ejecucion-admin.md) | URL de la tienda configurable en ejecución en el admin | Sí | US-102 | ~120 |
+| [US-15](./15-compose-stack-completo.md) | Compose del stack completo con healthchecks | Sí | US-14, US-102 | ~250 |
 
 **Orden sugerido:** US-14 → US-15 (US-15 dockeriza shop/admin dentro de su
 propio alcance; si en el design crece de más, partirla antes de ejecutar).
@@ -64,3 +66,19 @@ propio alcance; si en el design crece de más, partirla antes de ejecutar).
   cuando `just verify` pasa contra los contenedores.
 - No tocar los `.env` versionados como plantillas; los contenedores reciben
   su config por environment del compose.
+
+## Actualización 2026-11-18: US-102 y US-103
+
+> Sección añadida sin reescribir lo anterior.
+
+- **US-102 y US-103** salen de `_backlog/102-urls-configurables-en-ejecucion.md`,
+  que se partió en dos tras una revisión del sub-agente fable 5. Las dos
+  quedan en «Listo para ejecución». Las filas se añadieron a la tabla de
+  sub-historias.
+- **US-102 resuelve el R-1 de este épico.** El navegador habla con la API por
+  el prefijo relativo `/backend`, que enruta el proxy, y el SSR usa
+  `API_INTERNAL_URL`, de ejecución. US-15 ya no necesita args de build para
+  `NEXT_PUBLIC_REST_API_ENDPOINT`; US-102 lo anota al cerrarse.
+- **Orden** (confirmado por el dueño el 2026-11-18): US-14 → US-102 → US-103
+  → US-15. US-14 y US-102 no comparten archivos y pueden ir en cualquier
+  orden entre sí.
