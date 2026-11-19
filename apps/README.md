@@ -145,8 +145,8 @@ en el primer request.
 #### Alternativa: la API en contenedor (US-14)
 
 ```bash
-just api-docker        # Postgres sembrado + imagen de la API -> http://localhost:9001/api
-just api-docker-down   # apaga el contenedor de la API; Postgres sigue arriba
+just api-docker        # Postgres sembrado + API + su balanceador api-lb -> http://localhost:9001/api
+just api-docker-down   # apaga la API y api-lb; Postgres sigue arriba
 ```
 
 Sustituye a `yarn start:dev` (o `just api-dev`), no convive con ella: las dos
@@ -200,10 +200,11 @@ demo, no el camino para desarrollar.
 |---|---|---|---|
 | `postgres` | `postgres:16.14-alpine3.23` | la base, en 5433 | `pg_isready` |
 | `db-init` | `postgres:16.14-alpine3.23` | corre `db/schema.sql` + `db/seed.sql` (montados) y termina | — (la API espera a que acabe con éxito) |
-| `api` | `apps/api/rest/Dockerfile` | API en 9001 | `/api/health/ready`, que consulta la base |
+| `api` | `apps/api/rest/Dockerfile` | API, escalable (`--scale api=N`), solo en la red interna | `/api/health/ready`, que consulta la base |
+| `api-lb` | `caddy:2.11.9-alpine` + `docker/api-lb.Caddyfile` | balanceador de la API: publica 9001 y reparte entre las réplicas (US-107) | — |
 | `shop` | `apps/shop/Dockerfile` | `node server.js` (standalone), solo en la red interna | `/en` |
 | `admin` | `apps/admin/rest/Dockerfile` | `node server.js` (standalone), solo en la red interna | `/en/login` |
-| `proxy` | `caddy:2.11.9-alpine` + `docker/Caddyfile` | publica 3003 y 3002; `/backend/*` va a `api:9001/api/*` | — |
+| `proxy` | `caddy:2.11.9-alpine` + `docker/Caddyfile` | publica 3003 y 3002; `/backend/*` va a `api-lb:9001/api/*` | — |
 
 - **Versiones fijas (US-105).** Las imágenes base llevan versión exacta:
   `node:22.22.3-alpine3.23` en los tres Dockerfiles, más los tags de Postgres
@@ -226,7 +227,7 @@ demo, no el camino para desarrollar.
     de las plantillas. Se inlinean en `next build`: cambiarlas pide
     reconstruir (`docker compose build --build-arg NOMBRE=valor shop`).
   - Lo de ejecución va en el `environment` del compose: `API_INTERNAL_URL`
-    (`http://api:9001/api`) y `SECRET` de next-auth en la tienda, y
+    (`http://api-lb:9001/api`, por el balanceador) y `SECRET` de next-auth en la tienda, y
     `SHOP_URL` en el admin. `SHOP_SECRET` y `JWT_SECRET` traen valores de
     desarrollo.
 - **Tipos:** la imagen de la tienda comprueba los tipos en `next build`. La
@@ -268,6 +269,73 @@ demo, no el camino para desarrollar.
   para que BuildKit la comparta: el install del workspace se hace una vez.
   Si se cambia una, hay que cambiar la otra igual. Con las imágenes hechas,
   `just stack-up` tarda ~40-60 s.
+
+#### Escalar la API: varias réplicas detrás de un balanceador (US-107)
+
+Con el stack arriba (`just stack-up`):
+
+```bash
+docker compose up -d --scale api=3          # tres réplicas de la API
+docker compose ps api                       # api-1, api-2 y api-3, (healthy)
+```
+
+Cada respuesta de la API dice qué réplica la atendió, en la cabecera
+`X-Served-By` (el id corto del contenedor), y `/api/health` lo repite en
+`instance`:
+
+```bash
+# 30 peticiones por el mismo camino que el navegador: ~10 por réplica
+for i in $(seq 1 30); do
+  curl -s -D - -o /dev/null http://localhost:3003/backend/settings | grep -i x-served-by
+done | sort | uniq -c
+
+curl -s http://localhost:9001/api/health    # {"status":"ok","instance":"c413bd18b795"}
+docker compose logs -f api                  # el log de cada réplica, con su prefijo api-N
+```
+
+Tolerancia a fallos: detener una réplica y seguir pidiendo.
+
+```bash
+docker stop safari-marketplace-api-1        # las peticiones siguen dando 200
+docker start safari-marketplace-api-1       # en unos 7 s vuelve a recibir tráfico
+docker compose up -d --scale api=1          # volver a una réplica (stack-up también lo hace)
+```
+
+**Cómo funciona:**
+
+- `api` no tiene `container_name` ni puerto publicado: dos réplicas no
+  pueden llamarse igual ni publicar el mismo puerto. Nadie le habla directo.
+- `api-lb` (`docker/api-lb.Caddyfile`) publica el 9001 y reparte. Por él
+  pasan el host (`localhost:9001`), el `/backend` del proxy (el navegador) y
+  el SSR de la tienda (`API_INTERNAL_URL=http://api-lb:9001/api`).
+- **Por qué no basta `reverse_proxy api:9001`:** es un upstream estático.
+  Caddy resuelve el nombre una vez y reutiliza la conexión keep-alive, así que
+  se queda con una sola réplica aunque el DNS de Docker devuelva las tres
+  IPs. Con `dynamic a api 9001`, Caddy vuelve a resolver `api` cada 5 s
+  (`refresh`) y reparte **por petición** (`round_robin`), no por conexión.
+- **Health checks pasivos, no activos.** Con upstreams dinámicos Caddy no
+  hace health checks activos. Una réplica que falla queda fuera 5 s
+  (`fail_duration`), y `lb_try_duration 5s` reintenta en otra. Medido con
+  una réplica detenida: 30 de 30 peticiones con 200, la más lenta en 0.06 s.
+- **`api-lb` no tiene `depends_on`.** Caddy arranca aunque `api` aún no
+  exista. Si el SSR de la tienda fuera por el `proxy` de 3003/3002, que
+  espera a que la tienda esté sana, el arranque se bloquearía en un ciclo.
+- **Límites medidos:**
+  - **Caída total (0 réplicas):** `/backend` tarda **8-15 s** en dar 502/503,
+    y una página nueva de la tienda **~1 min** en dar su 500, porque su SSR
+    encadena varias llamadas y cada una espera. Lo que se come el tiempo es
+    la consulta DNS de `api` cuando ya no queda ninguna réplica. Con una sola
+    réplica viva, todo responde en milisegundos.
+  - **Un `POST` en vuelo** cuando su réplica cae a mitad da 502: Caddy solo
+    reintenta métodos idempotentes una vez abierta la conexión.
+  - **La API no guarda estado propio en memoria**, salvo una excepción:
+    `payment-method` es un mock que muta arreglos en memoria
+    (`payment-method.service.ts:42, 73, 81, 125` y `:192`). Con varias
+    réplicas, una tarjeta guardada en una no existe en las otras. Es el
+    ejemplo de por qué un servicio replicado debe ser sin estado: lo demás
+    vive en Postgres o en el JWT (`JWT_SECRET` es el mismo en todas).
+  - La tienda y el admin **no** se escalan: su ISR escribe en el disco de cada
+    réplica y la caché divergería.
 
 ### 4. Credenciales
 
@@ -425,7 +493,7 @@ Dos endpoints públicos, sin token, para healthchecks:
 
 | Endpoint | Qué mira | Responde |
 |---|---|---|
-| `GET /api/health` | liveness: solo que el proceso responde, sin tocar la base | `200 {"status":"ok"}` |
+| `GET /api/health` | liveness: solo que el proceso responde, sin tocar la base. `instance` dice qué réplica respondió (US-107) | `200 {"status":"ok","instance":"c413bd18b795"}` |
 | `GET /api/health/ready` | readiness: un `SELECT 1` real a Postgres, con timeout de 2 s | `200` con `checks.database.status: "up"`; `503` con `"down"` si la base no responde |
 
 ```
@@ -558,7 +626,7 @@ start` el shop da errores de hidratación (#418). Ver la US-83.
   | Variable | App | Cuándo se lee | Para qué |
   |---|---|---|---|
   | `/backend` (constante, no variable) | shop y admin | build (queda en el JS) | prefijo relativo con el que el **navegador** habla con la API, en el mismo origen que la página; igual en todos los entornos |
-  | `API_INTERNAL_URL` | shop | **ejecución** | URL de la API para el **SSR/ISR**, por la red interna (p. ej. `http://safari-api:9001/api`). Si falta, la página falla con un error que la nombra |
+  | `API_INTERNAL_URL` | shop | **ejecución** | URL de la API para el **SSR/ISR**, por la red interna (p. ej. `http://api-lb:9001/api` en el compose). Si falta, la página falla con un error que la nombra |
   | `API_INTERNAL_URL` | admin | solo `next dev` | destino del rewrite de `/backend` en desarrollo; el admin no llama a la API desde el servidor |
   | `SHOP_URL` | admin | **ejecución** | URL pública de la tienda para los enlaces «ver en la tienda» (US-103). El navegador la pide a `/api/runtime-config` del propio admin; si falta, esa ruta responde 500 nombrándola y los enlaces no se pintan |
 

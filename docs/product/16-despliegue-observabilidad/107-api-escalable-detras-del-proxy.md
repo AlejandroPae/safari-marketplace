@@ -9,7 +9,7 @@
 
 **Épico:** [Épico 16](./README.md)
 **Fecha:** 2026-11-19
-**Status:** Listo para ejecución. Promovida desde `_backlog/` el 2026-11-19,
+**Status:** Implementado (2026-11-19); CA-7 aceptado sin cumplir «≤ 10 s», por decisión del dueño. Promovida desde `_backlog/` el 2026-11-19,
 tras la revisión del sub-agente fable 5. El dueño fijó la topología (D-2),
 el SSR por el balanceador (D-4), los health checks pasivos (D-3) y la
 cabecera siempre activa (D-5).
@@ -288,10 +288,10 @@ Feature: API escalable detrás de un balanceador
 
 ## Definición de Done
 
-- [ ] CA-0 a CA-12 verificados, con la salida real pegada en «Resultado».
-- [ ] `apps/README.md` con la sección de escalado y la limitación de
+- [x] CA-0 a CA-12 verificados, con la salida real pegada en «Resultado».
+- [x] `apps/README.md` con la sección de escalado y la limitación de
   `payment-method`.
-- [ ] Status de esta US en `Implementado` y fila del Épico 16 marcada.
+- [x] Status de esta US en `Implementado` y fila del Épico 16 marcada.
 
 ## Riesgos
 
@@ -330,3 +330,290 @@ Feature: API escalable detrás de un balanceador
 - Esta US alimenta el laboratorio de Sistemas Distribuidos: los comandos para
   escalar y observar el balanceo deben quedar en `apps/README.md` de forma que
   un estudiante los pueda copiar.
+
+## Resultado (2026-11-19, rama `feat/us-107-api-escalable` sobre `main` @ `d8de954`)
+
+### Qué cambió
+
+| Archivo | Cambio |
+|---|---|
+| `apps/api/rest/src/common/served-by.ts` (+ spec) | nuevo: `INSTANCE = os.hostname()` y el middleware `servedBy`, que pone `X-Served-By` en todas las respuestas. 3 tests: respuesta normal sin tocar el cuerpo, 401 y 404 sin controlador |
+| `apps/api/rest/src/main.ts` | `app.use(servedBy)` antes de `requestLogger` |
+| `apps/api/rest/src/health/health.service.ts` (+ spec) | `liveness()` devuelve `{ status, instance }` |
+| `docker-compose.yml` | `api` sin `container_name` ni `ports`; servicio nuevo `api-lb` (Caddy, sin `depends_on`, publica 9001); `shop` con `API_INTERNAL_URL=http://api-lb:9001/api` y `depends_on: api-lb: service_started`; cabecera |
+| `docker/api-lb.Caddyfile` | nuevo: `dynamic a api 9001 { refresh 5s }`, `round_robin`, `lb_try_duration 5s`, `fail_duration 5s`, con comentarios |
+| `docker/Caddyfile` | `/backend/*` → `api-lb:9001` |
+| `justfile` | `api-docker` levanta `api api-lb`; `api-docker-down` detiene los dos; comentario de `stack-up` (vuelve a 1 réplica) |
+| `apps/README.md` | sección «Escalar la API», tabla de servicios con `api-lb`, ejemplos de `API_INTERNAL_URL` y de `/api/health` corregidos |
+
+### Decisión del dueño al ejecutar
+
+- **CA-7 se acepta y se documenta**, no se ajusta. Con 0 réplicas no se
+  cumple «≤ 10 s» (detalle abajo). El dueño eligió conservar su D-3 y anotar
+  los tiempos medidos y su causa.
+
+### CA-0 — Línea base (`main` @ `d8de954`, una API con `container_name`)
+
+La tabla de regresión de US-105 se reescribió en el scratchpad, fuera del
+repo, con el grep de estáticos ampliado a `api-lb:9001` y la imagen de CA-4
+tomada de la API: `/en` puede regenerarse sin productos mientras la API está
+parada, la degradación de 60 s de US-104.
+
+```text
+== CA-3
+backend/settings tienda: 200  admin: 200
+tienda /api/auth/providers: 200
+admin runtime-config: {"shopUrl":"http://localhost:3003"}
+admin runtime-config con SHOP_URL=https://tienda-b.example: {"shopUrl":"https://tienda-b.example"}
+admin runtime-config restaurado: {"shopUrl":"http://localhost:3003"}
+visita previa /en/products/apples: 200
+API parada -> producto nunca visitado /en/products/pat-mcgrath-glitter: 500
+API parada -> /en/products/apples: 200  /en: 200
+API de vuelta -> /en/products/pat-mcgrath-glitter: 200
+/en/products/no-existe: 404
+estáticos con localhost:9001|api:9001|api-lb:9001: 0 archivos
+== CA-4
+optimizador w=256: 200 image/jpeg 6215B
+logs de la tienda con sharp|EACCES: 0
+== CA-6
+http://localhost:3003/en common: 553 claves; 404-heading = "Error code: 404"
+http://localhost:3002/en/login common: 553 claves; text-guest = "Guest"
+logs con Cannot find module|unable to find a user config: 0
+$ curl -s localhost:9001/api/health
+{"status":"ok"}         (sin X-Served-By)
+```
+
+### CA-1 — Una réplica, sin regresión
+
+```text
+$ just verify
+OK   API    :9001/api/settings  200  5503B  478ms
+OK   Shop   :3003/en  200  192788B  21ms  cards:30
+OK   Admin  :3002/en/login  200  73118B  20ms  cards:1
+$ diff <(tr -d '\r' < antes) <(tr -d '\r' < después)
+idéntico sin CR
+```
+
+La tabla da lo mismo, con un producto nunca visitado distinto en cada
+corrida (`mary-kay-lipstick`, normalizado en el `diff`). El primer intento
+mostró `(la API no volvió a healthy)`: la espera del script buscaba el
+contenedor `safari-api`, que ya no existe (R-3). Se cambió por
+`docker compose ps api`.
+
+### CA-2 — Arranque limpio, sin interbloqueo
+
+```text
+$ docker compose down && time just stack-up
+safari-admin               Up 8 seconds (healthy)
+safari-api-lb              Up 23 seconds
+safari-marketplace-api-1   Up 14 seconds (healthy)
+safari-postgres            Up 23 seconds (healthy)
+safari-proxy               Up 2 seconds
+safari-shop                Up 8 seconds (healthy)
+real    0m38.842s
+```
+
+### CA-3 — Escala
+
+```text
+$ time docker compose up -d --no-build --scale api=3
+real    0m12.311s
+safari-marketplace-api-1 Up 38 seconds (healthy)    c413bd18b795
+safari-marketplace-api-2 Up 9 seconds (healthy)     1fe058d013ea
+safari-marketplace-api-3 Up 10 seconds (healthy)    18b26bc5055c
+OK   API    :9001/api/settings  200  5503B  561ms
+OK   Shop   :3003/en  200  192788B  19ms  cards:30
+OK   Admin  :3002/en/login  200  73118B  16ms  cards:1
+$ docker compose logs api | grep -oE "^api-[0-9]+" | sort | uniq -c
+    419 api-1
+    410 api-2
+    411 api-3
+```
+
+### CA-4 — Balanceo por el navegador
+
+```text
+60 GET :3003/backend/settings
+  safari-marketplace-api-3 (18b26bc5055c): 20
+  safari-marketplace-api-2 (1fe058d013ea): 19
+  safari-marketplace-api-1 (c413bd18b795): 21
+60 GET :3002/backend/settings
+  safari-marketplace-api-3 (18b26bc5055c): 20
+  safari-marketplace-api-2 (1fe058d013ea): 21
+  safari-marketplace-api-1 (c413bd18b795): 19
+keep-alive: 9 URL en un solo curl
+  safari-marketplace-api-3: 3
+  safari-marketplace-api-2: 3
+  safari-marketplace-api-1: 3
+logs: GET /api/settings 200 por réplica (120 + 9 de keep-alive esperadas)
+  safari-marketplace-api-1: 43
+  safari-marketplace-api-2: 43
+  safari-marketplace-api-3: 43
+```
+
+### CA-5 — Balanceo del SSR
+
+30 productos nunca visitados, contados por el log de cada réplica:
+
+```text
+códigos:      30 200
+  safari-marketplace-api-1: 10 peticiones de SSR
+  safari-marketplace-api-2: 10 peticiones de SSR
+  safari-marketplace-api-3: 10 peticiones de SSR
+  total: 30
+```
+
+33 % por réplica (máximo: 45 %).
+
+### CA-6 — Una réplica cae
+
+```text
+detenida safari-marketplace-api-1 (c413bd18b795)
+30 peticiones:      30 200 | > 4 s: 0 | máx 0.056774s
+  safari-marketplace-api-1 healthy a los 6 s
+  safari-marketplace-api-1 vuelve a recibir tráfico a los 7 s del start
+```
+
+Con `docker stop` el contenedor sale de la red de inmediato y la conexión se
+rechaza al momento. `fail_duration` la deja fuera y `lb_try_duration`
+reintenta en otra. Ninguna petición lenta.
+
+### CA-7 — Todas caen (aceptado por el dueño, sin cumplir «≤ 10 s»)
+
+```text
+API detenida (todas las réplicas)
+  /backend/settings: 502 en 11.015426s
+  POST /backend/token: 503 en 7.795407s
+  producto nunca visitado /en/products/frei-ol: 500 en 55.823231s
+  localhost:9001/api/health: 503 en 15.512817s
+log de api-lb:
+     11 failed getting dynamic upstreams
+     10 no upstreams available
+      1 dial tcp 172.24.0.4:9001: i/o timeout
+segunda tanda, ya sin réplicas en el DNS:
+  /backend/settings: 503 en 14.229403s
+  /backend/settings: 503 en 15.712969s
+  /backend/settings: 503 en 8.028389s
+  producto nunca visitado (otro): 500 en 70.296068s
+```
+
+- **Los códigos son los correctos:** 502/503 en `/backend` y 500, no 404,
+  en una página nueva. Nada se queda colgado indefinidamente.
+- **Lo que no se cumple es el tiempo:** 8-15 s por petición, y una página
+  nueva tarda ~1 min porque su SSR encadena varias llamadas a la API. Lo
+  domina la consulta DNS de `api` cuando ya no queda ninguna réplica
+  (`failed getting dynamic upstreams`), no los parámetros de Caddy.
+- **Ajustes probados, sin commitear y deshechos:**
+  - `dial_timeout 1s` en `dynamic a` y en el transporte: 7.8 s estables
+    en 4 peticiones;
+  - además `lb_try_duration 2s`: 13-15 s, y 70 s el SSR. Resultado
+    inconsistente, porque depende del DNS de Docker Desktop.
+- El dueño eligió aceptar y documentar; queda en `apps/README.md` como
+  límite medido.
+
+### CA-8 — Sesión entre réplicas
+
+```text
+token de 256 caracteres
+  HTTP/1.1 200 OK 1fe058d013ea
+  HTTP/1.1 200 OK c413bd18b795
+  HTTP/1.1 200 OK 18b26bc5055c
+  HTTP/1.1 200 OK 1fe058d013ea
+  HTTP/1.1 200 OK c413bd18b795
+  HTTP/1.1 200 OK 18b26bc5055c
+```
+
+El JWT emitido por una réplica vale en las tres (`GET /backend/me`).
+
+### CA-9 — Estado compartido
+
+```text
+creado tag us107-prueba-14609 (id 64) por safari-marketplace-api-3
+  GET tags/us107-prueba-14609: 200 us107-prueba-14609 desde safari-marketplace-api-1
+  GET tags/us107-prueba-14609: 200 us107-prueba-14609 desde safari-marketplace-api-3
+  GET tags/us107-prueba-14609: 200 us107-prueba-14609 desde safari-marketplace-api-1
+  GET tags/us107-prueba-14609: 200 us107-prueba-14609 desde safari-marketplace-api-1
+  GET tags/us107-prueba-14609: 200 us107-prueba-14609 desde safari-marketplace-api-2
+  GET tags/us107-prueba-14609: 200 us107-prueba-14609 desde safari-marketplace-api-1
+  DELETE: 200
+  GET tras borrar: 404
+```
+
+Una corrida anterior (tag 63) dio lo mismo; su salida se perdió por un error
+del script al leer el cuerpo. Los dos tags de prueba se borraron. La
+divergencia opcional de `payment-method` no se demostró; queda documentada
+en el README con las líneas del servicio.
+
+### CA-10 — `localhost:9001` y `api-docker`
+
+```text
+$ curl -s -D - http://localhost:9001/api/health
+HTTP/1.1 200 OK
+X-Served-By: c413bd18b795
+{"status":"ok","instance":"c413bd18b795"}
+$ just stack-down && just api-docker
+esperando a la API lista en http://localhost:9001/api
+safari-api-lb Up 13 seconds
+safari-marketplace-api-1 Up 6 seconds (healthy)
+safari-postgres Up 13 seconds (healthy)
+3003/3002 libres
+$ just shop-dev   ->   shop-dev /en: 200 191904B, cards: 30
+$ just api-docker-down
+ Container safari-marketplace-api-1  Stopped
+ Container safari-api-lb  Stopped
+```
+
+### CA-11 — Escalar hacia abajo
+
+De 3 réplicas a 1 con un bucle de 1 petición cada 200 ms durante 40 s:
+
+```text
+  scale a 1 en 4 s
+  peticiones: 78 |      78 200 | > 1 s: 1
+  la más lenta: 200 en 2.343406s
+```
+
+Ninguna falló. Una tardó 2.3 s en la transición, mientras `refresh` aún
+devolvía la IP de una réplica que se iba.
+
+### CA-12 — Gate
+
+```text
+$ just check
+OK    [1/10] packages/db build  77s
+OK    [2/10] packages/db lint  2s
+OK    [3/10] packages/db typecheck  8s
+OK    [4/10] api/rest typecheck  57s
+OK    [5/10] api/rest lint  90s
+OK    [6/10] admin/rest lint  15s
+OK    [7/10] shop lint  9s
+OK    [8/10] api/rest test  25s      (Test Files 45 passed, Tests 713 passed)
+OK    [9/10] packages/db test  68s   (Test Files 38 passed, Tests 499 passed)
+OK    [10/10] scraper db-test  3s
+check: VERDE (10 pasos, 354s)
+```
+
+La API pasa de 44 a 45 archivos y de 710 a 713 tests: los 3 del middleware.
+
+### Incidentes
+
+- **Primer `just check` en rojo, sin relación con la US.** A las 22:04:49 UTC
+  el dueño levantó el stack de la rama a mano y a las 22:05:29 lo paró,
+  Postgres incluido, en mitad del gate. Fallaron los tests de integración de
+  `packages/db` por falta de base. Se repitió con la base arriba y pasó.
+- **El puerto 5433 tardó unos segundos en liberarse** tras parar Postgres: lo
+  retenía `wslrelay`. Es normal en Docker Desktop.
+
+Al terminar se apagaron `shop-dev` (por su PID raíz) y el stack, y los
+puertos quedaron libres.
+
+### Hallazgos que no se accionaron (NO incluye)
+
+- **La caída total tarda en responder** (CA-7). Si interesa, se puede
+  explorar con una respuesta rápida cuando no hay upstreams o con
+  `resolvers` propios en `dynamic a`.
+- **La API no drena peticiones al pararse** (`enableShutdownHooks`). Con
+  `docker stop` no se vio ningún fallo, pero un `POST` en vuelo podría dar
+  502.
+- **CLAUDE.md** sigue describiendo el compose como «Solo Postgres 16». Es
+  del dueño.

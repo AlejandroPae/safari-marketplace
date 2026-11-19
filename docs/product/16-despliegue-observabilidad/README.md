@@ -31,7 +31,7 @@
 | [US-17](./17-salud-logging-api.md) ✅ | Endpoint de salud y logging con timestamps en la API | Sí | ninguna | ~150 |
 | [US-105](./105-imagenes-frontend-livianas.md) ✅ | Imágenes livianas de la tienda y el admin, y versiones fijas | Sí | ninguna | ~150 |
 | [US-106](./106-imagen-api-liviana.md) ✅ | Imagen liviana de la API: una sola copia de Prisma, sin el CLI | Sí | US-105 | ~60 |
-| [US-107](./107-api-escalable-detras-del-proxy.md) | API escalable detrás de un balanceador, con balanceo real | Sí | US-105, US-106 | ~150 |
+| [US-107](./107-api-escalable-detras-del-proxy.md) ✅ | API escalable detrás de un balanceador, con balanceo real | Sí | US-105, US-106 | ~150 |
 | [US-18](./18-terraform-minimo.md) | Terraform mínimo para el stack contenedorizado | Sí | US-15, US-17 | ~300 |
 
 **Orden sugerido:** US-17 (barata, desbloquea healthchecks honestos) →
