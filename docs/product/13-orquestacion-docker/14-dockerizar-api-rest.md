@@ -125,6 +125,17 @@ Feature: API en contenedor
   `just db-up` (que siembra, D-2), `docker compose up -d --build api` y espera
   a que `/api/settings` responda. El servicio `api` no lleva perfil: `just
   db-up` sigue levantando solo `postgres` porque lo nombra.
+- **DA-6 — `init: true` en el servicio `api`.** Al cerrar, el contenedor salía
+  con `Exited (137)`: `node` como PID 1 no tiene handler de `SIGTERM`, y
+  `docker compose stop` lo mataba a los 10 s. Con `tini` como init, la señal
+  llega a Node:
+
+  ```text
+  $ docker compose stop api
+   Container safari-api  Stopped
+  stop tardó 3522 ms
+  safari-api Exited (143) 3 seconds ago
+  ```
 
 ### Qué cambió
 
@@ -133,7 +144,7 @@ Feature: API en contenedor
 | `apps/api/rest/Dockerfile` | nuevo: multi-stage, secreto `extra_ca` opcional |
 | `.dockerignore` (raíz) | nuevo: lista blanca |
 | `apps/api/rest/no-extra-ca.txt` | nuevo: reemplazo vacío del secreto |
-| `docker-compose.yml` | servicio `api` (`depends_on` healthy, `environment`, puerto 9001) y secreto `extra_ca` |
+| `docker-compose.yml` | servicio `api` (`depends_on` healthy, `environment`, puerto 9001, `init: true`) y secreto `extra_ca` |
 | `justfile` | grupo `docker`: `api-docker`, `api-docker-down`; el comentario de `db-down` avisa de que también apaga la API |
 | `apps/README.md` | subsección «Alternativa: la API en contenedor (US-14)» |
 
