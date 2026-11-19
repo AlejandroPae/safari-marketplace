@@ -28,7 +28,7 @@
 
 | US | Título | Releasable solo | Depende de | LOC est. |
 |----|--------|-----------------|------------|----------|
-| [US-14](./14-dockerizar-api-rest.md) | Dockerizar la API REST | Sí | ninguna | ~150 |
+| [US-14](./14-dockerizar-api-rest.md) ✅ | Dockerizar la API REST | Sí | ninguna | ~150 |
 | [US-102](./102-urls-configurables-en-ejecucion.md) ✅ | URL de la API configurable en ejecución (prefijo `/backend`) | Sí | ninguna | ~220 |
 | [US-103](./103-shop-url-en-ejecucion-admin.md) ✅ | URL de la tienda configurable en ejecución en el admin | Sí | US-102 | ~120 |
 | [US-104](./104-build-shop-sin-api.md) ✅ | `next build` de la tienda sin la API viva | Sí | US-102 | ~250 |
