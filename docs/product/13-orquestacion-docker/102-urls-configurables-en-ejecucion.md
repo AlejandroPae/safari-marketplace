@@ -11,9 +11,9 @@
 **Épico:** [Épico 13](./README.md). Nace de la preparación del despliegue en
 Dokploy como base del laboratorio de Sistemas Distribuidos.
 **Fecha:** 2026-11-18
-**Status:** Listo para ejecución (promovida desde `_backlog/` el 2026-11-18,
-tras revisión del sub-agente fable 5; decisiones DA-1, DA-3 y DA-4 fijadas por
-el dueño)
+**Status:** Implementado (2026-11-19). Promovida desde `_backlog/` el
+2026-11-18, tras revisión del sub-agente fable 5; decisiones DA-1, DA-3 y DA-4
+fijadas por el dueño.
 **Depende de:** ninguna. **Bloquea a:** US-103 y US-104 (comparten plantillas,
 `justfile` y `apps/README.md`) y US-15 (resuelve su R-1).
 **LOC est.:** ~220
@@ -213,12 +213,12 @@ Feature: URL de la API configurable en ejecución
 
 ## Definición de Done
 
-- [ ] CA-1 a CA-3 y CA-5 a CA-9 verificados, con la salida real pegada en la
+- [x] CA-1 a CA-3 y CA-5 a CA-9 verificados, con la salida real pegada en la
   sección "Resultado" (comandos, `curl`, logs `[HTTP]` de la API).
-- [ ] La configuración del proxy local usada en CA-1, CA-5 y CA-6, pegada en
+- [x] La configuración del proxy local usada en CA-1, CA-5 y CA-6, pegada en
   la evidencia, para reutilizarla en el laboratorio.
-- [ ] `apps/README.md` actualizado.
-- [ ] Status de esta US en `Implementado` y fila del Épico 13 marcada.
+- [x] `apps/README.md` actualizado.
+- [x] Status de esta US en `Implementado` y fila del Épico 13 marcada.
 
 ## Riesgos
 
@@ -251,3 +251,308 @@ Feature: URL de la API configurable en ejecución
   Distribuidos (Azure DevOps → Docker Hub → Dokploy). La sección de
   `apps/README.md` debe servirles de guía: qué variable va en qué lugar y por
   qué una `NEXT_PUBLIC_*` no se puede cambiar en ejecución.
+
+## Resultado (2026-11-19, rama `feat/us-102-backend-prefix` sobre `main` @ `a9d63a1`)
+
+### Qué cambió
+
+| Archivo | Cambio |
+|---|---|
+| `apps/shop/src/framework/rest/client/http-client.ts` | `baseURL` por petición: `/backend` en el navegador y `API_INTERNAL_URL` en el servidor (D-1, D-2). Sin la variable, la petición falla con un error que la nombra, y se escribe una vez en el log. Los errores que no son de Axios se propagan tal cual |
+| `apps/admin/rest/src/data/client/http-client.ts` | `baseURL` fijo `/backend` (`API_PREFIX`, exportado); fuera el `invariant` (DA-3) |
+| `attribute-import-export.tsx`, `import-export-modal.tsx` | enlaces de exportación con `API_PREFIX` |
+| `webhook-url.tsx` | `window.location.origin + /backend`, leído en un efecto (D-7) |
+| `apps/shop/src/config/get-env.ts` | fuera `NEXT_PUBLIC_REST_API_ENDPOINT` y `NEXT_PUBLIC_ADMIN_URL`; entra `API_INTERNAL_URL` (D-4) |
+| `apps/shop/next.config.js`, `apps/admin/rest/next.config.js` | `rewrites()` de `/backend/:path*` a `API_INTERNAL_URL`, solo con `NODE_ENV=development` (D-6) |
+| `apps/shop/.env.template`, `apps/admin/rest/.env.template` | `API_INTERNAL_URL` en lugar de las retiradas; driver `log` y `NEXT_PUBLIC_BROADCAST_AUTH_URL="/backend/broadcasting/auth"` (D-5, DA-4) |
+| `justfile` (`env`) | añade `API_INTERNAL_URL` si falta (DA-1), fija la URL de broadcasting (ver «Desvíos») y deja de rellenar `NEXT_PUBLIC_ADMIN_URL`. `set-api-port` no cambia: su `sed` de `localhost:NNNN/api` ya alcanza a `API_INTERNAL_URL` |
+| `apps/README.md` | menciones retiradas, tabla de variables de build y de ejecución, y dominios en Dokploy |
+| Épico 13 `README.md`, `15-compose-stack-completo.md` | R-1 resuelto; nota en US-15 |
+
+### Desvíos respecto de lo escrito (y por qué)
+
+1. **R-3, al revés de lo previsto: el rewrite va SIN `locale: false`.** Con
+   `locale: false`, `/backend/settings` en `next dev` daba **404 de Next**
+   (26004 B de HTML) en el shop y en el admin. Con i18n, Next compara contra la
+   ruta ya prefijada con el idioma. Sin esa opción, `/backend/settings` llega a
+   la API (200, 5504 B). Efecto secundario inocuo: `/en/backend/...` también
+   casa. El comentario de `next.config.js` lo explica.
+2. **`just env` también fija `NEXT_PUBLIC_BROADCAST_AUTH_URL`.** Tras el
+   primer build, el CA-2 encontró en el bundle del admin
+   `authEndpoint:"http://localhost:9001/api/broadcasting/auth"`. Venía del
+   `.env` existente, que conservaba la URL derivada del endpoint viejo. La
+   plantilla ya tenía el literal de DA-4, pero un `.env` previo no lo recibe
+   solo. Con el mismo criterio de DA-1 (`just env` migra los `.env`
+   existentes), la receta lo fija con un `sed`, como ya hacía con
+   `NEXTAUTH_URL`. Tras `just env` y otro `build-admin`, el bundle tiene
+   `authEndpoint:"/backend/broadcasting/auth"`.
+3. **El error de D-2 se escribe además en el log.** Sin `API_INTERNAL_URL`,
+   `/search` respondía 200 con la página vacía (27158 B frente a 129515 B) y
+   sin ninguna línea en el log: los `prefetchQuery` de TanStack descartan el
+   error, como ya documenta US-104. Para que el CA-3 («el error dice qué
+   variable falta») sea visible, el cliente lo escribe una vez con
+   `console.error` además de lanzarlo. Se recompiló el shop y CA-1/CA-3 se
+   repitieron sobre ese build final (la evidencia de abajo es de ese build).
+
+### Línea base de `tsc` y lint (CA-9)
+
+La línea base se midió el 2026-11-18 sobre `main` (durante US-10). Shop y
+admin no cambiaron entre esa medición y el inicio de esta US.
+
+```
+antes:   shop  tsc --noEmit  rc=0
+         admin tsc --noEmit  rc=2, 1 error: TS2688 Cannot find type definition file for 'minimatch'
+después: shop  tsc rc=0
+         admin tsc rc=2, 1 error: error TS2688: Cannot find type definition file for 'minimatch'.
+         shop  yarn lint  -> $ eslint src  Done in 195.46s.
+         admin yarn lint  -> $ eslint src  Done in 45.93s.
+```
+
+### Proxy local usado (CA-1, CA-2, CA-5, CA-6)
+
+Script de Node, sin dependencias. Imita la regla de Dokploy: Path `/backend`
++ Strip Path + Internal Path `/api` hacia la API, y el resto hacia la app.
+Para el laboratorio:
+
+- shop: `node dokploy-proxy.mjs 8080 http://localhost:9001 http://localhost:3003`;
+- admin: `node dokploy-proxy.mjs 8081 http://localhost:9001 http://localhost:3002`.
+
+```js
+// Proxy local que imita el enrutado de Dokploy (Traefik) para US-102:
+//   Path /backend + Strip Path + Internal Path /api  ->  la API
+//   todo lo demás                                     ->  la app (shop o admin)
+//
+// Uso: node dokploy-proxy.mjs <puerto> <url-api> <url-app>
+//   p. ej. node dokploy-proxy.mjs 8080 http://localhost:9001 http://localhost:3003
+import http from 'node:http';
+
+const [port, apiBase, appBase] = process.argv.slice(2);
+if (!port || !apiBase || !appBase) {
+  console.error('uso: node dokploy-proxy.mjs <puerto> <url-api> <url-app>');
+  process.exit(64);
+}
+
+function target(reqUrl) {
+  if (reqUrl === '/backend' || reqUrl.startsWith('/backend/') || reqUrl.startsWith('/backend?')) {
+    // Strip Path (/backend) + Internal Path (/api)
+    return new URL('/api' + reqUrl.slice('/backend'.length), apiBase);
+  }
+  return new URL(reqUrl, appBase);
+}
+
+http
+  .createServer((req, res) => {
+    const to = target(req.url);
+    const upstream = http.request(
+      to,
+      { method: req.method, headers: { ...req.headers, host: to.host, 'x-forwarded-host': req.headers.host } },
+      (up) => {
+        res.writeHead(up.statusCode, up.headers);
+        up.pipe(res);
+      },
+    );
+    upstream.on('error', (e) => {
+      res.writeHead(502, { 'content-type': 'text/plain' });
+      res.end(`proxy: ${to.origin} ${e.code}`);
+    });
+    req.pipe(upstream);
+    console.log(`${req.method} ${req.url} -> ${to.href}`);
+  })
+  .listen(Number(port), () => console.log(`proxy :${port}  /backend -> ${apiBase}/api  |  / -> ${appBase}`));
+```
+
+### CA-1 — Una sola build, dos configuraciones
+
+Un solo `just build-shop` (el final). La API A es la de `just api-dev` en
+:9001, y la B es `PORT=9002 node dist/main.js`; las dos usan la misma base.
+El shop se arranca con `yarn start -p 3003` y se pide
+`/en/grocery/search` (`getServerSideProps`: no sirve HTML del build) a
+través del proxy :8080. Las líneas son el log `[HTTP]` de cada API, filtrado
+a las peticiones nuevas:
+
+```
+=== A: API_INTERNAL_URL='http://localhost:9001/api'
+GET http://localhost:8080/en/grocery/search?text=apple -> 200 129515B 4.232878s
+API A :9001, peticiones nuevas:
+  GET /api/settings 200 44.8ms
+  GET /api/types 200 14.3ms
+  GET /api/categories 200 26.5ms
+API B :9002, peticiones nuevas:
+=== B: API_INTERNAL_URL='http://localhost:9002/api'
+GET http://localhost:8080/en/grocery/search?text=apple -> 200 129515B 2.886840s
+API A :9001, peticiones nuevas:
+API B :9002, peticiones nuevas:
+  GET /api/settings 200 81.0ms
+  GET /api/types 200 16.5ms
+  GET /api/categories 200 52.7ms
+```
+
+### CA-2 — El navegador no conoce la dirección de la API
+
+```
+$ grep -rlE 'localhost:900[01]|127\.0\.0\.1:900[01]' apps/shop/.next/static | wc -l        -> 0
+$ grep -rlE 'localhost:900[01]|127\.0\.0\.1:900[01]' apps/admin/rest/.next/static | wc -l  -> 0
+$ grep -roh 'authEndpoint:"[^"]*"' apps/admin/rest/.next/static | sort -u
+authEndpoint:"/backend/broadcasting/auth"
+$ curl http://localhost:8080/backend/settings
+GET  /backend/settings      -> 200 5504B  {"id":1,"options":{"seo":{"ogImage":null,"ogTitle":null,"metaTags":nul
+```
+
+En el navegador (DevTools MCP, admin `next start` detrás del proxy :8081),
+las peticiones a la API salen al mismo origen:
+
+```
+GET  http://localhost:8081/backend/settings?language=en [200]
+POST http://localhost:8081/backend/token [201]
+GET  http://localhost:8081/backend/me [200]
+GET  http://localhost:8081/backend/analytics, /backend/orders?..., /backend/popular-products?... (dashboard)
+```
+
+### CA-3 — El SSR usa la red interna
+
+El SSR usa `API_INTERNAL_URL`: lo muestra el CA-1. Sin la variable, sobre el
+mismo build:
+
+```
+=== sin-variable: API_INTERNAL_URL=''
+GET http://localhost:8080/en/grocery/search?text=apple -> 200 27158B 7.784403s
+API A :9001, peticiones nuevas:
+API B :9002, peticiones nuevas:
+log de next start (errores):
+  API_INTERNAL_URL is not defined: set it to the API address the server can reach (e.g. http://localhost:9001/api)
+```
+
+La página sale sin datos de servidor y el cliente no puede rellenarla: no hay
+proxy con `/backend` delante de una configuración rota. Lo que este CA pide es
+que el error nombre la variable, y la nombra.
+
+### CA-5 — next-auth intacto detrás del proxy
+
+```
+GET  /api/auth/providers    -> {} 200
+GET  /api/auth/session      -> {} 200
+POST /backend/token         -> 201  token: eyJhbGciOiJIUzI1… (223 chars) | permissions: ["customer","staff"]
+--- la misma ruta en Nest, para comparar:
+$ curl http://localhost:9001/api/auth/providers
+{"message":"Cannot GET /api/auth/providers","error":"Not Found","statusCode":404} 404
+```
+
+`{}` es la lista de proveedores de next-auth sin Google (opcional, US-70). La
+API respondería con su 404 en JSON.
+
+### CA-6 — Exportación y webhook
+
+Admin `next start` detrás del proxy :8081, con sesión de `admin@demo.com`
+(DevTools MCP):
+
+```
+/en/furniture-shop/products -> modal de importar/exportar, href de los enlaces:
+["/backend/export-products/1","/backend/export-variation-options/1"]
+
+/en/settings/payment -> URL de webhook mostrada:
+{"origin":"http://localhost:8081","webhooks":["http://localhost:8081/backend/webhooks/stripe"]}
+```
+
+La URL de webhook es absoluta y sale del origen actual. Con el seed, la
+lista de pasarelas no carga: `paymentGateway` vacío deja el loader «payment
+method is preparing» y el selector deshabilitado, un comportamiento propio de
+Pickbazar. Para que apareciera la fila, se marcó Stripe desde JS **sin
+guardar**.
+
+Los enlaces de exportación pasan por `/backend` y llegan a la API, que
+responde 404:
+
+```
+GET proxy-admin /backend/export-products/1 -> 404 application/json; charset=utf-8 84B  {"message":"Cannot GET /api/export-products/1","error":"Not Found","statusCode":
+GET proxy-admin /backend/export-variation-options/1 -> 404 ...  {"message":"Cannot GET /api/export-variation-options/1", ...
+GET proxy-admin /backend/export-attributes/1 -> 404 ...  {"message":"Cannot GET /api/export-attributes/1", ...
+$ grep -rn "export-products\|export-attributes\|export-variation" apps/api/rest/src   -> (nada)
+```
+
+**La descarga no ocurre porque la API nunca tuvo esas rutas**, ni antes ni
+después de esta US. El 404 es de Nest con la ruta ya traducida a `/api/...`,
+lo que prueba que el enrutado de `/backend` funciona. Implementarlas es tocar
+la API (NO incluye); queda como hallazgo.
+
+### CA-7 — Desarrollo local sin cambios de hábito
+
+`just env` sobre los `.env` existentes, dos veces (la segunda no añade
+nada):
+
+```
+$ just env
+  = apps/shop/.env ya existe, no se toca
+  = apps/admin/rest/.env ya existe, no se toca
+  = apps/api/rest/.env ya existe, no se toca
+  + API_INTERNAL_URL añadido a apps/shop/.env
+  + API_INTERNAL_URL añadido a apps/admin/rest/.env
+  * API fijada al puerto 9001 en los tres .env
+--- segunda corrida (idempotente):
+(no añade nada)
+```
+
+Tres terminales `*-dev` (`just api-dev`, `shop-dev`, `admin-dev`) sobre el
+código final, sin proxy:
+
+```
+$ just verify
+OK   API    :9001/api/settings  200  5503B  591ms
+OK   Shop   :3003/en  200  191897B  63717ms  cards:30
+OK   Admin  :3002/en/login  200  72554B  31134ms  cards:1
+http://localhost:3003/backend/settings -> 200 5504B
+http://localhost:3002/backend/settings -> 200 5504B
+http://localhost:3003/api/auth/providers -> 200 2B
+```
+
+### CA-8 — Sin restos
+
+```
+$ grep -rn "NEXT_PUBLIC_REST_API_ENDPOINT\|NEXT_PUBLIC_ADMIN_URL" apps/shop/src apps/admin/rest/src apps/shop/.env.template apps/admin/rest/.env.template
+grep rc=1
+```
+
+### CA-9 — Calidad
+
+`tsc` y lint: ver «Línea base». Builds (API arriba para el shop, R-2):
+
+```
+just build-shop   ✓ Generating static pages using 11 workers (279/279) in 35.2s / Done in 304.80s.  SHOP_EXIT=0
+just build-admin  ✓ Compiled successfully in 54s / Done in 370.45s.                                    ADMIN_EXIT=0
+```
+
+`just check`, con todos los servidores apagados:
+
+```
+OK    [1/10] packages/db build  134s
+OK    [2/10] packages/db lint  6s
+OK    [3/10] packages/db typecheck  21s
+OK    [4/10] api/rest typecheck  71s
+OK    [5/10] api/rest lint  100s
+OK    [6/10] admin/rest lint  169s
+OK    [7/10] shop lint  184s
+OK    [8/10] api/rest test  104s
+OK    [9/10] packages/db test  119s
+OK    [10/10] scraper db-test  6s
+check: VERDE (10 pasos, 914s)
+EXIT=0
+```
+
+El `postbuild` del shop (`next-sitemap`) reescribió
+`apps/shop/public/sitemap-0.xml`, con cambios solo en `lastmod`. Se restauró:
+es ruido del build y no entra en el commit.
+
+### Hallazgos que no se accionaron (NO incluye)
+
+- **Rutas de exportación de la API** (`/export-products/:shop`,
+  `/export-variation-options/:shop`, `/export-attributes/:shop`): el admin
+  las enlaza, pero la API no las tiene.
+- **La lista de pasarelas de Settings → Payment no carga con el seed.**
+  `paymentGateway` vacío deja el loader y el selector deshabilitado; es un
+  ciclo propio de Pickbazar.
+- **`74-fronteras-arquitectura-lint.md:37` y `:107`** todavía citan
+  `NEXT_PUBLIC_REST_API_ENDPOINT`.
+- **Un `.env` previo del admin conserva `NEXT_PUBLIC_API_BROADCAST_DRIVER=pusher`.**
+  La plantilla ya trae `log` (D-5); `just env` no cambia el driver, porque
+  eso es configuración del dueño, no una URL.
+- **`CLAUDE.md`** no describe `/backend` ni `API_INTERNAL_URL`. Es del dueño y
+  esta US no lo incluía.

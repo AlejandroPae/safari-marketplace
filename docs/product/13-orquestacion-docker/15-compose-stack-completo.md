@@ -27,6 +27,13 @@ yarn.
   evidencia del código del framework REST del shop).
 - `next build` requiere los `.env` con placeholders resueltos; el patrón está
   en `just env`.
+- **Nota de [US-102](./102-urls-configurables-en-ejecucion.md) (2026-11-19):**
+  el R-1 ya está resuelto. Ningún frontend lee la URL de la API de una
+  `NEXT_PUBLIC_*`: el navegador va por `/backend` y el SSR del shop por
+  `API_INTERNAL_URL`, de ejecución. Los args de build para
+  `NEXT_PUBLIC_REST_API_ENDPOINT` ya no hacen falta. Quedan en build la
+  `NEXT_PUBLIC_SHOP_URL` del admin, hasta US-103, y las demás `NEXT_PUBLIC_*`
+  de configuración.
 
 ## Scope
 **Incluye:** Dockerfiles multi-stage de `apps/shop` y `apps/admin/rest`,
