@@ -1,0 +1,30 @@
+# Reverse proxy del stack en compose (US-15).
+#
+# Hace en local lo que Dokploy/Traefik hace en la nube (apps/README.md,
+# «Dominios en Dokploy»): cada frontend y la API comparten origen, y
+# `/backend/*` llega a la API como `/api/*`. Sin esto, todo lo que el
+# navegador pide a /backend (login, carrito, el admin entero) daría 404:
+# el rewrite de next.config.js solo existe en `next dev` (US-102).
+{
+	# Solo HTTP en local: sin certificados ni redirección a HTTPS.
+	auto_https off
+	admin off
+}
+
+# Tienda
+:3003 {
+	handle_path /backend/* {
+		rewrite * /api{uri}
+		reverse_proxy api:9001
+	}
+	reverse_proxy shop:3000
+}
+
+# Admin
+:3002 {
+	handle_path /backend/* {
+		rewrite * /api{uri}
+		reverse_proxy api:9001
+	}
+	reverse_proxy admin:3000
+}

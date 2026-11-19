@@ -3,12 +3,22 @@
 # Lista blanca: se excluye todo y solo se readmite lo que una imagen
 # necesita. Así no entran en el contexto ni los node_modules locales (varios
 # GB entre los workspaces), ni los builds, ni ningún secreto. Una imagen
-# nueva (US-15) añade aquí su carpeta.
+# nueva añade aquí su carpeta.
 *
 
 # API REST: su código y su capa de datos.
 !apps/api/rest
 !packages/db
+
+# Tienda y admin (US-15): el workspace de yarn de apps/ entero para el
+# install (admin/graphql solo aporta su package.json: el lockfile lo pide) y
+# los colores de Tailwind que leen las dos apps.
+!apps/package.json
+!apps/yarn.lock
+!apps/tailwind-v3-colors.js
+!apps/shop
+!apps/admin/rest
+!apps/admin/graphql/package.json
 
 # Readmitir una carpeta readmite todo lo que contiene. Lo que sigue lo vuelve
 # a sacar: artefactos que la imagen construye por su cuenta y secretos, que
@@ -17,6 +27,8 @@
 **/dist
 **/generated
 **/coverage
+**/.next
+**/*.tsbuildinfo
 **/.env
 **/.env.*
 **/*.log

@@ -1,9 +1,11 @@
-# Base de datos local para el scraper.
+# Stack local en Docker.
 #
-#   just db-up        levanta Postgres y aplica el esquema
+#   just db-up        levanta solo Postgres y aplica el esquema
 #   just db-shell     abre psql contra la base
-#   just db-down      apaga el contenedor (los datos sobreviven)
+#   just db-down      apaga el stack (los datos sobreviven)
 #   just db-reset     borra el volumen y empieza de cero
+#   just api-docker   Postgres + API en contenedor (US-14)
+#   just stack-up     stack completo: Postgres, API, tienda y admin (US-15)
 #
 # Estas credenciales son para desarrollo local. En la nube, la cadena de
 # conexión se inyecta por la variable DATABASE_URL y nunca se versiona.
@@ -29,9 +31,36 @@ services:
       timeout: 5s
       retries: 10
 
-  # API REST (US-14). `just api-docker` la levanta con la base sembrada; el
-  # desarrollo con hot-reload sigue siendo `just api-dev` (usan el mismo
-  # puerto: una u otra). La imagen no siembra la base: eso es `just db-migrate`.
+  # Esquema y datos de referencia (US-15, D-2 del épico). Corre lo mismo que
+  # `just db-migrate`, con los mismos archivos de db/ (montados, no copiados:
+  # una sola fuente de verdad), y termina. Es idempotente, así que se repite
+  # en cada `up` sin daño.
+  db-init:
+    image: postgres:16-alpine
+    container_name: safari-db-init
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: safari
+      PGPASSWORD: safari
+      PGDATABASE: safari_scraper
+    volumes:
+      - ./db:/db:ro
+    command:
+      - sh
+      - -c
+      - >-
+        psql -v ON_ERROR_STOP=1 -q -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;" &&
+        psql -v ON_ERROR_STOP=1 -q -f /db/schema.sql &&
+        psql -v ON_ERROR_STOP=1 -q -f /db/seed.sql &&
+        psql -v ON_ERROR_STOP=1 -q -c "VACUUM ANALYZE;" &&
+        echo "esquema y datos de referencia aplicados"
+    restart: "no"
+
+  # API REST (US-14). El desarrollo con hot-reload sigue siendo `just api-dev`
+  # (usan el mismo puerto: una u otra).
   api:
     build:
       # La raíz, porque la imagen construye también packages/db.
@@ -47,6 +76,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     environment:
       PORT: "9001"
       # Dentro de la red de compose la base es el servicio `postgres` en su
@@ -58,10 +89,93 @@ services:
       SHOP_URL: ${SHOP_URL:-http://localhost:3003}
     ports:
       - "9001:9001"
+    healthcheck:
+      # /api/health/ready consulta la base (US-17): sin ella responde 503 y el
+      # contenedor pasa a unhealthy, en vez de parecer sano sin datos.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9001/api/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
-# CA corporativo para el build (ver el Dockerfile de la API). Sin
-# NODE_EXTRA_CA_CERTS en el entorno, el archivo vacío de reemplazo no aporta
-# ningún CA y el build usa los de siempre.
+  # Tienda (US-15). Solo la red interna: el navegador entra por `proxy`.
+  shop:
+    build:
+      context: .
+      dockerfile: apps/shop/Dockerfile
+      secrets:
+        - extra_ca
+    image: safari-shop
+    container_name: safari-shop
+    init: true
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # SSR/ISR hablan con la API por la red interna (US-102).
+      API_INTERNAL_URL: http://api:9001/api
+      # next-auth: la URL pública y, para sus llamadas desde el servidor, la
+      # del propio contenedor (localhost:3003 no existe dentro de él).
+      NEXTAUTH_URL: http://localhost:3003
+      NEXTAUTH_URL_INTERNAL: http://localhost:3000
+      SECRET: ${SHOP_SECRET:-solo-desarrollo-local-no-usar-en-la-nube}
+      # El optimizador de imágenes descarga las fotos del seed desde S3: tras
+      # Zscaler necesita el mismo CA que el build.
+      NODE_EXTRA_CA_CERTS: /run/secrets/extra_ca
+    secrets:
+      - extra_ca
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/en"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Admin (US-15). Solo la red interna: el navegador entra por `proxy`.
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/rest/Dockerfile
+      secrets:
+        - extra_ca
+    image: safari-admin
+    container_name: safari-admin
+    init: true
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # Enlaces «ver en la tienda», leídos al ejecutar (US-103).
+      SHOP_URL: ${SHOP_URL:-http://localhost:3003}
+      NODE_EXTRA_CA_CERTS: /run/secrets/extra_ca
+    secrets:
+      - extra_ca
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/en/login"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Reverse proxy (US-15): publica la tienda en 3003 y el admin en 3002, y
+  # en los dos enruta /backend/* a la API, como Dokploy en la nube.
+  proxy:
+    image: caddy:2-alpine
+    container_name: safari-proxy
+    depends_on:
+      shop:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "3003:3003"
+      - "3002:3002"
+
+# CA corporativo (ver el Dockerfile de la API): para los builds y para el
+# runtime de los frontends. Sin NODE_EXTRA_CA_CERTS en el entorno, el archivo
+# vacío de reemplazo no aporta ningún CA y se usan los de siempre.
 secrets:
   extra_ca:
     file: ${NODE_EXTRA_CA_CERTS:-./apps/api/rest/no-extra-ca.txt}
