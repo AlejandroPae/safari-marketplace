@@ -32,10 +32,11 @@
 | [US-105](./105-imagenes-frontend-livianas.md) ✅ | Imágenes livianas de la tienda y el admin, y versiones fijas | Sí | ninguna | ~150 |
 | [US-106](./106-imagen-api-liviana.md) ✅ | Imagen liviana de la API: una sola copia de Prisma, sin el CLI | Sí | US-105 | ~60 |
 | [US-107](./107-api-escalable-detras-del-proxy.md) ✅ | API escalable detrás de un balanceador, con balanceo real | Sí | US-105, US-106 | ~150 |
+| [US-108](./108-sitemap-dinamico-en-ejecucion.md) | Sitemap y robots.txt generados en ejecución, con el dominio real | Sí | US-104, US-107 | ~150 |
 | [US-18](./18-terraform-minimo.md) | Terraform mínimo para el stack contenedorizado | Sí | US-15, US-17 | ~300 |
 
 **Orden sugerido:** US-17 (barata, desbloquea healthchecks honestos) →
-US-105 → US-106 → US-107 → US-18 (requiere el stack dockerizado del Épico 13).
+US-105 → US-106 → US-107 → US-108 → US-18 (requiere el stack dockerizado del Épico 13).
 
 ## Refinamiento — Decisiones tomadas
 
@@ -92,3 +93,18 @@ US-105 → US-106 → US-107 → US-18 (requiere el stack dockerizado del Épico
   despliegue: varias réplicas de la API detrás de un balanceador (`api-lb`),
   para el laboratorio de Sistemas Distribuidos. Como US-105 y US-106, no
   depende de la decisión abierta del proveedor (decisión 3).
+
+## Actualización 2026-11-19: US-108
+
+> Sección añadida sin reescribir lo anterior.
+
+- **US-108** (sitemap y `robots.txt` generados en ejecución) sale de
+  `_backlog/108-sitemap-dinamico-en-ejecucion.md` tras una revisión del
+  sub-agente fable 5, que corrigió varias afirmaciones (autores, fabricantes
+  y ventas flash ya no son mocks; nadie valida `NEXTAUTH_URL`; el `limit`
+  efectivo es 30). Queda en «Listo para ejecución».
+- **Por qué aquí:** la imagen de la tienda sirve hoy un sitemap con
+  `localhost:3000`, sin productos y con páginas privadas. Para que cada grupo
+  despliegue la misma imagen con su dominio, el sitemap sale de
+  `NEXTAUTH_URL` en ejecución. Como US-105 a US-107, no depende de la
+  decisión abierta del proveedor (decisión 3).
