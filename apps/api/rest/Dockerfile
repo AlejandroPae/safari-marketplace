@@ -52,19 +52,36 @@ COPY apps/api/rest/ ./
 RUN yarn build
 
 # --- 3. Runtime: solo dependencias de producción y los dos dist/
+#
+# Una sola copia de Prisma (US-106). yarn v1 instala también las dependencias
+# del paquete enlazado por `link:`: si packages/db ya tuviera su package.json
+# aquí, @prisma/client acabaría duplicado en los node_modules de la API, y
+# esa copia nunca se carga (Node sigue el realpath del symlink). Por eso la
+# API se instala PRIMERO, con packages/db aún vacío: yarn crea el symlink
+# y no instala nada más. Después, packages/db instala lo suyo con su propio
+# lock, el mismo que generó el cliente. El CLI `prisma` es devDependency: no
+# se usa en ejecución.
 FROM ${NODE_IMAGE} AS runtime
-WORKDIR /repo/packages/db
-COPY packages/db/package.json packages/db/package-lock.json ./
-RUN --mount=type=secret,id=extra_ca,required=false \
-    NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca \
-    npm ci --omit=dev --ignore-scripts
-COPY --from=db-build /repo/packages/db/dist ./dist
 WORKDIR /repo/apps/api/rest
 COPY apps/api/rest/package.json apps/api/rest/yarn.lock ./
 RUN --mount=type=secret,id=extra_ca,required=false \
     NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca \
     yarn install --frozen-lockfile --production --non-interactive \
  && yarn cache clean
+WORKDIR /repo/packages/db
+COPY packages/db/package.json packages/db/package-lock.json ./
+# --omit=optional además de --omit=dev: npm marca el árbol del CLI como
+# `devOptional` (es devDependency Y peer opcional de @prisma/client), y
+# --omit=dev solo no lo quita. Lo único `optional` de verdad en este lock es
+# pg-cloudflare, que pg solo carga dentro de Cloudflare Workers.
+# Sin la caché de npm en la capa (~110 MB en /root/.npm y /root/.cache).
+RUN --mount=type=secret,id=extra_ca,required=false \
+    NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca \
+    npm ci --omit=dev --omit=optional --ignore-scripts \
+ && npm cache clean --force \
+ && rm -rf /root/.npm /root/.cache
+COPY --from=db-build /repo/packages/db/dist ./dist
+WORKDIR /repo/apps/api/rest
 COPY --from=api-build /repo/apps/api/rest/dist ./dist
 ENV NODE_ENV=production
 USER node

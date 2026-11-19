@@ -27,11 +27,11 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
-    "dotenv": "^16.0.0",
-    "prisma": "^7.10.1"
+    "dotenv": "^16.0.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.3",
+    "prisma": "^7.10.1",
     "tsup": "^8.5.1",
     "typescript": "^5",
     "vitest": "^4.1.7"
