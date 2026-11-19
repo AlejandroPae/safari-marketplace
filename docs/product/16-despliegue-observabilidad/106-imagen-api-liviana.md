@@ -7,7 +7,7 @@
 
 **Épico:** [Épico 16](./README.md)
 **Fecha:** 2026-11-19
-**Status:** Listo para ejecución. Promovida desde `_backlog/` el 2026-11-19
+**Status:** Implementado (2026-11-19). Promovida desde `_backlog/` el 2026-11-19
 (como parte de la US-105 original), tras la revisión del sub-agente fable 5.
 El dueño fijó el mecanismo de D-1.
 **Depende de:** [US-105](./105-imagenes-frontend-livianas.md). Las dos tocan
@@ -144,9 +144,9 @@ Feature: Imagen de la API liviana sin cambiar el comportamiento
 
 ## Definición de Done
 
-- [ ] CA-0 a CA-6 verificados, con la salida real pegada en «Resultado».
-- [ ] `just check` en verde, con la salida pegada.
-- [ ] Status de esta US en `Implementado` y fila del Épico 16 marcada.
+- [x] CA-0 a CA-6 verificados, con la salida real pegada en «Resultado».
+- [x] `just check` en verde, con la salida pegada.
+- [x] Status de esta US en `Implementado` y fila del Épico 16 marcada.
 
 ## Riesgos
 
@@ -167,3 +167,182 @@ Feature: Imagen de la API liviana sin cambiar el comportamiento
 - Detrás de Zscaler, construir con el secreto `extra_ca` (`just api-docker`).
 - Las decisiones son del dueño. Si una choca con lo que encuentres, **detente
   y pregunta**.
+
+## Resultado (2026-11-19, rama `feat/us-106-imagen-api-liviana` sobre `main` @ `4f91371`)
+
+### Qué cambió
+
+| Archivo | Cambio |
+|---|---|
+| `packages/db/package.json` | `prisma` pasa de `dependencies` a `devDependencies` |
+| `packages/db/package-lock.json` | regenerado con `npm install`: solo cambia la marca `devOptional` de las 134 entradas del árbol del CLI; ninguna versión |
+| `apps/api/rest/Dockerfile` | runtime: primero el `yarn install --production` de la API sin el manifest de `packages/db`, después `npm ci --omit=dev --omit=optional` en `packages/db` con `npm cache clean --force` y `rm -rf /root/.npm /root/.cache` |
+| `apps/api/rest/yarn.lock` | **sin cambios**: `--frozen-lockfile` lo acepta tal cual (R-2 no se materializó) |
+| `apps/README.md` | peso de la API y el porqué de una sola copia de Prisma |
+
+### Cómo se llegó al mecanismo (D-1)
+
+1. **El origen de la copia duplicada.** El `yarn.lock` de la API trae
+   entradas para `@prisma/adapter-pg`, `@prisma/client` y el resto: yarn v1
+   **sí** instala las dependencias del paquete enlazado por `link:`.
+2. **Prueba aislada** (un Dockerfile de prueba en el scratchpad): yarn con el
+   destino del `link:` vacío.
+
+   ```text
+   caso A rc=0
+   Done in 57.40s.
+   prisma en api: ls: node_modules/@prisma/client: No such file or directory ls: node_modules/prisma: No such file or directory
+   link: lrwxrwxrwx    1 root     root   26 Nov 19 20:14 db -> ../../../../../packages/db
+   tamaño: 121.7M
+   ```
+
+   El mecanismo preferido funciona: no hizo falta el respaldo.
+3. **Primer build: 830 MB, por encima de la meta.** El CLI seguía dentro:
+
+   ```text
+   144.3M  /repo/packages/db/node_modules/@prisma
+   40.2M   /repo/packages/db/node_modules/prisma
+   33.8M   /repo/packages/db/node_modules/effect
+   25.4M   /repo/packages/db/node_modules/@electric-sql
+   ```
+
+   npm marca el árbol del CLI como `devOptional`: es devDependency y, a la
+   vez, peer opcional de `@prisma/client`. `--omit=dev` conserva lo
+   opcional. Clasificando el lock:
+
+   ```text
+   dev 167 | devOptional 134 (el árbol del CLI) | prod 23 | optional 1 pg-cloudflare
+   ```
+
+   Lo único `optional` de verdad es `pg-cloudflare`, que `pg` solo carga
+   dentro de Cloudflare Workers. Con `--omit=optional` quedan exactamente
+   los 23 de producción. Es un detalle de D-1, no un cambio de mecanismo; va
+   comentado en el Dockerfile.
+
+### CA-0 — Línea base (imagen de `main` @ `4f91371`)
+
+```text
+imagen: 1.47GB
+health/ready: 200
+settings: 200 5504B
+login admin@demo.com: token de 256 caracteres
+ruta protegida /api/me con el token: 200
+ruta protegida /api/me sin token: 401
+products total: 1199
+442.4M  /repo/apps/api/rest/node_modules
+328.0M  /repo/packages/db/node_modules
+/repo/packages/db/node_modules/@prisma/client/package.json
+/repo/apps/api/rest/node_modules/@prisma/client/package.json
+```
+
+### CA-1 — Tamaño
+
+```text
+$ docker images safari-api
+safari-api   379e4b8f22a2   504MB      (antes 1.47GB)
+```
+
+| Ruta | Antes | Después |
+|---|---|---|
+| `apps/api/rest/node_modules` | 442 MB | 122 MB |
+| `packages/db/node_modules` | 328 MB | 76 MB |
+| `/root/.npm` + `/root/.cache` | ~111 MB | — |
+| **Imagen** | **1.47 GB** | **504 MB** (−66 %; D-3: ≤ 600 MB ✅) |
+
+### CA-2 — La API sigue viva
+
+Con el stack completo arriba sobre la imagen nueva:
+
+```text
+$ just verify
+OK   API    :9001/api/settings  200  5503B  556ms
+OK   Shop   :3003/en  200  192788B  27ms  cards:30
+OK   Admin  :3002/en/login  200  73118B  22ms  cards:1
+imagen: 504MB
+health/ready: 200
+settings: 200 5504B
+login admin@demo.com: token de 256 caracteres
+ruta protegida /api/me con el token: 200
+ruta protegida /api/me sin token: 401
+products total: 1199
+logs api con cannot find module|pg-cloudflare: 0
+```
+
+Las líneas funcionales son idénticas a las de CA-0 (`diff`).
+
+### CA-3 y CA-4 — Una sola copia de Prisma, sin CLI ni caché
+
+```text
+== CA-3
+ls: /repo/apps/api/rest/node_modules/prisma: No such file or directory
+ls: /repo/packages/db/node_modules/prisma: No such file or directory
+copias de @prisma/client:
+/repo/packages/db/node_modules/@prisma/client/package.json
+versión de esa copia: 7.10.1
+versión en packages/db/package-lock.json: 7.10.1
+== CA-4
+du: /root/.npm: No such file or directory
+du: /root/.cache: No such file or directory
+```
+
+### CA-5 — El flujo local no cambia
+
+```text
+$ just db-build
+CJS ⚡️ Build success in 552ms
+DTS ⚡️ Build success in 27232ms
+db-build rc=0
+$ just check
+OK    [1/10] packages/db build  35s
+OK    [2/10] packages/db lint  8s
+OK    [3/10] packages/db typecheck  12s
+OK    [4/10] api/rest typecheck  65s
+OK    [5/10] api/rest lint  75s
+OK    [6/10] admin/rest lint  138s
+OK    [7/10] shop lint  22s
+OK    [8/10] api/rest test  59s       (Test Files 44 passed, Tests 710 passed)
+OK    [9/10] packages/db test  80s    (Test Files 38 passed, Tests 499 passed)
+OK    [10/10] scraper db-test  4s
+check: VERDE (10 pasos, 499s)
+$ just db-check
+ Test Files  38 passed (38)
+      Tests  499 passed (499)
+$ just api-dev        (con el contenedor de la API abajo)
+api-dev /api/settings: 200 5504B
+```
+
+### CA-6 — Parada limpia
+
+```text
+$ docker compose stop api
+stop api tardó 1411 ms
+safari-api Exited (143) 1 second ago
+```
+
+### Tiempos
+
+El primer build tras el cambio tardó 4 min 28 s, reutilizando las etapas
+`db-build` y `api-build`; la corrección de `--omit=optional`, 38 s.
+Primero se rehace el `yarn install` de la API y después el `npm ci`.
+
+### Incidente
+
+Un `just stack-up` se quedó colgado 11 minutos en `docker compose up -d --build`
+sin escribir nada. El build por separado salió de caché en segundos, y
+`docker compose up -d` sin `--build` levantó el stack normalmente. Es la
+misma inestabilidad de Docker Desktop de US-15 (R-3), no un efecto de esta
+US.
+
+Al terminar se apagaron `api-dev` (por su PID raíz) y el stack. Los puertos
+quedaron libres.
+
+### Hallazgos que no se accionaron (NO incluye)
+
+- **Quedan 12 carpetas de scope vacías** en `packages/db/node_modules`
+  (`@biomejs`, `@vitest`…), de 4 KB cada una: un resto de npm, sin
+  archivos.
+- **`typescript` (24 MB) sigue en producción** por `@nestjs/swagger`, y
+  `dotenv` en `dependencies` de `packages/db`. Los dos estaban fuera de
+  alcance.
+- **CLAUDE.md** sigue diciendo que `docker-compose.yml` es «Solo Postgres
+  16». Es del dueño.

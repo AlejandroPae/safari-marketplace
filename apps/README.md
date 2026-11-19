@@ -173,7 +173,15 @@ publican el 9001. La tienda y el admin no cambian, porque siguen hablando con
   imagen. Sin esa variable se usa el archivo vacío `apps/api/rest/no-extra-ca.txt`.
 - **Tiempos** medidos tras Zscaler: el primer build tarda ~10-15 min, casi
   todo en los `yarn install` y `npm ci`. Los siguientes reutilizan las capas.
-  La imagen pesa ~1.5 GB.
+  La imagen pesa 504 MB (1.47 GB hasta US-106).
+- **Una sola copia de Prisma (US-106).** yarn v1 instala también las
+  dependencias del paquete enlazado por `link:`. Por eso el runtime instala
+  la API **antes** de copiar el `package.json` de `packages/db`: yarn solo
+  crea el symlink. Después, `packages/db` instala lo suyo con su propio lock,
+  el que generó el cliente. El CLI `prisma` es devDependency de
+  `packages/db`: sirve para `prisma generate` en el build, no en ejecución.
+  `npm ci` lleva `--omit=optional`, porque npm marca el árbol del CLI como
+  `devOptional` y `--omit=dev` solo no lo quita.
 
 #### Alternativa: el stack completo en contenedores (US-15)
 
@@ -247,11 +255,11 @@ demo, no el camino para desarrollar.
     imágenes optimizadas en `.next/cache/images`.
 - **Pesos y tiempos de build**, medidos tras Zscaler (R-2 del épico):
 
-  | Imagen | Antes (US-15) | Ahora (US-105) | Primer build |
+  | Imagen | Antes (US-14/US-15) | Ahora (US-105/US-106) | Primer build |
   |---|---|---|---|
   | tienda | 1.86 GB | **377 MB** (−80 %) | US-15: 23 min 20 s |
   | admin | 2.07 GB | **409 MB** (−80 %) | US-15: 6 min 43 s (los installs salen de la caché de la tienda) |
-  | API | 1.47 GB | 1.47 GB (la adelgaza US-106) | US-14: ~15 min |
+  | API | 1.47 GB | **504 MB** (−66 %, US-106) | US-14: ~15 min |
 
   En US-105, las tres juntas con la base nueva y sin caché previa tardaron
   13 min 37 s (`docker compose build shop admin api`).
