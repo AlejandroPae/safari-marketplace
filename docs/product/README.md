@@ -207,7 +207,7 @@ Feature: …
 Épico 1  Catálogo servido desde Postgres      → US-2, US-3, US-4a, US-4b, US-5   (completado)
 Épico 5  Scraper al catálogo compartido       → US-6, US-7, US-8 ✅ (completado 2026-11-18)
 Épico 9  Gate de calidad y CI                 → US-10 ✅, US-11, US-12 ✅, US-73, US-74   ← US-10 hecha (2026-11-18: `just check` y `just check-full`); US-12 hecha (2026-11-18: GraphQL congelada); US-10/11 actualizadas tras el escaneo de bingo-flow (2026-10-24); US-73 audit en modo reporte; US-74 tras US-10
-Épico 13 Orquestación local con Docker        → US-14, US-102 ✅, US-103 ✅, US-104, US-15   ← US-102 hecha (2026-11-19: /backend + API_INTERNAL_URL); US-103 hecha (2026-11-19: SHOP_URL en ejecución); US-102/103/104 promovidas desde _backlog (2026-11-18): URLs en ejecución y build de la tienda sin la API, antes de US-15
+Épico 13 Orquestación local con Docker        → US-14, US-102 ✅, US-103 ✅, US-104 ✅, US-15   ← US-104 hecha (2026-11-19: build de la tienda sin la API); US-102 hecha (2026-11-19: /backend + API_INTERNAL_URL); US-103 hecha (2026-11-19: SHOP_URL en ejecución); US-102/103/104 promovidas desde _backlog (2026-11-18): URLs en ejecución y build de la tienda sin la API, antes de US-15
 Épico 16 Despliegue y observabilidad          → US-17 ✅, US-18   ← US-17 hecha (2026-11-18: /api/health y logs con timestamp); Terraform: el README lo promete, hoy no existe
 Épico 19 Autenticación y autorización         → US-20 … US-25  (completado)
 Épico 26 Escrituras del catálogo desde Postgres → US-27a … US-30  (completado 2026-09-11)

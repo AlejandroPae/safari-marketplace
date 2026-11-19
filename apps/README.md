@@ -438,6 +438,27 @@ start` el shop da errores de hidratación (#418). Ver la US-83.
   En `next dev`, un `rewrites()` de `next.config.js` manda `/backend/*` a
   `API_INTERNAL_URL`; no hace falta proxy. En `next build`/`next start` ese
   rewrite no existe: `/backend` lo enruta el reverse proxy de delante.
+- **El build de la tienda no necesita la API** (US-104). Se puede construir la
+  imagen en un pipeline o en Dokploy, sin ninguna API a la que llamar:
+  - **Rutas dinámicas** (inicio y sus tipos, producto, tienda, autor,
+    fabricante, flash sale): `getStaticPaths` devuelve `paths: []` con
+    `fallback: 'blocking'`. Ninguna se prerenderiza; cada una se genera en su
+    primera visita con los datos del entorno donde corre. La primera visita
+    tras un despliegue es más lenta.
+  - **Páginas estáticas** (ayuda, términos, ofertas, listados de tiendas,
+    autores y fabricantes, perfil, checkout…): si la API no responde, se
+    generan sin datos de servidor y el cliente los pide al montar. El log dice
+    cuáles: `[ssr] <página>: sin datos de servidor para [...]`. Todas se
+    regeneran cada 60 s (`revalidate`).
+  - **Un fallo pasajero de la API ya no deja un 404 en caché.** Producto,
+    tienda, autor y fabricante solo responden 404 cuando la API dice 404. Ante
+    red caída, timeout o 5xx, la primera visita da 500, y una página ya
+    generada se sigue sirviendo. La excepción es `/become-seller`: da un 404
+    que se regenera a los 10 s.
+  - **El sitemap ya no lista** productos, tiendas ni el inicio: `next-sitemap`
+    solo ve lo que el build generó. Se acepta: no hay SEO en juego en un repo
+    didáctico.
+  - `just check-full` incluye `build-shop` y vigila que esto no vuelva atrás.
 - **Dominios en Dokploy** (Traefik, https://docs.dokploy.com/docs/core/domains).
   Por cada app (shop y admin), dos dominios sobre el **mismo host**:
 

@@ -12,8 +12,9 @@
 [US-102](./102-urls-configurables-en-ejecucion.md), y la Fase 1 de la
 estabilización previa al laboratorio de Sistemas Distribuidos.
 **Fecha:** 2026-11-18
-**Status:** Listo para ejecución. Promovida desde `_backlog/` el 2026-11-18,
-tras la revisión del sub-agente fable 5; el dueño fijó D-7, D-8 y R-5.
+**Status:** Implementado (2026-11-19). Promovida desde `_backlog/` el
+2026-11-18, tras la revisión del sub-agente fable 5; el dueño fijó D-7, D-8 y
+R-5, y DA-9 (abajo) al ejecutarla.
 **Depende de:** [US-102](./102-urls-configurables-en-ejecucion.md). Las dos
 tocan `apps/README.md` (§ «Notas para el despliegue en nube») y el `justfile`,
 y esta US comprueba que el build pasa también sin `API_INTERNAL_URL`. No va
@@ -243,13 +244,13 @@ Feature: Build de la tienda independiente de la API
 
 ## Definición de Done
 
-- [ ] CA-1 a CA-8 verificados, con la salida real pegada en «Resultado»: logs
+- [x] CA-1 a CA-8 verificados, con la salida real pegada en «Resultado»: logs
   de build, `curl -o /dev/null -w "%{http_code}"`, `just verify`,
   `just check-full`.
-- [ ] En la evidencia de CA-4 y CA-6, cómo se apagó y levantó la API y cuánto
+- [x] En la evidencia de CA-4 y CA-6, cómo se apagó y levantó la API y cuánto
   se esperó.
-- [ ] `apps/README.md`, `CLAUDE.md` y el `justfile` actualizados.
-- [ ] Status de esta US en `Implementado` y fila del Épico 13 marcada.
+- [x] `apps/README.md`, `CLAUDE.md` y el `justfile` actualizados.
+- [x] Status de esta US en `Implementado` y fila del Épico 13 marcada.
 
 ## Riesgos
 
@@ -291,3 +292,245 @@ Feature: Build de la tienda independiente de la API
   construyan la imagen de la tienda en Azure Pipelines y la desplieguen en
   Dokploy. CA-4 y CA-6 son además material de clase sobre resiliencia: dejar
   la evidencia legible.
+
+## Resultado (2026-11-19, rama `feat/us-104-build-sin-api` sobre `main` @ `df89eb1`)
+
+### Decisión tomada al ejecutar (DA-9)
+
+**El problema:** CA-1 pide que el build pase **sin `API_INTERNAL_URL`**, pero
+el cliente de US-102 lanzaba un `Error` plano cuando faltaba la variable, y
+R-4 manda relanzar todo lo que no sea `HttpError`. Las ~10 páginas sin
+`getStaticPaths` habrían matado el build. Arreglarlo exigía tocar
+`http-client.ts`, que el «NO incluye» reservaba a US-102 (ya cerrada).
+
+**La decisión del dueño, textual:** «La variable ausente pasa a ser HttpError
+(Recomendado)».
+
+**El cambio en `http-client.ts`:**
+
+- el error es `new HttpError(..., { code: 'API_INTERNAL_URL_MISSING' })`;
+- el interceptor de respuesta deja pasar un `HttpError` tal cual, antes del
+  `axios.isAxiosError`, porque `HttpError` lleva `isAxiosError = true` y
+  se confundiría con uno de Axios.
+
+### Qué cambió
+
+| Archivo | Cambio |
+|---|---|
+| `framework/rest/ssr-resilience.ts` | **Nuevo** (D-6): `warnFailedQueries(queryClient, página)` recorre la caché de queries, avisa con `console.warn` por cada `HttpError` y relanza cualquier otro error (D-2, R-4). `isNotFound(error)` es `error instanceof HttpError && error.status === 404` (D-4) |
+| `home-pages.ssr.ts`, `product.ssr.ts`, `shop.ssr.ts`, `author.ssr.ts`, `manufacturer.ssr.ts`, `flash-sale.ssr.ts` | `getStaticPaths` → `{ paths: [], fallback: 'blocking' }`, sin la raíz (D-1). Fuera los imports que quedaron sin uso (`invariant`; `client` y `SHOPS_LIMIT` en flash-sale) |
+| `product`, `shop`, `author`, `manufacturer` | `notFound` solo si `isNotFound(error)`; lo demás se lanza (D-4). `warnFailedQueries` antes del `return` |
+| `general`, `authors-page`, `coupon`, `manufacturers-page`, `shops-page`, `faq-ssr`, `terms-and-conditions-ssr`, `refund-policies` (customer) | `warnFailedQueries` + `revalidate: 60` (D-2, D-3) |
+| `notify-logs`, `refund-policies` (vendor) | `warnFailedQueries` (D-2) |
+| `become-seller.ts` | 404 real → `notFound`; otro `HttpError` → aviso y `{ notFound: true, revalidate: 10 }` (D-7); otro error → se relanza |
+| `client/http-client.ts` | DA-9 |
+| `justfile` | `check-full: check build-api build-admin build-shop`, su `[doc]` y los comentarios de `check` (D-8) |
+| `CLAUDE.md` | la línea de `just check-full` y la nota «EXIGE LA API ARRIBA» de `just build` |
+| `apps/README.md` | qué se genera en el build y qué en ejecución; sitemap (D-5) |
+| `apps/shop/public/sitemap-0.xml` | regenerado por el build: 266 → 18 URLs (D-5). Commit aparte |
+| `102-urls-configurables-en-ejecucion.md` | CA-9 y R-2 marcados como obsoletos |
+
+### Línea base (CA-7)
+
+```
+antes   (2026-11-18, main):  shop tsc --noEmit -> rc=0
+después:                     shop tsc --noEmit -> rc=0
+                             shop yarn lint    -> $ eslint src / Done in 99.43s.
+```
+
+### CA-1 — El build de la tienda pasa con la API caída
+
+```
+$ just check-ports
+libre    9001
+libre    3003
+libre    3002
+$ curl http://localhost:9001/api/settings
+curl :9001 -> 000 (exit 7)
+$ API_INTERNAL_URL= just build-shop
+✓ Compiled successfully in 20.0s
+✓ Generating static pages using 11 workers (29/29) in 4.4s
+Done in 122.34s.
+SHOP_EXIT=0
+```
+
+Antes generaba 279 páginas; ahora 29, porque las rutas dinámicas ya no se
+prerenderizan. Avisos de D-2, 59 en total:
+
+```
+    28 [ssr] general
+     9 [ssr] shops
+     1 [ssr] become-seller
+     3 [ssr] authors
+     2 [ssr] customer-refund-policies
+     2 [ssr] notification
+     3 [ssr] manufacturers
+     3 [ssr] offers
+     3 [ssr] help
+     3 [ssr] terms
+     2 [ssr] vendor-refund-policies
+
+[ssr] general: sin datos de servidor para ["/settings",{"language":"en"}]: API_INTERNAL_URL is not defined: set it to the API address the server can reach (e.g. http://localhost:9001/api)
+[ssr] general: sin datos de servidor para ["/types",{"limit":15,"language":"en"}]: API_INTERNAL_URL is not defined: set it to the API address the server can reach (e.g. http://localhost:9001/api)
+[ssr] become-seller: sin datos de servidor, 404 temporal: API_INTERNAL_URL is not defined: set it to the API address the server can reach (e.g. http://localhost:9001/api)
+```
+
+### CA-2 — El build del admin pasa con la API caída
+
+Dentro de `just check-full`, con la API caída (CA-8):
+`$ next build --webpack … ✓ Generating static pages using 11 workers (77/77) … Done in 188.37s.`
+
+### CA-3 — En ejecución, los datos son los del entorno
+
+El build de CA-1 (sin API) se arranca con `API_INTERNAL_URL=http://localhost:9001/api yarn start -p 3003`
+y la API arriba. `probe.sh` pide la ruta y dice si el HTML contiene un texto
+sacado de la API:
+
+```
+GET /en -> 200 192834B 0.263824s  cards:30
+GET /en/products/apples -> 200 112582B 0.309188s  contiene 'Apples'  cards:19          (primera visita)
+GET /en/shops/furniture-shop -> 200 179348B 0.188547s  contiene 'Furniture Shop'  cards:30 (primera visita)
+GET /en/help  -> 200 26973B  NO contiene 'What is your return policy?'   <- cascarón del build
+GET /en/terms -> 200 29682B  NO contiene 'Disclaimers and Limitation'
+(12 s después; la primera petición disparó la regeneración)
+GET /en/help  -> 200 65449B  contiene 'What is your return policy?'
+GET /en/terms -> 200 69378B  contiene 'Disclaimers and Limitation'
+```
+
+**`/en/become-seller`** (D-7) se midió dos veces, desde el 404 del build:
+
+- **Primera corrida:** en pasadas cada 12 s, el 404 siguió dos pasadas más y la
+  tercera dio 200, entre 24 y 36 s después de la primera petición, con la API
+  ya arriba. No se averiguó por qué hizo falta un ciclo más.
+- **Corrida controlada:** build nuevo sin API, la tienda arrancada con la API
+  ya arriba, sondeo cada 2 s:
+
+  ```
+  tienda arriba (API ya arriba) a las 02:26:38
+    +1s … +13s  /en/become-seller -> 404
+    +15s        /en/become-seller -> 200
+  ```
+
+  El 404 del build se sirve hasta que cumple 10 s. La primera petición
+  posterior regenera y la siguiente ya ve 200.
+
+Tras una caída **en ejecución** (al final del CA-6), la API vuelve a las
+02:24:44:
+
+```
+  +0s  /en/become-seller -> 404
+  +2s  /en/become-seller -> 200
+```
+
+### CA-4 — Un error pasajero no deja un 404
+
+```
+--- paso 1: API caída (curl :9001 -> 000), páginas nunca generadas
+GET /en/products/apples -> 500 2302B 3.229511s
+GET /en/shops/furniture-shop -> 500 2302B 2.482061s
+--- paso 2: just api-dev, y las mismas rutas
+GET /en/products/apples -> 200 112582B 0.309188s  contiene 'Apples'  cards:19
+GET /en/shops/furniture-shop -> 200 179348B 0.188547s  contiene 'Furniture Shop'  cards:30
+```
+
+La respuesta con la API caída es **500**. Los ~3 s son los 3 intentos con
+backoff del cliente. La API se apagó matando el árbol de `just api-dev` por
+su raíz y se levantó con `just api-dev`.
+
+### CA-5 — Lo que no existe sigue siendo 404
+
+```
+GET /en/products/no-existe -> 404 26058B 0.060972s
+GET /en/shops/no-existe -> 404 26058B 0.048796s
+```
+
+### CA-6 — La página buena sobrevive a una caída
+
+`apples` y `furniture-shop` se generaron con la API arriba (CA-4, paso 2).
+La API se apagó a las 02:22:38 y se esperaron 65 s, porque `revalidate` es 60:
+
+```
+02:23:52
+GET /en/products/apples -> 200 112582B 0.036147s  contiene 'Apples'  cards:19
+GET /en/shops/furniture-shop -> 200 179348B 0.019313s  contiene 'Furniture Shop'  cards:30
+GET /en/products/apples -> 200 112582B 0.025631s  contiene 'Apples'  cards:19
+GET /en/shops/furniture-shop -> 200 179348B 0.018391s  contiene 'Furniture Shop'  cards:30
+--- errores de regeneración en el log de next start:
+ ⨯ Error [HttpError]: GET http://localhost:9001/api/products/apples failed after 3 attempts: ECONNREFUSED — nothing is listening on that address. Is the API running?
+ ⨯ Error [HttpError]: GET http://localhost:9001/api/shops/furniture-shop failed after 3 attempts: ECONNREFUSED — nothing is listening on that address. Is the API running?
+```
+
+Las dos peticiones sirven la versión anterior con datos. La regeneración
+falló, Next conservó la página buena (R-3 confirmado) y lo reintentará.
+
+Mismo apagón, `become-seller`. Es el coste aceptado de D-7: la página buena
+se cambia por el 404 temporal.
+
+```
+GET /en/become-seller -> 200 110745B  contiene 'Launch your online store'   (la de antes; dispara la regeneración)
+GET /en/become-seller -> 404 26058B                                          (12 s después)
+[ssr] become-seller: sin datos de servidor, 404 temporal: GET http://localhost:9001/api/settings failed after 3 attempts: ECONNREFUSED …
+```
+
+### CA-7 — Sin regresión con la API arriba
+
+```
+$ just build-shop        (API arriba)
+✓ Generating static pages using 11 workers (29/29) in 6.9s
+Done in 79.94s.
+SHOP_EXIT=0
+[ssr] avisos: 0
+$ just verify            (just api-dev, shop-dev, admin-dev)
+OK   API    :9001/api/settings  200  5503B  527ms
+OK   Shop   :3003/en  200  191897B  34129ms  cards:30
+OK   Admin  :3002/en/login  200  72554B  20127ms  cards:1
+```
+
+`just check` va dentro de `check-full` (CA-8). Para `tsc` y lint, ver
+«Línea base».
+
+### CA-8 — El gate vigila la regresión
+
+`just check-full` con la API caída (`curl :9001 -> 000 (exit 7)`):
+
+```
+Done in 89.70s.
+Done in 17.18s.
+OK    [1/10] packages/db build  62s
+OK    [2/10] packages/db lint  2s
+OK    [3/10] packages/db typecheck  9s
+OK    [4/10] api/rest typecheck  30s
+OK    [5/10] api/rest lint  56s
+OK    [6/10] admin/rest lint  90s
+OK    [7/10] shop lint  18s
+OK    [8/10] api/rest test  38s
+OK    [9/10] packages/db test  92s
+OK    [10/10] scraper db-test  2s
+check: VERDE (10 pasos, 402s)
+$ nest build
+Done in 102.65s.
+$ next build --webpack
+✓ Generating static pages using 11 workers (77/77) in 10.3s
+Done in 188.37s.
+$ next build --webpack
+✓ Generating static pages using 11 workers (29/29) in 11.1s
+Done in 89.45s.
+check-full: VERDE (check + build-api + build-admin + build-shop)
+EXIT=0
+```
+
+Con `API_INTERNAL_URL` definida y la API caída, el build de la tienda toma el
+camino de `ECONNREFUSED` (3 intentos por query). Pasa igual y deja los mismos
+59 avisos.
+
+### Hallazgos que no se accionaron (NO incluye)
+
+- **`notify-logs.ssr.ts`** conserva su `try/catch` muerto: el «NO incluye»
+  lo deja.
+- **`flash-sale.ssr.ts`** conserva imports de tipos que ya no usaba antes de
+  esta US (`FlashSale`, `API_ENDPOINTS`…).
+- **La primera visita a cada producto o tienda tras un despliegue** tarda lo
+  que tarde la API: R-1, aceptado. En la evidencia, entre 0,19 y 0,31 s en
+  local.
+- **CLAUDE.md** sigue diciendo que `just db-test` está «HOY ROTO»
+  (`CLAUDE.md:51-54`, anotado ya en US-10).

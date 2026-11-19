@@ -179,7 +179,8 @@ no devuelve nada, y las plantillas `.env` ya no las declaran.
 - `yarn lint` en 0 en ambos; `just check` en verde.
 - `just build-shop` y `just build-admin` en verde. `just build-shop` sigue
   exigiendo `just api-dev` arriba, igual que hoy (R-2). Queda obsoleto al
-  cerrar [US-104](./104-build-shop-sin-api.md), que lo quita.
+  cerrar [US-104](./104-build-shop-sin-api.md), que lo quita. **Obsoleto desde
+  el 2026-11-19:** US-104 cerrada; `just build-shop` ya no pide la API.
 
 ## Escenarios Gherkin
 
@@ -234,7 +235,9 @@ Feature: URL de la API configurable en ejecución
   sin escribir). El CA-1 se cumple igual: lo que se comprueba es la ejecución.
   Esa US es [US-104](./104-build-shop-sin-api.md); este riesgo queda obsoleto
   cuando cierre. Ojo: el error de D-2 por falta de `API_INTERNAL_URL` se lanza
-  al pedir, no al importar el módulo, o el build sin API de US-104 muere.
+  al pedir, no al importar el módulo, o el build sin API de US-104 muere. **Obsoleto desde el 2026-11-19:** US-104 cerrada; además, ese error
+  pasó a ser un `HttpError` (`code: API_INTERNAL_URL_MISSING`) que el build
+  tolera.
 - **R-3 — Rutas con prefijo y `rewrites`.**
   - El `rewrites()` de desarrollo no debe chocar con `/api/auth` (shop) ni con
     el futuro `/api/runtime-config` (admin), ni quedar activo en producción.
