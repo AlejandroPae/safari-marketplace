@@ -12,7 +12,7 @@
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.14-alpine3.23
     container_name: safari-postgres
     environment:
       POSTGRES_USER: safari
@@ -36,7 +36,7 @@ services:
   # una sola fuente de verdad), y termina. Es idempotente, así que se repite
   # en cada `up` sin daño.
   db-init:
-    image: postgres:16-alpine
+    image: postgres:16.14-alpine3.23
     container_name: safari-db-init
     depends_on:
       postgres:
@@ -160,7 +160,7 @@ services:
   # Reverse proxy (US-15): publica la tienda en 3003 y el admin en 3002, y
   # en los dos enruta /backend/* a la API, como Dokploy en la nube.
   proxy:
-    image: caddy:2-alpine
+    image: caddy:2.11.9-alpine
     container_name: safari-proxy
     depends_on:
       shop:
