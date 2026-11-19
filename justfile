@@ -461,13 +461,13 @@ db-reset:
 # API en contenedor (US-14): Postgres sembrado y la imagen de la API, en el
 # 9001. Es el mismo puerto que `just api-dev`: una u otra, no las dos. La
 # primera vez construye la imagen (~15 min tras Zscaler); con Zscaler el build
-# toma el CA de NODE_EXTRA_CA_CERTS (ver apps/api/rest/Dockerfile).
+# toma el CA de NODE_EXTRA_CA_CERTS (ver apps/api/rest/Dockerfile). Siembra el
+# servicio db-init del compose (US-15), del que depende la API.
 [group('docker')]
 [doc('API en contenedor en :9001 con Postgres sembrado (en vez de api-dev, no a la vez)')]
 api-docker:
     #!/usr/bin/env bash
     set -euo pipefail
-    just db-up
     docker compose up -d --build api
     echo -n "esperando a la API"
     for i in $(seq 1 60); do
@@ -484,6 +484,36 @@ api-docker:
 [group('docker')]
 api-docker-down:
     docker compose stop api
+
+# Stack completo en contenedores (US-15): Postgres, siembra (db-init), API,
+# tienda, admin y el proxy que publica 3003 y 3002 y enruta /backend a la API.
+# Mismos puertos que el desarrollo nativo, así que `just verify` sirve de
+# smoke; por lo mismo, no convive con api-dev/shop-dev/admin-dev. La primera
+# vez construye las tres imágenes (ver tiempos en apps/README.md).
+[group('docker')]
+[doc('Stack completo en Docker: tienda :3003, admin :3002, API :9001')]
+stack-up:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    docker compose up -d --build
+    echo -n "esperando a que los servicios esten healthy"
+    for i in $(seq 1 120); do
+      sanos=$(docker compose ps --format '{{{{.Name}} {{{{.Status}}' | grep -c '(healthy)' || true)
+      if [ "$sanos" -ge 4 ] && curl -sf -o /dev/null http://localhost:3003/en; then
+        echo " listo"; docker compose ps --format 'table {{{{.Name}}\t{{{{.Status}}'
+        echo "tienda http://localhost:3003  admin http://localhost:3002  API http://localhost:9001/api"
+        exit 0
+      fi
+      echo -n "."; sleep 2
+    done
+    echo " no termino de arrancar:"
+    docker compose ps --format 'table {{{{.Name}}\t{{{{.Status}}'
+    exit 1
+
+# Apaga el stack completo. Los datos de Postgres sobreviven en el volumen
+[group('docker')]
+stack-down:
+    docker compose stop
 
 
 # ────────────────────── capa de datos ────────────────────────

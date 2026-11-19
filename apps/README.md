@@ -164,10 +164,9 @@ publican el 9001. La tienda y el admin no cambian, porque siguen hablando con
   `docker-compose.yml`, no por un `.env`. Ahí `DATABASE_URL` apunta a
   `postgres:5432` (la red interna), no a `localhost:5433`. `JWT_SECRET` trae
   un valor de desarrollo; para otro, exportarlo antes de levantar.
-- **La imagen no siembra la base.** El servicio espera al healthcheck de
-  Postgres, pero sobre un volumen vacío la API arranca sin tablas y responde
-  500 hasta que corre `just db-migrate`. `just api-docker` lo hace antes de
-  levantarla.
+- **La imagen no siembra la base.** Lo hace el servicio `db-init` del compose
+  (US-15), del que depende la API: corre los mismos `db/schema.sql` y
+  `db/seed.sql` que `just db-migrate` y termina.
 - **Con Zscaler**, el build falla en `prisma generate` con `unable to get local
   issuer certificate`. Compose le pasa el CA de `NODE_EXTRA_CA_CERTS` como
   secreto de build: está montado solo durante las descargas y no queda en la
@@ -175,6 +174,65 @@ publican el 9001. La tienda y el admin no cambian, porque siguen hablando con
 - **Tiempos** medidos tras Zscaler: el primer build tarda ~10-15 min, casi
   todo en los `yarn install` y `npm ci`. Los siguientes reutilizan las capas.
   La imagen pesa ~1.5 GB.
+
+#### Alternativa: el stack completo en contenedores (US-15)
+
+```bash
+just stack-up     # Postgres + siembra + API + tienda + admin + proxy
+just verify       # el mismo smoke que con el desarrollo nativo
+just stack-down   # apaga todo; los datos de Postgres sobreviven
+```
+
+Publica los mismos puertos que el desarrollo nativo: tienda en 3003, admin en
+3002 y API en 9001. Por eso no convive con `api-dev`, `shop-dev` ni
+`admin-dev`. No hay hot-reload: es el stack reproducible para una clase o una
+demo, no el camino para desarrollar.
+
+| Servicio | Imagen | Qué hace | Healthcheck |
+|---|---|---|---|
+| `postgres` | `postgres:16-alpine` | la base, en 5433 | `pg_isready` |
+| `db-init` | `postgres:16-alpine` | corre `db/schema.sql` + `db/seed.sql` (montados) y termina | — (la API espera a que acabe con éxito) |
+| `api` | `apps/api/rest/Dockerfile` | API en 9001 | `/api/health/ready`, que consulta la base |
+| `shop` | `apps/shop/Dockerfile` | `next start`, solo en la red interna | `/en` |
+| `admin` | `apps/admin/rest/Dockerfile` | `next start`, solo en la red interna | `/en/login` |
+| `proxy` | `caddy:2-alpine` + `docker/Caddyfile` | publica 3003 y 3002; `/backend/*` va a `api:9001/api/*` | — |
+
+- **El proxy hace lo que Dokploy en la nube** (ver «Dominios en Dokploy»,
+  abajo). El navegador habla con la API por `/backend`, en el mismo origen
+  que la página (US-102), y en `next start` no hay rewrite que lo resuelva.
+  Sin proxy, el SSR funcionaría, pero el login, el carrito y el admin entero
+  darían 404.
+- **Orden de arranque:** postgres healthy → db-init termina → api healthy →
+  shop y admin healthy → proxy. Si se para la base, la API pasa a
+  `unhealthy` en ~20-30 s. Tienda y admin siguen `healthy`, porque sirven las
+  páginas ya generadas (US-104).
+- **Configuración:**
+  - Las `NEXT_PUBLIC_*` van como `ARG` en los Dockerfiles, con los valores
+    de las plantillas. Se inlinean en `next build`: cambiarlas pide
+    reconstruir (`docker compose build --build-arg NOMBRE=valor shop`).
+  - Lo de ejecución va en el `environment` del compose: `API_INTERNAL_URL`
+    (`http://api:9001/api`) y `SECRET` de next-auth en la tienda, y
+    `SHOP_URL` en el admin. `SHOP_SECRET` y `JWT_SECRET` traen valores de
+    desarrollo.
+- **Tipos:** la imagen de la tienda comprueba los tipos en `next build`. La
+  del admin no: lleva `APPLICATION_MODE=production` porque su `tsc` falla con
+  `TS2688 minimatch` (ver «Problemas conocidos»). Está anotado en su
+  Dockerfile.
+- **Zscaler:** el CA de `NODE_EXTRA_CA_CERTS` entra en el build (descargas de
+  yarn y de sharp) y también en el runtime de tienda y admin, porque el
+  optimizador de imágenes de Next descarga las fotos del seed desde S3.
+- **Tiempos de build** medidos tras Zscaler (R-2 del épico):
+
+  | Imagen | Primer build | Peso |
+  |---|---|---|
+  | tienda | 23 min 20 s (install del workspace 10 min, install de producción 8.7 min en paralelo, `next build` 3.4 min) | 1.86 GB |
+  | admin | 6 min 43 s (los installs salen de la caché de la tienda) | 2.07 GB |
+  | API | ~15 min (US-14) | 1.47 GB |
+
+  Los Dockerfiles de tienda y admin repiten **byte a byte** sus dos etapas de
+  dependencias para que BuildKit las comparta. Si se cambia una, hay que
+  cambiar la otra igual. Con las imágenes hechas, `just stack-up` tarda
+  ~40-60 s.
 
 ### 4. Credenciales
 
