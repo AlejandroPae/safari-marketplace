@@ -14,6 +14,7 @@ import Image from 'next/image';
 import { BkashIcon } from '@/components/icons/payment-gateways/bkash';
 import { PaymongoIcon } from '@/components/icons/payment-gateways/paymongo';
 import { FlutterwaveIcon } from '@/components/icons/payment-gateways/flutterwave';
+import { API_PREFIX } from '@/data/client/http-client';
 
 interface WebHookURLProps {
   gateway: gatewayType;
@@ -41,9 +42,13 @@ const WebHookURL = ({ gateway }: WebHookURLProps) => {
     paymongo: <PaymongoIcon className="h-4 w-auto" />,
     flutterwave: <FlutterwaveIcon className="h-4 w-auto" />,
   };
-  const url = `${
-    process.env.NEXT_PUBLIC_REST_API_ENDPOINT
-  }/webhooks/${gateway?.name?.toLowerCase()}`;
+  // La pasarela necesita una URL absoluta (D-7, US-102). `window` no existe
+  // al prerenderizar: el origen se lee en un efecto, ya en el navegador.
+  const [origin, setOrigin] = useState('');
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+  const url = `${origin}${API_PREFIX}/webhooks/${gateway?.name?.toLowerCase()}`;
 
   setTimeout(() => {
     setCopied(false);

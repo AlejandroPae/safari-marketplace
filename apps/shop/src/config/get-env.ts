@@ -2,14 +2,13 @@ type EnvVariables = {
   readonly ENV: 'production' | 'staging' | 'development' | 'test';
   readonly NODE_ENV: 'production' | 'development';
   readonly FRAMEWORK_PROVIDER: 'graphql' | 'rest';
-  readonly NEXT_PUBLIC_REST_API_ENDPOINT: string;
+  readonly API_INTERNAL_URL: string;
   readonly NEXT_PUBLIC_GRAPHQL_API_ENDPOINT: string;
   readonly NEXT_PUBLIC_DEFAULT_LANGUAGE: string;
   // readonly NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: string;
   // readonly NEXT_PUBLIC_RAZORPAY_PUBLISHABLE_KEY: string;
   readonly NEXT_PUBLIC_STRIPE_PAYMENT_ELEMENT_REDIRECT_URL: string;
   readonly NEXT_PUBLIC_SITE_URL: string;
-  readonly NEXT_PUBLIC_ADMIN_URL: string;
   readonly NEXTAUTH_URL: string;
   readonly SECRET: string;
   readonly GOOGLE_CLIENT_ID: string;

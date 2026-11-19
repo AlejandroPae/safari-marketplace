@@ -65,7 +65,6 @@ env:
       sed -i "s|^SECRET=.*|SECRET=${SECRET}|" apps/shop/.env
       echo "  * SECRET generado en apps/shop/.env"
     fi
-    sed -i 's|^NEXT_PUBLIC_ADMIN_URL=.*|NEXT_PUBLIC_ADMIN_URL="http://localhost:{{ADMIN_PORT}}"|' apps/shop/.env
     sed -i 's|^NEXTAUTH_URL=.*|NEXTAUTH_URL=http://localhost:{{SHOP_PORT}}|'                      apps/shop/.env
 
     # La API necesita DATABASE_URL desde que /api/settings sale de Postgres.
@@ -76,6 +75,21 @@ env:
       printf '\n# Capa de datos (packages/db). Base local: `just db-up`\nDATABASE_URL={{DB_URL}}\n' >> apps/api/rest/.env
       echo "  + DATABASE_URL añadido a apps/api/rest/.env"
     fi
+
+    # API_INTERNAL_URL (US-102): la URL de la API para el SSR del shop y el
+    # rewrite de `next dev` de los dos frontends. Se añade también a un .env que
+    # ya existiera, como DATABASE_URL: sin ella `next dev` no arranca.
+    for f in apps/shop/.env apps/admin/rest/.env; do
+      if ! grep -q '^API_INTERNAL_URL=' "$f"; then
+        printf '\n# URL de la API para el servidor y el rewrite de next dev (US-102)\nAPI_INTERNAL_URL="http://localhost:{{API_PORT}}/api"\n' >> "$f"
+        echo "  + API_INTERNAL_URL añadido a $f"
+      fi
+    done
+
+    # DA-4 de US-102: la URL de broadcasting va por /backend. Un .env anterior
+    # la tiene derivada de la URL absoluta de la API, que el build escribiría en
+    # el JavaScript del admin.
+    sed -i 's|^NEXT_PUBLIC_BROADCAST_AUTH_URL=.*|NEXT_PUBLIC_BROADCAST_AUTH_URL="/backend/broadcasting/auth"|' apps/admin/rest/.env
 
     # JWT_SECRET (US-22): mismo patron que el SECRET del shop, arriba. Solo
     # rellena la variable si la linea ya existe vacia (viene de un .env

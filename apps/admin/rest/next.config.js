@@ -2,6 +2,24 @@
 
 const { i18n } = require('./next-i18next.config');
 
+// US-102: `/backend/*` en `next dev` va a la API local (API_INTERNAL_URL),
+// sin proxy externo. En `next build` no hay rewrite: en producción lo enruta
+// el reverse proxy. Sin `locale: false`: con i18n, Next compara contra la
+// ruta ya prefijada con el idioma, y con `locale: false` `/backend/...` no
+// casaba nunca (404 de Next, medido en US-102).
+function backendRewrites() {
+  if (process.env.NODE_ENV !== 'development') return [];
+  const api = process.env.API_INTERNAL_URL;
+  if (!api) {
+    throw new Error(
+      'API_INTERNAL_URL is not defined: next dev needs it to proxy /backend to the API (run just env)',
+    );
+  }
+  return [
+    { source: '/backend/:path*', destination: `${api}/:path*` },
+  ];
+}
+
 // const runtimeCaching = require('next-pwa/cache');
 // const withPWA = require('next-pwa')({
 //   disable: process.env.NODE_ENV === 'development',
@@ -14,6 +32,9 @@ const nextConfig = {
   i18n,
   // Next 16 escribe un AGENTS.md en la app en cada `next dev`; no se versiona.
   agentRules: false,
+  async rewrites() {
+    return backendRewrites();
+  },
   images: {
     // Sustituye a images.domains (obsoleto, R-4). Un patrón por host sin
     // protocolo, puerto ni ruta equivale a la entrada de `domains`. La antigua

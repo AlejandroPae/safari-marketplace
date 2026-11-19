@@ -1,14 +1,17 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import Router from 'next/router';
-import invariant from 'tiny-invariant';
 
-invariant(
-  process.env.NEXT_PUBLIC_REST_API_ENDPOINT,
-  'NEXT_PUBLIC_REST_API_ENDPOINT is not defined, please define it in your .env file',
-);
+/**
+ * Prefijo relativo con el que el navegador habla con la API (US-102). El
+ * reverse proxy, o el `rewrites()` de `next dev`, lo manda a la API. Es igual
+ * en todos los entornos. El admin no llama a la API desde el servidor, así que
+ * no necesita una URL interna.
+ */
+export const API_PREFIX = '/backend';
+
 const Axios = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_REST_API_ENDPOINT,
+  baseURL: API_PREFIX,
   timeout: 50000,
   headers: {
     'Content-Type': 'application/json',

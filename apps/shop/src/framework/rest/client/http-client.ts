@@ -161,8 +161,38 @@ function toHttpError(error: AxiosError): HttpError {
   );
 }
 
+// ── Dirección de la API (US-102) ─────────────────────────────────────────
+// El navegador habla con la API por un prefijo relativo del mismo origen; el
+// reverse proxy (o el `rewrites()` de `next dev`) lo manda a la API. Es igual
+// en todos los entornos, así que puede quedar escrito en el build.
+const BROWSER_API_PREFIX = '/backend';
+
+// El servidor (SSR/ISR) usa la red interna. `API_INTERNAL_URL` no lleva
+// `NEXT_PUBLIC_`: Next no la escribe en el build y se lee al ejecutar. Se
+// resuelve en cada petición, no al importar: importar el cliente no debe
+// fallar aunque falte la variable.
+//
+// Además del error, se escribe una vez en el log del servidor: los
+// `prefetchQuery` de las páginas descartan los errores en silencio, y sin
+// esto la página saldría vacía sin ninguna pista.
+let missingInternalUrlLogged = false;
+function apiBaseUrl(): string {
+  if (typeof window !== 'undefined') return BROWSER_API_PREFIX;
+  const url = process.env.API_INTERNAL_URL;
+  if (!url) {
+    const error = new Error(
+      'API_INTERNAL_URL is not defined: set it to the API address the server can reach (e.g. http://localhost:9001/api)',
+    );
+    if (!missingInternalUrlLogged) {
+      missingInternalUrlLogged = true;
+      console.error(error.message);
+    }
+    throw error;
+  }
+  return url;
+}
+
 const Axios = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_REST_API_ENDPOINT,
   timeout: REQUEST_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
@@ -170,6 +200,7 @@ const Axios = axios.create({
 });
 // Change request data/error here
 Axios.interceptors.request.use((config) => {
+  config.baseURL = apiBaseUrl();
   const token = Cookies.get(AUTH_TOKEN_KEY);
   //@ts-ignore
   config.headers = {
@@ -183,6 +214,9 @@ Axios.interceptors.request.use((config) => {
 Axios.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
+    // Un error que no es de Axios (p. ej. falta API_INTERNAL_URL) no es un
+    // fallo HTTP: se propaga tal cual, con su mensaje.
+    if (!axios.isAxiosError(error)) return Promise.reject(error);
     const config = error.config as RetryableConfig | undefined;
 
     // Reintento con backoff de fallos transitorios (red caída / 5xx),
