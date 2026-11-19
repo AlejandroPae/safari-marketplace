@@ -319,9 +319,8 @@ doctor:
 #   10. scraper      db-test     pipeline contra Postgres           ~5s
 #
 # Fuera del gate, y por qué:
-#   - Builds de Next y de la API: van en `just check-full`.
-#   - Build de la tienda: prerenderiza por HTTP contra la API en :9001, y el
-#     gate no depende de servicios levantados a mano.
+#   - Builds de Next y de la API: van en `just check-full` (lentos). Desde
+#     US-104 ninguno necesita la API levantada.
 #   - `tsc` de shop y admin: no son scripts del repo; `next build` ya
 #     comprueba los tipos.
 #   - Tests de frontend: no existen.
@@ -383,12 +382,13 @@ check:
     echo ""; echo "━━━ Resumen de just check"; printf '%s\n' "${resumen[@]}"
     echo "check: VERDE ($total pasos, $(( $(date +%s) - inicio ))s)"
 
-# `check` más los builds de la API (nest build, ~45-54s) y del admin (next
-# build, ~195s; no necesita la API). Sin el de la tienda: ese sí (ver `check`)
+# `check` más los builds de la API (nest build, ~45-54s), del admin (next
+# build, ~195-430s) y de la tienda (next build). Ninguno necesita la API
+# levantada: el de la tienda desde US-104, que es lo que este gate vigila (D-8).
 [group('verify')]
-[doc('check + build de la API y del admin (sin la tienda: necesita la API levantada)')]
-check-full: check build-api build-admin
-    @echo "check-full: VERDE (check + build-api + build-admin)"
+[doc('check + builds de la API, del admin y de la tienda (sin servicios levantados)')]
+check-full: check build-api build-admin build-shop
+    @echo "check-full: VERDE (check + build-api + build-admin + build-shop)"
 
 
 # ────────────────────── base de datos ────────────────────────

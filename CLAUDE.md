@@ -35,7 +35,7 @@ just check-ports       # diagnóstico de puertos ocupados (Zscaler usa el 9000)
 
 # Gate local (US-10). Pide install + db-up + scraper-install; no pide servidores
 just check             # lint + typecheck + tests de todo el repo, ~6-10 min, corta al primer rojo
-just check-full        # check + build-api + build-admin (la tienda no: necesita la API)
+just check-full        # check + build-api + build-admin + build-shop (ninguno pide la API, US-104)
 
 # Base de datos (Postgres 16 en Docker, puerto 5433)
 just db-up             # levanta el contenedor + aplica db/schema.sql + db/seed.sql
@@ -57,10 +57,9 @@ just db-test           # prueba el pipeline contra la base sin salir a internet
 just build             # shop + admin. Desde Next 16 `next dev` escribe en
                        # .next/dev y puede convivir con un build, pero no dos
                        # `next build` (ni dos `next dev`) de la misma app
-                       # EXIGE LA API ARRIBA: la tienda prerenderiza por HTTP
-                       # (getStaticPaths -> /api/shops, /api/products...). Sin
-                       # `just api-dev` en otra terminal muere en
-                       # "Failed to collect page data" por ECONNREFUSED :9001.
+                       # Desde US-104 NO necesita la API: las rutas dinámicas
+                       # se generan en la primera visita y las páginas
+                       # estáticas toleran la API caída (avisan en el log).
 just build-api         # compila la API a dist/
 ```
 
