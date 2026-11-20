@@ -20,6 +20,14 @@
 !apps/admin/rest
 !apps/admin/graphql/package.json
 
+# db-init y proxy del despliegue (US-111): esquema, seed y configuración de
+# Caddy, que viajan dentro de sus imágenes.
+!db/schema.sql
+!db/seed.sql
+!docker/db-init.sh
+!docker/Caddyfile
+!docker/api-lb.Caddyfile
+
 # Readmitir una carpeta readmite todo lo que contiene. Lo que sigue lo vuelve
 # a sacar: artefactos que la imagen construye por su cuenta y secretos, que
 # llegan por el environment del compose y nunca se copian a una imagen.

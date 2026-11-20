@@ -1,0 +1,141 @@
+# Stack de despliegue (US-111): el que Dokploy levanta en el VPS.
+#
+# Es independiente del docker-compose.yml de desarrollo:
+#   - usa las imágenes que el CI publica en Docker Hub (US-110), sin `build:`;
+#   - no publica puertos en el host: todo entra por Traefik, que Dokploy
+#     conecta a la red del compose (Isolated Deployments) y enruta según los
+#     dominios del panel: tienda -> proxy:3003, admin -> proxy:3002;
+#   - no usa container_name (Dokploy lo desaconseja: rompe logs y métricas);
+#   - no monta nada del repo: el esquema, el seed y los Caddyfiles van dentro
+#     de las imágenes safari-db-init y safari-proxy, porque Dokploy hace un
+#     git clone nuevo en cada despliegue y un montaje relativo queda vacío;
+#   - toda variable que cambia por entorno es obligatoria (${VAR:?...}): si
+#     falta, el despliegue falla al empezar y dice cuál.
+#
+# Las variables se cargan en la pestaña Environment del Compose en Dokploy.
+# Plantilla: deploy.variables.example. Guía: docs/dokploy/README.md.
+
+x-imagen: &imagen
+  # Las cinco imágenes llevan la misma etiqueta: la del commit (US-110).
+  pull_policy: always
+
+services:
+  postgres:
+    image: postgres:16.14-alpine3.23
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: safari
+      # Solo se aplica al CREAR el volumen: cambiarla después deja a la API
+      # sin acceso (ver la guía).
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD (contraseña de Postgres, alfanumérica)}
+      POSTGRES_DB: safari_scraper
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # Por TCP, no por socket: durante la inicialización de un volumen nuevo
+      # hay un servidor temporal que solo escucha en el socket (ver db-up).
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U safari -d safari_scraper"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Esquema siempre; seed solo con la base vacía (docker/db-init.sh). Corre en
+  # cada despliegue y termina.
+  db-init:
+    <<: *imagen
+    image: ${DOCKERHUB_USERNAME:?Falta DOCKERHUB_USERNAME (usuario de Docker Hub)}/safari-db-init:${IMAGE_TAG:?Falta IMAGE_TAG (sha-<7 primeros del commit>)}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: safari
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD}
+      PGDATABASE: safari_scraper
+    restart: "no"
+
+  api:
+    <<: *imagen
+    image: ${DOCKERHUB_USERNAME:?Falta DOCKERHUB_USERNAME}/safari-api:${IMAGE_TAG:?Falta IMAGE_TAG}
+    restart: unless-stopped
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      PORT: "9001"
+      DATABASE_URL: postgresql://safari:${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD}@postgres:5432/safari_scraper
+      JWT_SECRET: ${JWT_SECRET:?Falta JWT_SECRET (cadena larga y aleatoria)}
+      SHOP_URL: ${SHOP_URL:?Falta SHOP_URL (https://tienda.<tu-dominio>)}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9001/api/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Balanceador de la API (US-107): la misma imagen que `proxy`, con su otra
+  # configuración. Sin depends_on, a propósito (ver docker-compose.yml).
+  api-lb:
+    <<: *imagen
+    image: ${DOCKERHUB_USERNAME:?Falta DOCKERHUB_USERNAME}/safari-proxy:${IMAGE_TAG:?Falta IMAGE_TAG}
+    restart: unless-stopped
+    command: ["caddy", "run", "--config", "/etc/caddy/api-lb.Caddyfile", "--adapter", "caddyfile"]
+
+  shop:
+    <<: *imagen
+    image: ${DOCKERHUB_USERNAME:?Falta DOCKERHUB_USERNAME}/safari-shop:${IMAGE_TAG:?Falta IMAGE_TAG}
+    restart: unless-stopped
+    init: true
+    depends_on:
+      api:
+        condition: service_healthy
+      api-lb:
+        condition: service_started
+    environment:
+      API_INTERNAL_URL: http://api-lb:9001/api
+      # La URL pública: next-auth y el dominio de /sitemap.xml (US-108).
+      NEXTAUTH_URL: ${SHOP_URL:?Falta SHOP_URL}
+      NEXTAUTH_URL_INTERNAL: http://127.0.0.1:3000
+      SECRET: ${SHOP_SECRET:?Falta SHOP_SECRET (cadena larga y aleatoria)}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/en"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  admin:
+    <<: *imagen
+    image: ${DOCKERHUB_USERNAME:?Falta DOCKERHUB_USERNAME}/safari-admin:${IMAGE_TAG:?Falta IMAGE_TAG}
+    restart: unless-stopped
+    init: true
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # Enlaces «ver en la tienda» (US-103).
+      SHOP_URL: ${SHOP_URL:?Falta SHOP_URL}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/en/login"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Reverse proxy: tienda en 3003 y admin en 3002, con /backend/* hacia la API.
+  # Dokploy apunta los dominios aquí (servicio `proxy`, puertos 3003 y 3002).
+  proxy:
+    <<: *imagen
+    image: ${DOCKERHUB_USERNAME:?Falta DOCKERHUB_USERNAME}/safari-proxy:${IMAGE_TAG:?Falta IMAGE_TAG}
+    restart: unless-stopped
+    depends_on:
+      shop:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

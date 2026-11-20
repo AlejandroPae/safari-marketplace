@@ -134,7 +134,7 @@ jobs:
         if: always()
         run: just check resumen
 
-  # Imágenes de la API, la tienda y el admin (US-110). Se construyen siempre,
+  # Imágenes de la API, la tienda y el admin (US-110), más db-init y proxy (US-111). Se construyen siempre,
   # para detectar un Dockerfile roto antes del merge, y se publican en Docker
   # Hub solo desde main (push, o workflow_dispatch sobre main), con la etiqueta
   # sha-<7 primeros del commit>. Sin `latest`: el despliegue apunta a un SHA.
@@ -248,12 +248,46 @@ jobs:
             type=gha,scope=shop
           cache-to: ${{ env.SUBIR == 'true' && 'type=gha,mode=max,scope=admin' || '' }}
 
+      # db-init y proxy (US-111): el esquema, el seed y los Caddyfiles viajan
+      # dentro de estas dos imágenes, porque en Dokploy un montaje relativo del
+      # repo no sobrevive al git clone de cada despliegue. Son pequeñas y no
+      # necesitan caché.
+      - name: Imagen de db-init
+        id: dbinit
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: docker/db-init.Dockerfile
+          platforms: linux/amd64
+          push: ${{ env.SUBIR == 'true' }}
+          provenance: false
+          tags: ${{ env.REGISTRO }}/safari-db-init:${{ env.IMAGE_TAG }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Imagen del proxy
+        id: proxy
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: docker/proxy.Dockerfile
+          platforms: linux/amd64
+          push: ${{ env.SUBIR == 'true' }}
+          provenance: false
+          tags: ${{ env.REGISTRO }}/safari-proxy:${{ env.IMAGE_TAG }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
       - name: Resumen de las imágenes
         if: always()
         env:
           DIGEST_API: ${{ steps.api.outputs.digest }}
           DIGEST_SHOP: ${{ steps.shop.outputs.digest }}
           DIGEST_ADMIN: ${{ steps.admin.outputs.digest }}
+          DIGEST_DBINIT: ${{ steps.dbinit.outputs.digest }}
+          DIGEST_PROXY: ${{ steps.proxy.outputs.digest }}
         run: |
           {
             echo "### Imágenes ($IMAGE_TAG)"
@@ -265,4 +299,6 @@ jobs:
             echo "| \`$REGISTRO/safari-api:$IMAGE_TAG\` | \`${DIGEST_API:-—}\` |"
             echo "| \`$REGISTRO/safari-shop:$IMAGE_TAG\` | \`${DIGEST_SHOP:-—}\` |"
             echo "| \`$REGISTRO/safari-admin:$IMAGE_TAG\` | \`${DIGEST_ADMIN:-—}\` |"
+            echo "| \`$REGISTRO/safari-db-init:$IMAGE_TAG\` | \`${DIGEST_DBINIT:-—}\` |"
+            echo "| \`$REGISTRO/safari-proxy:$IMAGE_TAG\` | \`${DIGEST_PROXY:-—}\` |"
           } | tee -a "$GITHUB_STEP_SUMMARY"

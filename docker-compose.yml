@@ -179,7 +179,8 @@ services:
       start_period: 60s
 
   # Reverse proxy (US-15): publica la tienda en 3003 y el admin en 3002, y
-  # en los dos enruta /backend/* a la API, como Dokploy en la nube.
+  # en los dos enruta /backend/* a la API. En el despliegue (US-111) es el
+  # mismo Caddyfile, dentro de la imagen safari-proxy, detrás de Traefik.
   proxy:
     image: caddy:2.11.9-alpine
     container_name: safari-proxy

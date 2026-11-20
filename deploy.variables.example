@@ -1,0 +1,25 @@
+# Variables del Compose de despliegue (docker-compose.deploy.yml, US-111).
+#
+# Se copian a la pestaña «Environment» del Compose en Dokploy y se cambian
+# TODOS los valores. Este archivo es solo una plantilla: no tiene ni debe
+# tener valores reales. Guía: docs/dokploy/README.md.
+
+# Usuario de Docker Hub donde tu CI publica las imágenes (US-110).
+DOCKERHUB_USERNAME=tu-usuario-de-docker-hub
+
+# Etiqueta a desplegar: sha- y los 7 primeros caracteres del commit, tal como
+# la muestra el resumen del job de imágenes en GitHub Actions.
+IMAGE_TAG=sha-1234567
+
+# URL pública de la tienda, con https y sin / final.
+SHOP_URL=https://tienda.tu-dominio.com
+
+# Cadenas largas y aleatorias, distintas entre sí. Por ejemplo:
+#   openssl rand -hex 32
+JWT_SECRET=cambia-esto-por-una-cadena-aleatoria
+SHOP_SECRET=cambia-esto-por-otra-cadena-aleatoria
+
+# Contraseña de Postgres: SOLO letras y números (los símbolos @ : / # ?
+# rompen la URL de conexión). Se aplica al crear la base: si la cambias
+# después, la API deja de poder conectarse.
+POSTGRES_PASSWORD=cambia-esto-solo-letras-y-numeros
