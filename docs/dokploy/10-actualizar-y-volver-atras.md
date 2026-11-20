@@ -1,6 +1,6 @@
-# 09. Publicar una versión nueva o volver atrás
+# 10. Publicar una versión nueva o volver atrás
 
-[← 08. Cambiar las contraseñas demo (obligatorio)](08-contrasenas-demo.md) · [Índice](README.md) · [10. Limitaciones y problemas frecuentes →](10-limitaciones-y-problemas.md)
+[← 09. Cambiar las contraseñas demo (obligatorio)](09-contrasenas-demo.md) · [Índice](README.md) · [11. Limitaciones y problemas frecuentes →](11-limitaciones-y-problemas.md)
 
 ---
 
@@ -13,7 +13,7 @@
 la base (`safari-db-init`) y el proxy (`safari-proxy`) van en imágenes con la
 misma etiqueta, también vuelve su configuración.
 
-Comprueba la versión que quedó corriendo con `/backend/health` ([07 · Comprobar que funciona](07-desplegar-y-comprobar.md#comprobar-que-funciona)).
+Comprueba la versión que quedó corriendo con `/backend/health` ([08 · Comprobar que funciona](08-desplegar-y-comprobar.md#comprobar-que-funciona)).
 
 > Dokploy clona `main` en cada despliegue. Lo que sale del repositorio es
 > solo `docker-compose.deploy.yml`. Si ese archivo cambió entre las dos
@@ -21,4 +21,4 @@ Comprueba la versión que quedó corriendo con `/backend/health` ([07 · Comprob
 
 ---
 
-[← 08. Cambiar las contraseñas demo (obligatorio)](08-contrasenas-demo.md) · [Índice](README.md) · [10. Limitaciones y problemas frecuentes →](10-limitaciones-y-problemas.md)
+[← 09. Cambiar las contraseñas demo (obligatorio)](09-contrasenas-demo.md) · [Índice](README.md) · [11. Limitaciones y problemas frecuentes →](11-limitaciones-y-problemas.md)

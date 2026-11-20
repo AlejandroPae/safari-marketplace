@@ -1,6 +1,6 @@
-# 10. Limitaciones y problemas frecuentes
+# 11. Limitaciones y problemas frecuentes
 
-[← 09. Publicar una versión nueva o volver atrás](09-actualizar-y-volver-atras.md) · [Índice](README.md)
+[← 10. Publicar una versión nueva o volver atrás](10-actualizar-y-volver-atras.md) · [Índice](README.md)
 
 ---
 
@@ -29,7 +29,7 @@
 | El despliegue falla con `required variable … is missing a value: Falta …` | Falta esa variable o está vacía | Complétala en **Environment** y vuelve a desplegar |
 | `pull access denied` o `manifest unknown` | `DOCKERHUB_USERNAME` o `IMAGE_TAG` mal escritos, o esa versión no se publicó | Compara con el resumen «Imágenes (sha-…)» de la corrida; el `IMAGE_TAG` lleva `sha-` |
 | `exec format error` | El VPS es ARM | Usa un VPS x86_64 |
-| El dominio da 404 de Traefik | El dominio no apunta a `proxy` con el puerto correcto, o el DNS no resuelve | Revisa la tabla de [06 · Dominios](06-dominios.md) y `nslookup` |
+| El dominio da 404 de Traefik | El dominio no apunta a `proxy` con el puerto correcto, o el DNS no resuelve | Revisa la tabla de [07 · Dominios](07-dominios.md) y `nslookup` |
 | Certificado inválido o «no seguro» | Let's Encrypt aún no emitió, o Cloudflare está en modo proxy | Espera un minuto; con Cloudflare, deja el registro en **DNS only** |
 | La API queda `unhealthy` tras cambiar `POSTGRES_PASSWORD` | La contraseña solo se aplica al crear el volumen | Vuelve a la contraseña original |
 | `db-init` termina con error | Ver su log en Dokploy | Si es por un cambio de esquema, ver «No hay migraciones» en [Limitaciones conocidas](#limitaciones-conocidas) |
@@ -37,4 +37,4 @@
 
 ---
 
-[← 09. Publicar una versión nueva o volver atrás](09-actualizar-y-volver-atras.md) · [Índice](README.md)
+[← 10. Publicar una versión nueva o volver atrás](10-actualizar-y-volver-atras.md) · [Índice](README.md)

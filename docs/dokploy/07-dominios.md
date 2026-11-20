@@ -1,6 +1,6 @@
-# 06. Configurar los dominios
+# 07. Configurar los dominios
 
-[← 05. Cargar las variables](05-variables.md) · [Índice](README.md) · [07. Desplegar y comprobar →](07-desplegar-y-comprobar.md)
+[← 06. Cargar las variables](06-variables.md) · [Índice](README.md) · [08. Desplegar y comprobar →](08-desplegar-y-comprobar.md)
 
 ---
 
@@ -25,4 +25,4 @@ de Traefik y la red ya añadidas, pulsa **Preview Compose**.
 
 ---
 
-[← 05. Cargar las variables](05-variables.md) · [Índice](README.md) · [07. Desplegar y comprobar →](07-desplegar-y-comprobar.md)
+[← 06. Cargar las variables](06-variables.md) · [Índice](README.md) · [08. Desplegar y comprobar →](08-desplegar-y-comprobar.md)

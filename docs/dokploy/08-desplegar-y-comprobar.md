@@ -1,6 +1,6 @@
-# 07. Desplegar y comprobar
+# 08. Desplegar y comprobar
 
-[← 06. Configurar los dominios](06-dominios.md) · [Índice](README.md) · [08. Cambiar las contraseñas demo (obligatorio) →](08-contrasenas-demo.md)
+[← 07. Configurar los dominios](07-dominios.md) · [Índice](README.md) · [09. Cambiar las contraseñas demo (obligatorio) →](09-contrasenas-demo.md)
 
 ---
 
@@ -46,9 +46,9 @@ Después, en el navegador:
 
 - `https://tienda.<tu-dominio>` muestra productos;
 - `https://admin.<tu-dominio>` permite entrar con `admin@demo.com` y la
-  contraseña demo, que cambias en [08 · Contraseñas demo](08-contrasenas-demo.md);
+  contraseña demo, que cambias en [09 · Contraseñas demo](09-contrasenas-demo.md);
 - el candado del navegador muestra un certificado válido de Let's Encrypt.
 
 ---
 
-[← 06. Configurar los dominios](06-dominios.md) · [Índice](README.md) · [08. Cambiar las contraseñas demo (obligatorio) →](08-contrasenas-demo.md)
+[← 07. Configurar los dominios](07-dominios.md) · [Índice](README.md) · [09. Cambiar las contraseñas demo (obligatorio) →](09-contrasenas-demo.md)

@@ -1,6 +1,6 @@
-# 05. Cargar las variables
+# 06. Cargar las variables
 
-[← 04. Crear el Compose](04-crear-el-compose.md) · [Índice](README.md) · [06. Configurar los dominios →](06-dominios.md)
+[← 05. Crear el Compose](05-crear-el-compose.md) · [Índice](README.md) · [07. Configurar los dominios →](07-dominios.md)
 
 ---
 
@@ -34,4 +34,4 @@ Guarda y no compartas estos valores. En particular:
 
 ---
 
-[← 04. Crear el Compose](04-crear-el-compose.md) · [Índice](README.md) · [06. Configurar los dominios →](06-dominios.md)
+[← 05. Crear el Compose](05-crear-el-compose.md) · [Índice](README.md) · [07. Configurar los dominios →](07-dominios.md)

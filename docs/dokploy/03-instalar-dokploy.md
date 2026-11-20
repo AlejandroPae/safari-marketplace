@@ -1,6 +1,6 @@
 # 03. Instalar Dokploy
 
-[← 02. El VPS y el DNS](02-vps-y-dns.md) · [Índice](README.md) · [04. Crear el Compose →](04-crear-el-compose.md)
+[← 02. El VPS y el DNS](02-vps-y-dns.md) · [Índice](README.md) · [04. Crear el proyecto marketplace →](04-crear-el-proyecto.md)
 
 ---
 
@@ -31,4 +31,4 @@
 
 ---
 
-[← 02. El VPS y el DNS](02-vps-y-dns.md) · [Índice](README.md) · [04. Crear el Compose →](04-crear-el-compose.md)
+[← 02. El VPS y el DNS](02-vps-y-dns.md) · [Índice](README.md) · [04. Crear el proyecto marketplace →](04-crear-el-proyecto.md)

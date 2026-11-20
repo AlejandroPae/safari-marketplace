@@ -6,7 +6,7 @@
 
 **Este paso es opcional.** Hazlo solo cuando el despliegue ya funcione con
 HTTPS en los registros **DNS only** (ver
-[`docs/dokploy/07-desplegar-y-comprobar.md`](../dokploy/07-desplegar-y-comprobar.md)).
+[`docs/dokploy/08-desplegar-y-comprobar.md`](../dokploy/08-desplegar-y-comprobar.md)).
 
 ## Qué cambia con el proxy (nube naranja)
 

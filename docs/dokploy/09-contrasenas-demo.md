@@ -1,6 +1,6 @@
-# 08. Cambiar las contraseñas demo (obligatorio)
+# 09. Cambiar las contraseñas demo (obligatorio)
 
-[← 07. Desplegar y comprobar](07-desplegar-y-comprobar.md) · [Índice](README.md) · [09. Publicar una versión nueva o volver atrás →](09-actualizar-y-volver-atras.md)
+[← 08. Desplegar y comprobar](08-desplegar-y-comprobar.md) · [Índice](README.md) · [10. Publicar una versión nueva o volver atrás →](10-actualizar-y-volver-atras.md)
 
 ---
 
@@ -45,4 +45,4 @@ las tocan, porque el seed no se vuelve a aplicar.
 
 ---
 
-[← 07. Desplegar y comprobar](07-desplegar-y-comprobar.md) · [Índice](README.md) · [09. Publicar una versión nueva o volver atrás →](09-actualizar-y-volver-atras.md)
+[← 08. Desplegar y comprobar](08-desplegar-y-comprobar.md) · [Índice](README.md) · [10. Publicar una versión nueva o volver atrás →](10-actualizar-y-volver-atras.md)
