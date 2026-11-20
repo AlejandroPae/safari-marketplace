@@ -34,6 +34,21 @@ a `docker-compose.deploy.yml`, y el compose las lee con `${VARIABLE}`.
    | `SHOP_SECRET` | la segunda, distinta de la anterior |
    | `POSTGRES_PASSWORD` | la tercera: **solo letras y números** |
 
+   **Ejemplo**, con valores ficticios: un estudiante con el usuario de
+   Docker Hub `ana-dev` y el dominio `ana-lab.dev`.
+
+   ```bash
+   DOCKERHUB_USERNAME=ana-dev
+   IMAGE_TAG=sha-4fcb7f1
+   SHOP_URL=https://tienda.ana-lab.dev
+   JWT_SECRET=bc70ab973f4f74138b6d913f9ed34903e313d28a2d9f8ba901297d0bf3a44d11
+   SHOP_SECRET=384c8dd1842f20216c5684119a697973996295072645fa5a5df8b94259caace5
+   POSTGRES_PASSWORD=176e9ba6b7757b75f677816a6d9705c2d32074318b8f963347dacab50cf9e1af
+   ```
+
+   > **No copies los tres secretos del ejemplo:** están publicados aquí, así
+   > que cualquiera los conoce. Genera los tuyos con `openssl rand -hex 32`.
+
    Las líneas que empiezan con `#` son comentarios: puedes dejarlas o
    borrarlas.
 
@@ -42,6 +57,7 @@ a `docker-compose.deploy.yml`, y el compose las lee con `${VARIABLE}`.
 3. En el Compose `safari`, entra a la pestaña **Environment**.
 
    > ![Captura — Pestaña Environment del Compose, vacía](img/06-environment.png)
+   
 
 4. Pega las variables en el editor y pulsa **Save**.
 
