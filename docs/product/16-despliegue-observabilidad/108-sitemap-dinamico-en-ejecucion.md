@@ -9,7 +9,7 @@
 
 **Épico:** [Épico 16](./README.md)
 **Fecha:** 2026-11-19
-**Status:** Listo para ejecución. Promovida desde `_backlog/` el 2026-11-19,
+**Status:** Implementado (2026-11-19); CA-8 probado con la variable ausente, no vacía (ver «Resultado»). Promovida desde `_backlog/` el 2026-11-19,
 tras la revisión del sub-agente fable 5. El dueño fijó la variable del
 dominio (D-2), el contenido (D-3), la paginación (D-6), los `Disallow`
 (D-4), no ignorar los archivos viejos (D-7), sin `lastmod` (D-9) y los CA
@@ -214,9 +214,9 @@ estándar, y solo 4 `Disallow` (`*/logout`, `*/checkout*`, `*/404`,
 
 ## Definición de Done
 
-- [ ] CA-0 a CA-9 verificados, con la salida real pegada en «Resultado».
-- [ ] `apps/README.md` actualizado.
-- [ ] Status en `Implementado` y fila del épico marcada.
+- [x] CA-0 a CA-9 verificados, con la salida real pegada en «Resultado».
+- [x] `apps/README.md` actualizado.
+- [x] Status en `Implementado` y fila del épico marcada.
 
 ## Riesgos
 
@@ -251,3 +251,281 @@ estándar, y solo 4 `Disallow` (`*/logout`, `*/checkout*`, `*/404`,
   `just stack-up`.
 - `Cache-Control` solo se puede comprobar en la imagen: en `next dev`, Next
   sobrescribe la cabecera.
+
+## Resultado (2026-11-19)
+
+Rama `feat/us-108-sitemap`. Código en `c27d1ac`.
+
+### Qué se hizo
+
+- `apps/shop/src/framework/rest/sitemap.ts`: `serveSitemap` y `serveRobots`.
+  Las dos escriben la respuesta y la cierran (`res.end`).
+- `pages/sitemap.xml.tsx` y `pages/robots.txt.tsx` llaman a esas funciones
+  desde `getServerSideProps` y devuelven `{ props: {} }`.
+- **Por qué funciona (D-1):** la documentación de Next 16.4.5
+  (`03-get-server-side-props.md`, «Caching with Server-Side Rendering») da
+  acceso a `res` y permite fijar `Cache-Control`. Si la respuesta ya se
+  envió, el render no sigue: `next/dist/server/render.js:720` hace
+  `if (isResSent(res) && !isSSG) return RenderResult.EMPTY`.
+- **Fuera de la tienda:** `next-sitemap`, su `postbuild:rest`, su config y
+  los tres archivos de `public/`. El lock pierde además `@corex/deepmerge` y
+  `@next/env@^13`. Se corrige el comentario de `Dockerfile:67`.
+- **`apps/README.md`:** fila `NEXTAUTH_URL` en la tabla de variables y
+  sección «Sitemap y `robots.txt` en ejecución». Se quita la nota «El
+  sitemap ya no lista…».
+- **Catálogo:** se pagina de a 500. Con el seed son 5 llamadas a la API:
+  types, tiendas y 3 páginas de productos (494 + 521 + 233 kB). Es menos de
+  los ~5 MB estimados en la revisión.
+
+### CA-0 — Línea base (imagen anterior, `localhost:3003`)
+
+```text
+== /sitemap.xml      HTTP/1.1 200 OK  Cache-Control: public, max-age=0  Content-Type: application/xml
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<sitemap><loc>http://localhost:3000/sitemap-0.xml</loc></sitemap>
+</sitemapindex>
+== /sitemap-0.xml    HTTP/1.1 200 OK  (18 <loc>)
+http://localhost:3000/authors, /cards, /contact, /customer-refund-policies, /flash-sales, /help,
+/manufacturers, /notification, /offers, /privacy, /questions, /reports, /shops, /shops/search,
+/terms, /vendor-refund-policies, /verify-email, /wishlists
+== /robots.txt       HTTP/1.1 200 OK  Content-Type: text/plain; charset=UTF-8
+User-agent: *
+Disallow: */logout
+Disallow: */checkout*
+Disallow: */404
+Disallow: */profile
+Host: http://localhost:3000
+Sitemap: http://localhost:3000/sitemap.xml
+```
+
+### Lo que sirve ahora
+
+```text
+$ curl -s localhost:3003/robots.txt
+User-agent: *
+Disallow: */logout
+Disallow: */checkout*
+Disallow: */404
+Disallow: */profile
+Disallow: /orders
+Disallow: /cards
+Disallow: /wishlists
+Disallow: /notification
+Disallow: /reports
+Disallow: /questions
+Disallow: /downloads
+Disallow: /refunds
+Disallow: /change-password
+Disallow: /verify-email
+Disallow: /products/preview
+
+Sitemap: http://localhost:3003/sitemap.xml
+
+$ curl -s localhost:3003/sitemap.xml   (extracto)
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<url><loc>http://localhost:3003/</loc></url>
+<url><loc>http://localhost:3003/become-seller</loc></url>
+...
+<url><loc>http://localhost:3003/flash-sales</loc></url>
+<url><loc>http://localhost:3003/bakery</loc></url>
+...
+<url><loc>http://localhost:3003/medicine</loc></url>
+<url><loc>http://localhost:3003/shops/tetetetet</loc></url>
+...
+<url><loc>http://localhost:3003/products/the-pantry-icing-sugar-2</loc></url>
+</urlset>
+```
+
+### CA-1 — Dominio en ejecución
+
+La imagen es la misma; solo se recrea el contenedor con un override de
+compose que pone `NEXTAUTH_URL: https://tienda-b.example/`, con barra final.
+
+```text
+NEXTAUTH_URL del contenedor: http://localhost:3003
+Sitemap: http://localhost:3003/sitemap.xml
+primeras loc: <loc>http://localhost:3003/</loc> <loc>http://localhost:3003/become-seller</loc>
+con override, NEXTAUTH_URL=https://tienda-b.example/
+Sitemap: https://tienda-b.example/sitemap.xml
+primeras loc: <loc>https://tienda-b.example/</loc> <loc>https://tienda-b.example/become-seller</loc>
+loc fuera de https://tienda-b.example/: 0  con //: 0
+restaurado: Sitemap: http://localhost:3003/sitemap.xml
+```
+
+### CA-2 y CA-3 — Contenido y XML válido
+
+Para CA-3, un script de Node exige que el documento entero siga la
+gramática `<?xml …?>` + `<urlset xmlns=…>` + líneas
+`<url><loc>…</loc></url>` + `</urlset>`, sin restos. También comprueba
+dominio, duplicados y contenido.
+
+```text
+tiempo y tamaño (petición 1): 0.650804s 93766B
+tiempo y tamaño (petición 2): 0.344470s 93766B
+tiempo y tamaño (petición 3): 0.758518s 93766B
+== CA-3
+raíz urlset + namespace http://www.sitemaps.org/schemas/sitemap/0.9: ok
+<url>: 1233; loc fuera de http://localhost:3003/: 0; duplicados: 0
+== CA-2
+productos: 1199 (total de /api/products: 1199)
+tiendas: 12 (API: 12)
+types: 9/9 (sin el de inicio, grocery); /grocery listado: false
+estáticas: 13/13
+URLs excluidas por D-4 (o con /en, subpáginas, búsquedas, detalles): 0
+otras: 0
+```
+
+1233 = 13 estáticas + 9 types + 12 tiendas + 1199 productos. Ningún type
+tiene `isHome` en el seed, así que el de inicio es el primero (`grocery`),
+con el mismo criterio que `home-pages.ssr.ts`. El sitemap responde en menos
+de 1 s, por debajo del umbral de 2 s de D-6: no hace falta proponer una
+caché.
+
+### CA-4 — URLs reales
+
+Se probaron las 34 URLs que no son de producto y 30 productos al azar
+(`shuf`), sin seguir redirecciones, en tres pasadas seguidas.
+
+```text
+pasada (tras recrear la tienda):  404 /become-seller   -> 64 URLs, distintas de 200: 1
+pasada siguiente:                 404 /become-seller   -> 64 URLs, distintas de 200: 1
+$ for i in 1..5; curl /become-seller; sleep 4   ->   200 200 200 200 200
+pasada 3: 64 URLs, distintas de 200: 0
+muestra de productos: /products/baldini-deo /products/walnut-semi-double-bed /products/trix ...
+```
+
+El 404 de `/become-seller` no viene de esta US. Es la D-7 de US-104: el
+build, sin API, genera esa página como 404 con `revalidate: 10`. Tras
+arrancar el contenedor, la primera visita pasados esos 10 s todavía sirve el
+404 mientras regenera, y desde ahí da 200. Es una página pública real y se
+queda en el sitemap.
+
+### CA-5 — API caída
+
+```text
+réplicas de api corriendo: 0
+API parada -> /sitemap.xml: 503 en 38.120802s
+  cuerpo: Sitemap temporarily unavailable: the API did not respond  cache-control: Cache-Control: no-store
+API parada -> /robots.txt: 200 en 0.018088s
+safari-shop  | [sitemap] API no disponible: GET http://api-lb:9001/api/types failed after 3 attempts: HTTP 503 Service Unavailable
+safari-shop  | [sitemap] API no disponible: GET http://api-lb:9001/api/products failed after 3 attempts: HTTP 503 Service Unavailable
+API de vuelta -> /sitemap.xml: 200 en 0.300212s
+```
+
+El 503 tarda 38 s: es R-5. `api-lb` espera hasta 5 s
+(`lb_try_duration`) por cada intento, y el cliente compartido reintenta 3
+veces cada llamada. Queda anotado; el cliente no se tocó.
+
+### CA-6 — Sin artefactos
+
+`just build-shop`, solo y también dentro de `just check-full`, terminó con
+`git status` sin archivos de sitemap ni robots:
+
+```text
+├ ƒ /robots.txt
+├ ƒ /sitemap.xml
+$ git status --short          (tras check-full, con el código ya commiteado)
+ M apps/README.md
+$ docker run --rm --entrypoint sh safari-shop -c 'ls public; ...'
+access-denied.svg favicon.ico flash-sale-fallback.png hqdefault.jpg icons img locales manifest.json
+master.png mockup-img.png mockup.png news-letter-icon.png payment paypal.png promotion selling.png
+shop-fallback-cover-photo.png visa.png
+sitemap/robots en public: 0
+ls: next-sitemap.config.js: No such file or directory
+```
+
+### CA-7 — Cabeceras y rutas viejas (en la imagen)
+
+```text
+/sitemap.xml:
+  HTTP/1.1 200 OK
+  Cache-Control: public, max-age=3600
+  Content-Type: application/xml; charset=utf-8
+/robots.txt:
+  HTTP/1.1 200 OK
+  Cache-Control: public, max-age=3600
+  Content-Type: text/plain; charset=utf-8
+/sitemap-0.xml: 404
+R-2: /en/sitemap.xml 200  /en/robots.txt 200  ctype application/xml; charset=utf-8
+```
+
+Las rutas fijas ganan al catch-all `[[...pages]]` (R-2). Las variantes
+`/en/...` responden igual, como preveía D-1.
+
+### CA-8 — Variable ausente
+
+**Desviación del texto del CA.** Con `NEXTAUTH_URL: ""` cae **toda** la
+tienda, no solo estas rutas: `/en`, `/sitemap.xml` y `/robots.txt` dan 500
+y el contenedor no llega a healthy. El log muestra
+`TypeError: Invalid URL … code: 'ERR_INVALID_URL', input: ''` antes de
+llegar a `getServerSideProps`. Lo más probable es que venga de next-auth:
+con una cadena vacía, `url ?? default` deja `''`, y `new URL('')` lanza.
+Es un comportamiento anterior a esta US y queda fuera de su alcance.
+
+El caso que describe D-2 («si falta») se probó con la variable **ausente**.
+El override usa `environment: !override` sin `NEXTAUTH_URL`:
+
+```text
+Up 9 seconds (healthy)
+NEXTAUTH_URL definida: 0
+/en 200
+/sitemap.xml: 500 text/plain; charset=utf-8 | NEXTAUTH_URL is not defined: set it to the public URL of the shop (e.g. https://shop.example.com)
+/robots.txt: 500 text/plain; charset=utf-8 | NEXTAUTH_URL is not defined: set it to the public URL of the shop (e.g. https://shop.example.com)
+safari-shop  | [sitemap] NEXTAUTH_URL is not defined: set it to the public URL of the shop (e.g. https://shop.example.com)
+```
+
+### CA-9 — Sin regresión
+
+Se usó el script de la tabla de US-105 (CA-3, CA-4 y CA-6), en su versión
+de US-107. Corrió primero con las imágenes anteriores y después con las
+nuevas. Salvo el slug nunca visitado y el tamaño de la imagen, el `diff` es
+vacío:
+
+```text
+== CA-3
+backend/settings tienda: 200  admin: 200
+tienda /api/auth/providers: 200
+admin runtime-config: {"shopUrl":"http://localhost:3003"}
+admin runtime-config con SHOP_URL=https://tienda-b.example: {"shopUrl":"https://tienda-b.example"}
+admin runtime-config restaurado: {"shopUrl":"http://localhost:3003"}
+visita previa /en/products/apples: 200
+API parada -> producto nunca visitado /en/products/blain-s-farm-fleet-2: 500
+API parada -> /en/products/apples: 200  /en: 200
+API de vuelta -> /en/products/blain-s-farm-fleet-2: 200
+/en/products/no-existe: 404
+estáticos con localhost:9001|api:9001|api-lb:9001: 0 archivos
+== CA-4
+optimizador w=256: 200 image/jpeg 6215B
+logs de la tienda con sharp|EACCES: 0
+== CA-6
+http://localhost:3003/en common: 553 claves; 404-heading = "Error code: 404"
+http://localhost:3002/en/login common: 553 claves; text-guest = "Guest"
+logs con Cannot find module|unable to find a user config: 0
+REGRESION: igual que antes
+```
+
+Imágenes tras el cambio: `safari-shop` 377 MB y `safari-admin` 409 MB, igual
+que en US-105. El build de las dos tardó 11 min 25 s, con la etapa `deps` en
+frío por el cambio del lock (R-6).
+
+```text
+$ just check-full
+ Test Files  45 passed (45)
+      Tests  713 passed (713)
+ Test Files  38 passed (38)
+      Tests  499 passed (499)
+check: VERDE (10 pasos, 532s)
+├ ƒ /sitemap.xml
+check-full: VERDE (check + build-api + build-admin + build-shop)
+real	13m54.387s
+```
+
+### Para otra US (no se tocó)
+
+- `NEXTAUTH_URL` vacía tira la tienda entera (CA-8). Una validación al
+  arrancar, o tratar `""` como ausente, evitaría un despliegue roto en
+  silencio.
+- El 503 del sitemap con la API caída tarda unos 38 s (R-5), por los
+  reintentos del cliente compartido detrás de `api-lb`.
+- `og:url` con `NEXT_PUBLIC_SITE_URL` en `seo.tsx` («NO incluye»).

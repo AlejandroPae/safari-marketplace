@@ -629,6 +629,7 @@ start` el shop da errores de hidratación (#418). Ver la US-83.
   | `API_INTERNAL_URL` | shop | **ejecución** | URL de la API para el **SSR/ISR**, por la red interna (p. ej. `http://api-lb:9001/api` en el compose). Si falta, la página falla con un error que la nombra |
   | `API_INTERNAL_URL` | admin | solo `next dev` | destino del rewrite de `/backend` en desarrollo; el admin no llama a la API desde el servidor |
   | `SHOP_URL` | admin | **ejecución** | URL pública de la tienda para los enlaces «ver en la tienda» (US-103). El navegador la pide a `/api/runtime-config` del propio admin; si falta, esa ruta responde 500 nombrándola y los enlaces no se pintan |
+  | `NEXTAUTH_URL` | shop | **ejecución** | URL pública de la tienda (con o sin `/` final): la usa next-auth y es el dominio de `/sitemap.xml` y `/robots.txt` (US-108). Si falta, esas dos rutas responden 500 nombrándola |
 
   En `next dev`, un `rewrites()` de `next.config.js` manda `/backend/*` a
   `API_INTERNAL_URL`; no hace falta proxy. En `next build`/`next start` ese
@@ -650,10 +651,27 @@ start` el shop da errores de hidratación (#418). Ver la US-83.
     red caída, timeout o 5xx, la primera visita da 500, y una página ya
     generada se sigue sirviendo. La excepción es `/become-seller`: da un 404
     que se regenera a los 10 s.
-  - **El sitemap ya no lista** productos, tiendas ni el inicio: `next-sitemap`
-    solo ve lo que el build generó. Se acepta: no hay SEO en juego en un repo
-    didáctico.
   - `just check-full` incluye `build-shop` y vigila que esto no vuelva atrás.
+- **Sitemap y `robots.txt` en ejecución** (US-108). No hay archivos en
+  `public/` ni `next-sitemap`: `pages/sitemap.xml.tsx` y
+  `pages/robots.txt.tsx` los arman en cada petición
+  (`src/framework/rest/sitemap.ts`), así la misma imagen sirve el dominio de
+  cada despliegue sin reconstruirla:
+  - el dominio es `NEXTAUTH_URL`: en Dokploy, ponle el dominio público de la
+    tienda (`https://tienda.example.com`), no `localhost`;
+  - el sitemap lista las páginas públicas, `/<type>` de cada tipo salvo el
+    del inicio (que es `/`), las tiendas activas y los productos publicados,
+    pedidos a la API por `API_INTERNAL_URL`. Sin prefijo `/en`: es la forma
+    de la locale por defecto;
+  - si la API no responde, `/sitemap.xml` da **503** (un buscador lo
+    reintenta; un sitemap vacío con 200 lo leería como «no hay páginas»).
+    `/robots.txt` no depende de la API;
+  - las dos van con `Cache-Control: public, max-age=3600` y sin caché en el
+    servidor: cada petición al sitemap hace 5 llamadas a la API (tipos, tiendas y 3 páginas de productos con el seed)
+    (~1.2 MB de JSON).
+  - No dejes un `sitemap.xml` o `robots.txt` en `public/`: un archivo de
+    `public/` con el nombre de una ruta rompe `next build`
+    (`conflicting-public-file-page`).
 - **Dominios en Dokploy** (Traefik, https://docs.dokploy.com/docs/core/domains).
   Por cada app (shop y admin), dos dominios sobre el **mismo host**:
 

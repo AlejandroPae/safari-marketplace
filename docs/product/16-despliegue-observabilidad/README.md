@@ -32,7 +32,7 @@
 | [US-105](./105-imagenes-frontend-livianas.md) ✅ | Imágenes livianas de la tienda y el admin, y versiones fijas | Sí | ninguna | ~150 |
 | [US-106](./106-imagen-api-liviana.md) ✅ | Imagen liviana de la API: una sola copia de Prisma, sin el CLI | Sí | US-105 | ~60 |
 | [US-107](./107-api-escalable-detras-del-proxy.md) ✅ | API escalable detrás de un balanceador, con balanceo real | Sí | US-105, US-106 | ~150 |
-| [US-108](./108-sitemap-dinamico-en-ejecucion.md) | Sitemap y robots.txt generados en ejecución, con el dominio real | Sí | US-104, US-107 | ~150 |
+| [US-108](./108-sitemap-dinamico-en-ejecucion.md) ✅ | Sitemap y robots.txt generados en ejecución, con el dominio real | Sí | US-104, US-107 | ~150 |
 | [US-18](./18-terraform-minimo.md) | Terraform mínimo para el stack contenedorizado | Sí | US-15, US-17 | ~300 |
 
 **Orden sugerido:** US-17 (barata, desbloquea healthchecks honestos) →
