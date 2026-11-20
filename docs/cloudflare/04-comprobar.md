@@ -17,18 +17,58 @@ nslookup admin.<tu-dominio>
 nslookup dokploy.<tu-dominio>
 ```
 
-Cada respuesta debe terminar con la IP de tu VPS:
+Cada respuesta debe terminar con la IP de tu VPS.
+
+### Ejemplo real: `cuadernodigital.dev`
+
+El despliegue de referencia del curso usa el dominio `cuadernodigital.dev`,
+con su VPS en `20.231.38.199`. Así se ve la comprobación en Windows:
 
 ```text
-Name:    tienda.<tu-dominio>
-Address: 203.0.113.10
+C:\Users\...> nslookup tienda.cuadernodigital.dev
+Server:  UnKnown
+Address:  10.x.x.x
+
+Non-authoritative answer:
+Name:    tienda.cuadernodigital.dev
+Address:  20.231.38.199
 ```
+
+Cómo leerla:
+
+- **`Server` / `Address` (arriba):** el servidor DNS de **tu red**, el que
+  hizo la consulta por ti. Cambia según dónde estés conectado (casa,
+  universidad, oficina). `UnKnown` solo significa que ese servidor no tiene
+  nombre inverso; no es un error.
+- **`Non-authoritative answer`:** la respuesta no viene directo de Cloudflare,
+  sino del DNS de tu red, que la tenía guardada. Es lo normal.
+- **`Name` / `Address` (abajo):** lo que importa. El subdominio y la IP a la
+  que apunta, que debe ser la de **tu** VPS.
+
+> ![Captura 17 — Salida de nslookup con la IP del VPS](img/17-nslookup.png)
+
+
+**Comprueba también contra un DNS público.** Así descartas que tu red tenga
+guardada una respuesta vieja. Se agrega la dirección del DNS al final;
+`1.1.1.1` es el de Cloudflare:
+
+```bash
+nslookup tienda.<tu-dominio> 1.1.1.1
+```
+
+Resultado de los tres subdominios de `cuadernodigital.dev` contra `1.1.1.1`:
+
+```text
+tienda.cuadernodigital.dev   20.231.38.199
+admin.cuadernodigital.dev    20.231.38.199
+dokploy.cuadernodigital.dev  20.231.38.199
+```
+
+Los tres apuntan a la misma IP: todo el tráfico llega al mismo VPS, y es
+Traefik, desde Dokploy, el que decide a qué aplicación va cada subdominio.
 
 En macOS o Linux también sirve `dig +short tienda.<tu-dominio>`, que imprime
 solo la IP.
-
-> **[Captura 17 — Salida de nslookup con la IP del VPS]**
-> Archivo sugerido: `img/17-nslookup.png`
 
 ## Si todavía no resuelve
 

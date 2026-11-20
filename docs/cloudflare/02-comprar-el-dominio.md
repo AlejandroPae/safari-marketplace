@@ -23,34 +23,36 @@ del TLD, y Cloudflare lo muestra antes de pagar.
 1. En el panel de Cloudflare, en el menú lateral, entra a
    **Domain Registration → Register Domains** (o **Registrar → Register**).
 
-   > **[Captura 7 — Menú lateral con «Domain Registration → Register Domains»]**
-   > Archivo sugerido: `img/07-menu-register-domains.png`
+   > ![Captura 7 — Menú lateral con «Domain Registration → Register Domains»](img/07-menu-register-domains.png)
 
 2. Escribe el nombre que quieres en el buscador y pulsa **Search**. También
    puedes escribir palabras clave para ver sugerencias. Si el nombre que
    buscaste no aparece en los resultados, no está disponible.
 
-   > **[Captura 8 — Resultados de la búsqueda con dominios disponibles y su precio]**
-   > Archivo sugerido: `img/08-busqueda-dominio.png`
+   > ![Captura 8 — Resultados de la búsqueda con dominios disponibles y su precio](img/08-busqueda-dominio.png)
+   
 
 3. Pulsa **Purchase** en el dominio que elijas. Cloudflare comprueba otra vez
    que esté disponible.
+
+   > ![Captura 9 — Boton purchase](img/09-boton-purchase.png)
+
 4. En **Payment option**, elige por cuántos años lo registras. Para el curso
    basta con **1 año**. La fecha de vencimiento y el precio se actualizan
    solos.
 
-   > **[Captura 9 — Selección del plazo de registro y precio]**
-   > Archivo sugerido: `img/09-plazo-y-precio.png`
+   > ![Captura 9 — Seleccióndel plazo de registro y precio](img/09-plazo-y-precio.png)
+   
 
 5. Completa los datos de contacto del titular y el método de pago.
 
-   > **[Captura 10 — Datos de contacto del registrante (tapa tus datos personales)]**
-   > Archivo sugerido: `img/10-datos-registrante.png`
+   > ![Captura 10 — Datos de contacto del registrante (tapa tus datos personales)](img/10-datos-registrante.png)
 
 6. Revisa el resumen y confirma la compra.
 
-   > **[Captura 11 — Confirmación de la compra]**
-   > Archivo sugerido: `img/11-compra-confirmada.png`
+   > ![Captura 11 — Formulario de compra](img/11-compra-formulario.png)
+
+   > ![Captura 11 — Confirmación de la compra](img/11-compra-confirmada.png)
 
 ## Después de comprar
 
@@ -59,8 +61,8 @@ del TLD, y Cloudflare lo muestra antes de pagar.
   curso y no quieres renovarlo, desactívala en la página del dominio
   (**Manage domain → Auto-renew**).
 
-  > **[Captura 12 — Página del dominio con la opción de renovación automática]**
-  > Archivo sugerido: `img/12-renovacion-automatica.png`
+  > ![Captura 12 — Página del dominio con la opción de renovación automática](img/12-renovacion-automatica.png)
+  
 
 - **Verificación del email de contacto:** si el email del titular no es el de
   tu cuenta de Cloudflare, te llega otro correo de verificación. **Hay que
@@ -69,8 +71,8 @@ del TLD, y Cloudflare lo muestra antes de pagar.
 - **El dominio aparece en tu cuenta** en **Websites** (o **Domains**), ya con
   el DNS de Cloudflare activo. No hay que cambiar *nameservers*.
 
-  > **[Captura 13 — El dominio nuevo en la lista de sitios de la cuenta]**
-  > Archivo sugerido: `img/13-dominio-en-la-cuenta.png`
+  > ![Captura 13 — El dominio nuevo en la lista de sitios de la cuenta](img/13-dominio-en-la-cuenta.png)
+  
 
 ---
 

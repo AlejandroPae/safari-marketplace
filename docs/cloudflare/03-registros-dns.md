@@ -31,8 +31,7 @@ de que todo funcione: ver [05. Proxy y SSL](05-proxy-y-ssl-opcional.md).
 1. En el panel, entra a tu dominio (**Websites** → tu dominio) y abre
    **DNS → Records**.
 
-   > **[Captura 14 — DNS → Records del dominio, todavía sin registros]**
-   > Archivo sugerido: `img/14-dns-records-vacio.png`
+   > ![Captura 14 — DNS → Records del dominio, todavía sin registros](img/14-dns-records-vacio.png)
 
 2. Pulsa **Add record**.
 3. Completa:
@@ -43,15 +42,18 @@ de que todo funcione: ver [05. Proxy y SSL](05-proxy-y-ssl-opcional.md).
      **DNS only**
    - **TTL:** `Auto`
 
-   > **[Captura 15 — Formulario «Add record» con el registro A de tienda en DNS only]**
-   > Archivo sugerido: `img/15-add-record-tienda.png`
+   > ![Captura 15 — Formulario «Add record» con el registro A de tienda en DNS only](img/15-add-record-tienda.png)
+   
 
 4. Pulsa **Save**.
 5. Repite los pasos 2 a 4 para `admin` y `dokploy`.
 
-   > **[Captura 16 — Lista con los tres registros A creados, en DNS only]**
-   > Archivo sugerido: `img/16-tres-registros.png`
+   > ![Captura 16 — Lista con los tres registros A creados, en DNS only](img/16-add-record-admin.png)
 
+   > ![Captura 16 — Lista con los tres registros A creados, en DNS only](img/16-add-record-dokploy.png)
+
+   > ![Captura 16 — Lista con los tres registros A creados, en DNS only](img/16-add-record-records.png)
+   
 ### Alternativa: un solo registro comodín
 
 En vez de los tres, puedes crear un registro con `*` en **Name**. Así,
