@@ -212,7 +212,7 @@ demo, no el camino para desarrollar.
   cambia de contenido sin aviso. Así, dos builds del mismo commit dan lo
   mismo, aunque los haga otro grupo en otra máquina. Subir de versión es
   editar ese tag y reconstruir.
-- **El proxy hace lo que Dokploy en la nube** (ver «Dominios en Dokploy»,
+- **El proxy es el mismo que en el despliegue** (ver «Dominios en Dokploy»,
   abajo). El navegador habla con la API por `/backend`, en el mismo origen
   que la página (US-102), y el servidor de Next en producción no tiene un
   rewrite que lo resuelva.
@@ -718,19 +718,32 @@ de compose con `image: <usuario>/safari-<app>:sha-…`, después
   - No dejes un `sitemap.xml` o `robots.txt` en `public/`: un archivo de
     `public/` con el nombre de una ruta rompe `next build`
     (`conflicting-public-file-page`).
-- **Dominios en Dokploy** (Traefik, https://docs.dokploy.com/docs/core/domains).
-  Por cada app (shop y admin), dos dominios sobre el **mismo host**:
+- **Dominios en Dokploy** (US-111). La guía paso a paso es
+  [`docs/dokploy/README.md`](../docs/dokploy/README.md). Se despliega
+  `docker-compose.deploy.yml`, con las imágenes del CI. La topología es la
+  misma que en local: Traefik termina el TLS y manda los dos dominios al
+  servicio `proxy` (Caddy), que reparte como en el stack local:
 
-  | Servicio | Host | Path | Strip Path | Internal Path |
-  |---|---|---|---|---|
-  | shop (o admin) | `tienda.example.com` | `/` | no | — |
-  | API | `tienda.example.com` | `/backend` | **sí** | `/api` |
+  | Servicio | Host | Container Port |
+  |---|---|---|
+  | `proxy` | `tienda.example.com` | `3003` |
+  | `proxy` | `admin.example.com` | `3002` |
 
-  Así `GET tienda.example.com/backend/settings` llega a la API como
-  `/api/settings`, y `/api/*` del dominio sigue siendo de Next (next-auth en el
-  shop). No mandes `/api` del dominio de la tienda a la API: rompería el login
-  con Google (`/api/auth/*`). El contenedor del shop recibe además
-  `API_INTERNAL_URL` con la dirección interna de la API.
+  - **La API no tiene dominio propio:** `/backend/*` llega a `api-lb` y de ahí
+    a la API como `/api/*`, en el mismo origen que la página. `/api/*` del
+    dominio sigue siendo de Next (next-auth en el shop).
+  - **`trusted_proxies` en Caddy:** el `docker/Caddyfile` confía en los
+    `X-Forwarded-*` de la red privada, así que la tienda recibe
+    `X-Forwarded-Proto: https` de Traefik.
+  - **Sin montajes del repo:** el esquema, el seed y los Caddyfiles van
+    dentro de las imágenes `safari-db-init` y `safari-proxy`, porque Dokploy
+    hace un `git clone` nuevo en cada despliegue y un montaje relativo queda
+    vacío o viejo.
+
+  Hasta US-111 este punto describía otra topología (Traefik directo, con un
+  segundo dominio `/backend` con Strip Path hacia la API, y sin Caddy). Se
+  descartó para que producción fuera igual que local y conservara el balanceo
+  de US-107.
 - `next.config.js` tiene una allowlist de `images.remotePatterns`. Cualquier
   host nuevo de imágenes debe añadirse ahí o `next/image` fallará en
   producción. `localhost` y `127.0.0.1` solo se optimizan fuera de producción

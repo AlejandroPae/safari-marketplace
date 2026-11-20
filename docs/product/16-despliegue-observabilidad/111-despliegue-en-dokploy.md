@@ -9,7 +9,7 @@
 
 **Épico:** [Épico 16](./README.md)
 **Fecha:** 2026-11-20
-**Status:** Listo para ejecución. Promovida desde `_backlog/` el 2026-11-20,
+**Status:** En curso (2026-11-20): CA-1 a CA-4 verificados en local; CA-5 a CA-7 pendientes con el dueño, en el VPS. Promovida desde `_backlog/` el 2026-11-20,
 tras la revisión del sub-agente fable 5. El dueño partió el borrador en
 US-111 (esta) y US-112 (job `deploy`). Además fijó:
 - la topología `proxy` + `api-lb` (D-3);
@@ -133,7 +133,7 @@ la referencia que los grupos deben reproducir en el parcial final.
 | D-3 | Topología y subdominios | Se mantienen `proxy` y `api-lb`. `tienda.<dominio>` → `proxy:3003`; `admin.<dominio>` → `proxy:3002`; el panel de Dokploy en `dokploy.<dominio>`. La API **no** tiene subdominio público: el navegador la usa por `/backend` en el mismo origen (US-102). Todos con HTTPS de Let's Encrypt. En `docker/Caddyfile` se añade `servers { trusted_proxies static private_ranges }` en las opciones globales; es inocuo en local. Se reescribe «Dominios en Dokploy» en `apps/README.md` y los comentarios de `docker/Caddyfile:3-4` y `docker-compose.yml:181-182`. |
 | D-4 | Seed solo sobre la base vacía | En el compose de despliegue, `db-init` aplica `pg_trgm` y `schema.sql` siempre, y `seed.sql` **solo si `settings` no tiene filas**. Después, `VACUUM ANALYZE`. El compose de desarrollo no cambia. Los cambios de esquema futuros son una **limitación documentada**: no hay migraciones, así que van como paso manual o con una base nueva. |
 | D-5 | Despliegue manual | En esta US, el dueño despliega desde el panel de Dokploy: crea el Compose desde el repo de GitHub con la ruta `docker-compose.deploy.yml`, las variables de D-2, los dominios de D-3 y el auto-deploy **apagado** (el disparo automático es US-112). |
-| D-6 | Guía del dueño | `docs/despliegue-dokploy.md`, enlazada desde `apps/README.md`. Es la base del enunciado de los grupos, así que debe poder seguirla alguien que no conoce el repo. Cubre: VPS (x86_64, requisitos verificados en la doc de Dokploy; un VPS ARM no sirve), instalación, registros DNS, Compose desde GitHub, variables, dominios, primer despliegue, cambio de contraseñas demo (D-8), redesplegar con otro `IMAGE_TAG` a mano y limitaciones (esquema, `og:url`, corte al redesplegar). |
+| D-6 | Guía del dueño | `docs/dokploy/README.md`, enlazada desde `apps/README.md`. Es la base del enunciado de los grupos, así que debe poder seguirla alguien que no conoce el repo. Cubre: VPS (x86_64, requisitos verificados en la doc de Dokploy; un VPS ARM no sirve), instalación, registros DNS, Compose desde GitHub, variables, dominios, primer despliegue, cambio de contraseñas demo (D-8), redesplegar con otro `IMAGE_TAG` a mano y limitaciones (esquema, `og:url`, corte al redesplegar). |
 | D-7 | Corte al redesplegar | Se acepta un corte de 1 a 2 minutos por despliegue y va declarado en la guía. El despliegue sin corte queda fuera. |
 | D-8 | Usuarios demo | La guía exige, como paso obligatorio después del primer despliegue, cambiar las contraseñas de los usuarios demo (`demodemo`). Se anota como riesgo. |
 | D-9 | RAM | El ejecutor mide con `docker stats --no-stream`, con el compose de despliegue en local, y pega la salida. La guía usa esa medición, más los requisitos de Dokploy. |
@@ -141,10 +141,10 @@ la referencia que los grupos deben reproducir en el parcial final.
 ## Scope
 
 **Incluye:**
-- `docker-compose.deploy.yml` y `.env.deploy.example`;
+- `docker-compose.deploy.yml` y la plantilla de variables (`deploy.variables.example`, ver «Actualización»);
 - `docker/Caddyfile` (`trusted_proxies` y comentario);
 - el comentario de `docker-compose.yml:181-182`;
-- `docs/despliegue-dokploy.md`;
+- `docs/dokploy/README.md`;
 - `apps/README.md` («Dominios en Dokploy» y el enlace a la guía);
 - la nota del README del Épico 16.
 
@@ -200,7 +200,7 @@ Lo que requiere el VPS se valida **con el dueño**, que pega las salidas.
   y `/sitemap.xml` usa el dominio real (US-108).
 - **CA-6 — Los datos sobreviven al redespliegue (con el dueño).** Se crea un
   usuario o un pedido, se redespliega desde el panel, y el dato sigue ahí.
-- **CA-7 — La guía funciona.** El dueño sigue `docs/despliegue-dokploy.md` de
+- **CA-7 — La guía funciona.** El dueño sigue `docs/dokploy/README.md` de
   principio a fin. Lo que no le funcionó o no entendió se corrige en la guía.
 
 ## Definición de Done
@@ -235,3 +235,240 @@ Lo que requiere el VPS se valida **con el dueño**, que pega las salidas.
   Los hooks bloquean leer `.env` reales: no se buscan atajos.
 - Las decisiones son del dueño. Si una choca con la documentación de Dokploy,
   **detente y pregunta**.
+
+## Actualización durante la ejecución (2026-11-20)
+
+> Sección añadida sin reescribir las decisiones de arriba.
+
+- **D-1, montajes (resuelve R-2).** La documentación de Dokploy
+  (*Troubleshooting → Volumes & Mounts*) dice que cada despliegue hace un
+  `git clone` nuevo, y que un montaje relativo del repo (`./docker/...`,
+  `./db`) queda vacío o viejo en los despliegues siguientes. Pide usar *File
+  Mounts* (`../files/…`), que se cargan a mano en el panel. Además, el comando
+  por defecto (`docker compose -p <app> -f <compose> up -d --build
+  --remove-orphans`) no recrea los contenedores sin cambios, así que `proxy`,
+  `api-lb` y `db-init` seguirían apuntando al clon anterior. `seed.sql` pesa
+  920 KB: no cabe en línea ni en un *File Mount*.
+  **El dueño decidió dos imágenes más**, `safari-db-init` (Postgres con
+  `schema.sql`, `seed.sql` y `docker/db-init.sh`) y `safari-proxy` (Caddy con
+  los dos Caddyfiles). El job `images` de US-110 las publica con el mismo
+  `sha-<7>`. El compose de despliegue no monta nada del repo. Efecto
+  secundario: la base y el proxy quedan versionados con la API, así que volver
+  atrás también vuelve el esquema y la configuración (se reduce R-4: lo único
+  que sale de HEAD es el propio `docker-compose.deploy.yml`).
+- **Red (resuelve R-3).** Se usa **Isolated Deployments**: Dokploy crea una
+  red propia para el Compose y conecta Traefik a ella, sin declarar
+  `dokploy-network`. Así los nombres genéricos (`postgres`, `api`) no chocan
+  con otras apps del VPS.
+- **Plantilla de variables:** `deploy.variables.example`, en vez de
+  `.env.deploy.example`. Un nombre con `.env` choca con el hook del proyecto
+  que bloquea leer archivos `.env` (US-72), y el contenido no es un `.env`
+  de una app.
+- **Guía:** `docs/dokploy/README.md`, a pedido del dueño (D-6 decía
+  `docs/despliegue-dokploy.md`). Está escrita para que los grupos desplieguen
+  **las imágenes de su propio fork**.
+
+## Resultado (2026-11-20) — parte local
+
+Commit de código `3b07100`, en `main`.
+
+### Qué se hizo
+
+- `docker-compose.deploy.yml`:
+  - imágenes `${DOCKERHUB_USERNAME}/safari-<app>:${IMAGE_TAG}` con
+    `pull_policy: always`;
+  - sin `build:`, puertos ni `container_name`;
+  - seis variables obligatorias con `${VAR:?mensaje}`;
+  - `NEXTAUTH_URL` = `SHOP_URL` y `NEXTAUTH_URL_INTERNAL` en
+    `http://127.0.0.1:3000`;
+  - `restart: unless-stopped`;
+  - el healthcheck de Postgres por TCP.
+- `docker/db-init.sh`: `pg_trgm` + `schema.sql` siempre, `seed.sql` solo si
+  `SELECT count(*) FROM settings` da 0, y `VACUUM ANALYZE`. Va dentro de la
+  imagen `docker/db-init.Dockerfile`.
+- `docker/proxy.Dockerfile`: Caddy con `Caddyfile` (comando por defecto) y
+  `api-lb.Caddyfile` (`command` del servicio `api-lb`).
+- `docker/Caddyfile`: `servers { trusted_proxies static private_ranges }`,
+  validado con `caddy validate`.
+- `.dockerignore` readmite `db/schema.sql`, `db/seed.sql`, `docker/db-init.sh`
+  y los Caddyfiles.
+- `ci.yml`: «Imagen de db-init» e «Imagen del proxy» en el job `images`, sin
+  caché `gha` porque tardan segundos.
+- `deploy.variables.example`, `docs/dokploy/README.md`, la sección «Dominios en
+  Dokploy» de `apps/README.md` (reescrita a esta topología) y el comentario del
+  `proxy` en `docker-compose.yml`.
+
+### Imágenes publicadas por el CI (corrida 44775374733, `3b07100`)
+
+```text
+Calidad · lint, tipos, pruebas y builds: success 16:38:23 -> 16:46:59
+Imágenes Docker · build y publicación: success 16:47:01 -> 16:48:23
+### Imágenes (sha-3b07100)
+| `ronaldcuello/safari-api:sha-3b07100` | `sha256:c4ad5e85707765727aaaa03c629cb1415d5b11f8fcb1cbd0bf7eb6056c438972` |
+| `ronaldcuello/safari-shop:sha-3b07100` | `sha256:6024d3852f949b0368b5384045c6019c087a0f73837e69f59d60335c05bd0863` |
+| `ronaldcuello/safari-admin:sha-3b07100` | `sha256:b62f41c4339509eae7495a2f2a9aa8bee35259b7e848f00d382a256c20094467` |
+| `ronaldcuello/safari-db-init:sha-3b07100` | `sha256:303805ea3028493bf0ac9d16ee15e3c615883c785851e6c05e66e69552878071` |
+| `ronaldcuello/safari-proxy:sha-3b07100` | `sha256:a80ae6a162a1a72a6667cdd2cbc933fe20e862b296472274716e3521162361fc` |
+```
+
+### CA-1 — Compose de despliegue en local
+
+El proyecto se llama `safari-deploy`, separado del de desarrollo. Las
+variables de prueba van en un archivo del scratchpad. El override solo
+publica los puertos `3003`, `3002` y `9001` para probar. Todo se baja del Hub
+(`sha-3b07100`):
+
+```text
+real	0m32.743s
+admin ronaldcuello/safari-admin:sha-3b07100 Up 8 seconds (healthy)
+api ronaldcuello/safari-api:sha-3b07100 Up 14 seconds (healthy)
+api-lb ronaldcuello/safari-proxy:sha-3b07100 Up 22 seconds
+db-init ronaldcuello/safari-db-init:sha-3b07100 Exited (0) 15 seconds ago
+postgres postgres:16.14-alpine3.23 Up 23 seconds (healthy)
+proxy ronaldcuello/safari-proxy:sha-3b07100 Up 2 seconds
+shop ronaldcuello/safari-shop:sha-3b07100 Up 8 seconds (healthy)
+db-init-1  | db-init: base vacía, seed aplicado
+db-init-1  | db-init: esquema al día
+OK   API    :9001/api/settings  200  5503B  522ms
+OK   Shop   :3003/en  200  192788B  25ms  cards:30
+OK   Admin  :3002/en/login  200  73118B  31ms  cards:1
+{"status":"ok","instance":"bed1443e34f5","revision":"3b07100cd25cd564c8e3c76824c91bd1e6335493"}
+Sitemap: http://localhost:3003/sitemap.xml
+```
+
+**Regresión de US-105.** Se corrió antes, con `db-init` y `proxy` construidos
+en local y `sha-4fcb7f1` para el resto. El script es el de US-110, con la
+espera del admin por `docker compose ps admin`, que sirve en los dos stacks.
+Todo da lo mismo que en US-108 CA-9, salvo el optimizador:
+
+```text
+== CA-3
+backend/settings tienda: 200  admin: 200
+tienda /api/auth/providers: 200
+admin runtime-config: {"shopUrl":"http://localhost:3003"}
+admin runtime-config con SHOP_URL=https://tienda-b.example: {"shopUrl":"https://tienda-b.example"}
+admin runtime-config restaurado: {"shopUrl":"http://localhost:3003"}
+visita previa /en/products/apples: 200
+API parada -> producto nunca visitado /en/products/black-hawk-puppy-chicken-rice-2: 500
+API parada -> /en/products/apples: 200  /en: 200
+API de vuelta -> /en/products/black-hawk-puppy-chicken-rice-2: 200
+/en/products/no-existe: 404
+estáticos con localhost:9001|api:9001|api-lb:9001: 0 archivos
+== CA-4
+optimizador w=256: 500  21B
+logs de la tienda con sharp|EACCES: 0
+== CA-6
+http://localhost:3003/en common: 553 claves; 404-heading = "Error code: 404"
+http://localhost:3002/en/login common: 553 claves; text-guest = "Guest"
+logs con Cannot find module|unable to find a user config: 0
+```
+
+El 500 del optimizador es de **este equipo**, no de la imagen. El compose de
+despliegue no lleva el CA corporativo (`NODE_EXTRA_CA_CERTS`), y detrás de
+Zscaler la tienda no puede bajar las fotos del seed desde S3:
+
+```text
+shop-1  | ⨯ Error: unable to get local issuer certificate
+shop-1  |   code: 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY'
+```
+
+Con un override de prueba que inyecta el CA, como el compose de desarrollo, da
+lo mismo que en US-105:
+
+```text
+optimizador w=256 (con el CA de Zscaler): 200 image/jpeg 6215B
+```
+
+En el VPS no hay Zscaler, así que no hace falta ningún CA.
+
+**RAM (D-9)**, `docker stats --no-stream` en reposo, con una sola réplica:
+
+```text
+safari-deploy-shop-1	77.46MiB / 7.579GiB	0.01%
+safari-deploy-admin-1	81.04MiB / 7.579GiB	0.00%
+safari-deploy-api-1	107.8MiB / 7.579GiB	0.00%
+safari-deploy-proxy-1	11.64MiB / 7.579GiB	0.00%
+safari-deploy-api-lb-1	11.25MiB / 7.579GiB	0.05%
+safari-deploy-postgres-1	53.21MiB / 7.579GiB	0.02%
+```
+
+Son ~342 MB, menos que los ~430 MB orientativos del borrador. La guía pide
+el mínimo de Dokploy (2 GB de RAM y 30 GB de disco) y recomienda 4 GB.
+
+### CA-2 — Variables obligatorias
+
+```text
+== CA-2 sin JWT_SECRET
+error while interpolating services.api.environment.JWT_SECRET: required variable JWT_SECRET is missing a value: Falta JWT_SECRET (cadena larga y aleatoria)
+rc=15
+== CA-2 con SHOP_URL vacía
+error while interpolating services.api.environment.SHOP_URL: required variable SHOP_URL is missing a value: Falta SHOP_URL (https://tienda.<tu-dominio>)
+rc=15
+== con todas
+rc=0
+```
+
+### CA-3 — Sin restos de desarrollo
+
+```text
+$ grep -v '^\s*#' docker-compose.deploy.yml | grep -cE 'build:|container_name|ports:|localhost|solo-desarrollo|extra_ca'
+0
+```
+
+Con los comentarios, `grep` encuentra 2 líneas: las que explican que no hay
+`build:` ni `container_name`.
+
+### CA-4 — Seed solo una vez
+
+```text
+== 1. estado tras el primer despliegue (base vacía)
+db-init-1  | db-init: la base ya tiene datos (settings: 1 fila/s), seed omitido
+db-init-1  | db-init: esquema al día
+productos: 1200  usuarios: 11
+== 2. cambios de un usuario del sistema
+POST /api/register: 201
+producto del seed borrado: apples
+settings.siteTitle ahora: Safari CA-4
+== 3. redespliegue (up -d --force-recreate)
+ Container safari-deploy-proxy-1  Healthy
+== 4. después del redespliegue
+db-init-1  | db-init: la base ya tiene datos (settings: 1 fila/s), seed omitido
+db-init-1  | db-init: esquema al día
+exit de db-init: Exited (0) 15 seconds ago
+usuario ca4-1795192141@prueba.example: 1 fila/s
+producto apples: 0 fila/s (debe ser 0)
+settings.siteTitle: Safari CA-4
+productos: 1199
+```
+
+El paso 1 ya muestra «seed omitido» porque el stack se había reiniciado una
+vez para la prueba del CA. Su primer arranque, sobre la base vacía, dijo
+`db-init: base vacía, seed aplicado` (ver CA-1).
+
+### Cambio de contraseñas demo (D-8), el bloque de la guía
+
+El paso 11 de la guía se corrió sobre el stack de despliegue local, contra
+`/backend` del proxy, con contraseñas nuevas aleatorias:
+
+```text
+token de admin@demo.com: eyJhbGciOiJI…
+admin@demo.com: 201
+store_owner@demo.com: 201
+customer@demo.com: 201
+customer2@demo.com: 201
+customer3@demo.com: 201
+login con demodemo después: 401
+```
+
+Los stacks de prueba se bajaron con `docker compose down -v`. Era el
+proyecto `safari-deploy`, creado para la prueba; el volumen de desarrollo,
+`safari-marketplace_postgres-data`, no se tocó.
+
+### Pendiente con el dueño
+
+- **CA-5:** subdominios con HTTPS y login sin redirigir a `http://`.
+- **CA-6:** los datos sobreviven a un redespliegue desde el panel.
+- **CA-7:** seguir la guía de principio a fin.
+
+Hacen falta el VPS, el DNS y Dokploy instalado. R-1 (next-auth detrás de
+Traefik) se confirma en CA-5.

@@ -54,14 +54,14 @@ seguridad.
 | D-3 | Verificación por versión | Tras desplegar, el job espera hasta 5 min a que `https://tienda.<dominio>/backend/health` devuelva `revision` igual al SHA desplegado. Además, `https://tienda.<dominio>/en` y `https://admin.<dominio>/en/login` deben dar 200. Si no se cumple, el job falla. El resumen del job muestra la etiqueta, la `revision` vista y los códigos. |
 | D-4 | Vuelta atrás | `workflow_dispatch` con la entrada opcional `image_tag`. Se valida con `^sha-[0-9a-f]{7}$` y se pasa siempre por `env:`, nunca como `${{ inputs.image_tag }}` dentro de `run:`. Con `image_tag`, `images` se salta y `deploy` comprueba que la etiqueta existe en Docker Hub (`docker buildx imagetools inspect`) antes de desplegarla. La verificación de D-3 compara contra el SHA de esa etiqueta. |
 | D-5 | Secretos y variables | Secreto `DOKPLOY_API_KEY`, solo en el `env:` del step que llama a la API, con `curl --fail-with-body` y sin `-v`. Variables del environment `produccion`: `DOKPLOY_URL`, `DOKPLOY_COMPOSE_ID`, `DEPLOY_SHOP_URL` y `DEPLOY_ADMIN_URL`; con el prefijo `DEPLOY_` no se confunden con el `SHOP_URL` del Compose. El JSON se arma con `jq -n --arg`. El agente no crea ni lee estos valores. |
-| D-6 | Guía | Una sección nueva en `docs/despliegue-dokploy.md` (US-111): crear la API key, el environment `produccion`, los secretos y las variables, cómo leer el resumen del job y cómo volver atrás. Incluye el desfase de R-4 de US-111: el compose y `db/` son siempre los de HEAD. |
+| D-6 | Guía | Una sección nueva en `docs/dokploy/README.md` (US-111): crear la API key, el environment `produccion`, los secretos y las variables, cómo leer el resumen del job y cómo volver atrás. Incluye el desfase de R-4 de US-111: el compose y `db/` son siempre los de HEAD. |
 
 ## Scope
 
 **Incluye:**
 - el job `deploy` y la entrada `image_tag` de `workflow_dispatch` en
   `.github/workflows/ci.yml`;
-- la sección del CI en `docs/despliegue-dokploy.md`.
+- la sección del CI en `docs/dokploy/README.md`.
 
 **NO incluye:**
 - cambios en el compose de despliegue (US-111);
