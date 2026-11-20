@@ -36,7 +36,7 @@
 | [US-12](./12-acotar-variante-graphql.md) ✅ | Decidir y acotar la variante GraphQL | Sí | ninguna | ~100 |
 | [US-73](./73-auditoria-secretos-dependencias.md) | `just audit`: Gitleaks + OSV-Scanner en Docker, en modo reporte y fuera de `check` | Sí | ninguna dura (toca el justfile: no en paralelo con US-10/US-12) | ~150 |
 | [US-74](./74-fronteras-arquitectura-lint.md) | Fronteras de arquitectura como `no-restricted-imports` en los `.eslintrc` existentes | Sí | US-10 | ~80 |
-| [US-109](./109-ci-pasos-segregados-y-builds.md) | CI con pasos segregados, builds y resumen visible | Sí | US-11 ✅ | ~150-180 |
+| [US-109](./109-ci-pasos-segregados-y-builds.md) ✅ | CI con pasos segregados, builds y resumen visible | Sí | US-11 ✅ | ~150-180 |
 
 **Orden sugerido:** US-10 → US-11; US-12 en cualquier momento (no comparte
 archivos con US-10/11 salvo el justfile — no paralelizar con US-10).

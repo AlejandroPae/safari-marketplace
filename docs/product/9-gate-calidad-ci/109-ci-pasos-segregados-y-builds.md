@@ -9,7 +9,7 @@
 
 **Épico:** [Épico 9](./README.md)
 **Fecha:** 2026-11-20
-**Status:** Listo para ejecución. Promovida desde `_backlog/` el 2026-11-20,
+**Status:** Implementado (2026-11-20). Promovida desde `_backlog/` el 2026-11-20,
 tras la revisión del sub-agente fable 5. El dueño fijó cómo se vigilan los
 tipos (D-6), un solo job (D-3), este épico, y que todo el CI/CD vive en
 `ci.yml`.
@@ -154,9 +154,9 @@ Es un script bash con cuatro partes:
 
 ## Definición de Done
 
-- [ ] CA-1 a CA-6 verificados, con la salida real pegada en «Resultado».
-- [ ] Ramas y PR de prueba cerrados y borrados.
-- [ ] Status en `Implementado` y fila del épico marcada.
+- [x] CA-1 a CA-6 verificados, con la salida real pegada en «Resultado».
+- [x] Ramas y PR de prueba cerrados y borrados.
+- [x] Status en `Implementado` y fila del épico marcada.
 
 ## Riesgos
 
@@ -172,3 +172,204 @@ Es un script bash con cuatro partes:
   confirmar con el dueño justo antes.
 - Las decisiones son del dueño. Si una choca con lo que encuentres,
   **detente y pregunta**.
+
+## Resultado (2026-11-20)
+
+Commits en `main`:
+- `ab71d36`: el filtro de `check`, el resumen, el workflow y el README;
+- `b31a540`: la tabla del resumen también en el log del step.
+
+### Qué se hizo
+
+- **`just check [ids...]`:** una sola lista `id|nombre|carpeta|comando|grupo`
+  con los 10 pasos de siempre (grupo `check`) y los tres builds (grupo
+  `build`, que llaman a `just build-api`, `build-admin` y `build-shop`).
+  - Sin ids corre los 10, con el mismo formato y el mismo corte.
+  - Con ids corre solo esos.
+  - Un id desconocido sale con código 2 y lista los válidos.
+  - Las precondiciones se acotan: Postgres solo para `db-test` y
+    `scraper-test`; el venv, solo para `scraper-test`.
+- **Resumen (D-4):** con `CHECK_REPORT`, cada paso agrega
+  `id|OK/FALLA|segundos` al archivo, y vitest deja sus conteos en
+  `$CHECK_REPORT.<id>.json`. Para eso, los dos `vitest.config.ts` activan el
+  reporter `json` solo si existe `VITEST_JSON_OUT`. `just check resumen`
+  arma la tabla en `$GITHUB_STEP_SUMMARY`, y con `tee` también en el log del
+  step, porque GitHub no expone por API el resumen del job
+  (`check-runs/<job>` devuelve `output.summary` vacío). Sin actions nuevas.
+- **`ci.yml`:**
+  - `runs-on: ubuntu-26.04`, verificada en el README de
+    `actions/runner-images`, que lista `ubuntu-26.04` (x64). Ese README
+    todavía dice que `ubuntu-latest` es 24.04, aunque la corrida #7 cayó en
+    26.04: la etiqueta flotante cambiaba de imagen sin aviso.
+  - Un step por id con `name:` en español.
+  - `just env` antes de los builds y `APPLICATION_MODE: development` en el
+    `env:` de «Build de la tienda».
+  - «Resumen» con `if: always()`.
+- **Comentarios del `justfile`:** el de `check` ya no dice que `next build`
+  comprueba tipos, y describe el CI por pasos.
+- **`README.md`:** la línea del CI.
+
+### CA-1 — Pasos visibles
+
+Corrida 44690155012 (push de `ab71d36`), `success`. Extracto de
+`gh run view --json jobs` (inicio y fin de cada step):
+
+```text
+Run just install-ci: success 06:47:19 -> 06:48:32
+Árbol limpio tras instalar: success 06:48:32 -> 06:48:33
+Run just db-up: success 06:48:33 -> 06:48:52
+Preparar el resumen: success 06:48:52 -> 06:48:52
+Build de packages/db: success 06:48:52 -> 06:49:05
+Lint de packages/db: success 06:49:05 -> 06:49:05
+Typecheck de packages/db: success 06:49:05 -> 06:49:09
+Typecheck de la API: success 06:49:09 -> 06:49:14
+Lint de la API: success 06:49:14 -> 06:49:23
+Lint del admin: success 06:49:23 -> 06:49:31
+Lint de la tienda: success 06:49:31 -> 06:49:36
+Pruebas de la API: success 06:49:36 -> 06:49:45
+Pruebas de packages/db: success 06:49:45 -> 06:50:07
+Prueba del pipeline del scraper: success 06:50:07 -> 06:50:09
+Crear los .env desde las plantillas: success 06:50:09 -> 06:50:10
+Build de la API: success 06:50:10 -> 06:50:16
+Build del admin: success 06:50:16 -> 06:51:25
+Build de la tienda: success 06:51:25 -> 06:52:18
+Resumen: success 06:52:18 -> 06:52:19
+```
+
+### CA-2 — Resumen
+
+Corrida 44691063406 (push de `b31a540`), copiado del log del step «Resumen»:
+
+```text
+### just check — resumen
+| Paso | Resultado | Duración | Pruebas |
+|---|---|---|---|
+| packages/db build (`db-build`) | ✅ OK | 16 s | — |
+| packages/db lint (`db-lint`) | ✅ OK | 0 s | — |
+| packages/db typecheck (`db-typecheck`) | ✅ OK | 5 s | — |
+| api/rest typecheck (`api-typecheck`) | ✅ OK | 6 s | — |
+| api/rest lint (`api-lint`) | ✅ OK | 10 s | — |
+| admin/rest lint (`admin-lint`) | ✅ OK | 9 s | — |
+| shop lint (`shop-lint`) | ✅ OK | 7 s | — |
+| api/rest test (`api-test`) | ✅ OK | 11 s | 713 / 713 |
+| packages/db test (`db-test`) | ✅ OK | 27 s | 499 / 499 |
+| scraper db-test (`scraper-test`) | ✅ OK | 1 s | — |
+| api/rest build (`api-build`) | ✅ OK | 7 s | — |
+| admin/rest build (`admin-build`) | ✅ OK | 86 s | — |
+| shop build (`shop-build`) | ✅ OK | 65 s | — |
+**check: VERDE** — pruebas: 1212 de 1212 pasaron.
+```
+
+### CA-3 — Rojo localizado
+
+PR #2 (rama `ci/prueba-test-roto`): `status: 'ok'` cambia a
+`'ROTO-A-PROPOSITO'` en `health.controller.spec.ts`. Corrida 44691108794,
+`failure`:
+
+```text
+   Pruebas de la API: failure
+   Pruebas de packages/db: skipped
+   Prueba del pipeline del scraper: skipped
+   Crear los .env desde las plantillas: skipped
+   Build de la API: skipped
+   Build del admin: skipped
+   Build de la tienda: skipped
+AssertionError: expected { status: 'ok', …(1) } to deeply equal { status: 'ROTO-A-PROPOSITO', …(1) }
+FALLA [1/1] api/rest test  7s  (exit 1)
+check: ROJO en 'api/rest test'
+```
+
+El resumen lo dice:
+
+```text
+| shop lint (`shop-lint`) | ✅ OK | 5 s | — |
+| api/rest test (`api-test`) | ❌ FALLA | 7 s | 712 / 713 |
+| packages/db test (`db-test`) | — no ejecutado | — | — |
+...
+**check: ROJO** — pruebas: 712 de 713 pasaron.
+```
+
+### CA-4 — Build roto
+
+PR #3 (rama `ci/prueba-tipos-tienda`): `const PAGE_SIZE = 500;` cambia a
+`const PAGE_SIZE: string = 500;` en `apps/shop/src/framework/rest/sitemap.ts`.
+Es un error que eslint no marca: «Lint de la tienda» pasa, y el rojo cae en
+el build. Corrida 44691127344, `failure` solo en «Build de la tienda»:
+
+```text
+  Running TypeScript ...
+##[error]src/framework/rest/sitemap.ts(19,7): error TS2322: Type 'number' is not assignable to type 'string'.
+##[error]src/framework/rest/sitemap.ts(123,29): error TS2322: Type 'string' is not assignable to type 'number'.
+##[error]src/framework/rest/sitemap.ts(125,43): error TS2322: Type 'string' is not assignable to type 'number'.
+Failed to type check.
+| shop build (`shop-build`) | ❌ FALLA | 9 s | — |
+**check: ROJO** — pruebas: 1212 de 1212 pasaron.
+```
+
+Antes de esta US habría pasado en verde: ni `check` ni el build con el `.env`
+de la plantilla comprueban tipos.
+
+**El admin no lo detectaría (limitación de D-6).** En la misma corrida, el
+build del admin imprime `Skipping validation of types`. En local, con las
+plantillas, los dos builds lo imprimen (ver CA-5). En cambio, en la corrida
+verde la tienda sí comprueba (`Running TypeScript ...`,
+`Finished TypeScript in 12.8s`).
+
+R-1 queda descartado: `APPLICATION_MODE` del proceso gana a la del `.env`.
+
+Los PR #2 y #3 se cerraron sin merge con `gh pr close --delete-branch`.
+`git ls-remote --heads origin` solo lista `refs/heads/main`.
+
+### CA-5 — Local igual
+
+`just check-full` en local (Windows), con la receta nueva:
+
+```text
+OK    [1/10] packages/db build  84s
+OK    [2/10] packages/db lint  3s
+OK    [3/10] packages/db typecheck  14s
+OK    [4/10] api/rest typecheck  68s
+OK    [5/10] api/rest lint  102s
+OK    [6/10] admin/rest lint  202s
+OK    [7/10] shop lint  200s
+OK    [8/10] api/rest test  108s
+OK    [9/10] packages/db test  137s
+OK    [10/10] scraper db-test  5s
+check: VERDE (10 pasos, 930s)
+  Skipping validation of types
+  Skipping validation of types
+check-full: VERDE (check + build-api + build-admin + build-shop)
+real	26m53.223s
+```
+
+Es el mismo formato y el mismo resultado que antes. Los 930 s son más que los
+493 s de ayer en la misma máquina (más carga; los tiempos locales varían
+mucho detrás de Zscaler). Un solo paso y el error por id:
+
+```text
+$ CHECK_REPORT=... just check db-lint api-test
+OK    [1/2] packages/db lint  11s
+OK    [2/2] api/rest test  113s
+check: VERDE (2 pasos, 125s)
+
+$ just check nope
+check: id desconocido 'nope'. Ids: db-build db-lint db-typecheck api-typecheck api-lint admin-lint shop-lint api-test db-test scraper-test api-build admin-build shop-build resumen
+error: recipe `check` failed with exit code 2
+```
+
+### CA-6 — Tiempo
+
+| Corrida | Job completo |
+|---|---|
+| Antes: #7 (44677171842, un step `just check`) | 3 min 9 s |
+| Después: 44690155012 | 6 min 05 s (06:46:19 → 06:52:24) |
+| Después: 44691063406 | 6 min 00 s (06:54:09 → 07:00:09) |
+
+Los ~3 min de más son los tres builds: API 6-7 s, admin 69-86 s y tienda
+53-65 s. Los pasos de `check` cuestan lo mismo separados que juntos.
+
+### Para otra US (no se tocó)
+
+- El TS2688 (`minimatch`) del admin. Mientras siga, el admin no comprueba
+  tipos ni en el CI ni en su imagen.
+- La protección de `main` (decisión del dueño, pospuesta).
