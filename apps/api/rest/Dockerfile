@@ -84,6 +84,11 @@ COPY --from=db-build /repo/packages/db/dist ./dist
 WORKDIR /repo/apps/api/rest
 COPY --from=api-build /repo/apps/api/rest/dist ./dist
 ENV NODE_ENV=production
+# Commit del que salió la imagen (US-110): el CI lo pasa con --build-arg y
+# /api/health lo devuelve como `revision`, para saber qué versión corre. Va al
+# final para no invalidar la caché de las capas de arriba en cada commit.
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
 USER node
 EXPOSE 9001
 CMD ["node", "dist/main.js"]

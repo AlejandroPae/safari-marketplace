@@ -24,9 +24,14 @@ on:
 permissions:
   contents: read
 
+# En un PR, un push nuevo cancela la corrida anterior de esa rama. En main no se
+# cancela nada (US-110): cada commit tiene que terminar y publicar sus imágenes.
+# Con el SHA en el grupo, cada commit de main es su propio grupo. Con
+# cancel-in-progress: false no bastaría, porque GitHub igual cancela las
+# corridas pendientes que se acumulan detrás de la que está corriendo.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -127,3 +132,134 @@ jobs:
       - name: Resumen
         if: always()
         run: just check resumen
+
+  # Imágenes de la API, la tienda y el admin (US-110). Se construyen siempre,
+  # para detectar un Dockerfile roto antes del merge, y se publican en Docker
+  # Hub solo desde main (push, o workflow_dispatch sobre main), con la etiqueta
+  # sha-<7 primeros del commit>. Sin `latest`: el despliegue apunta a un SHA.
+  images:
+    needs: check
+    runs-on: ubuntu-26.04
+    timeout-minutes: 40
+    env:
+      # Publicar: push a main, o dispatch sobre main. Nunca en pull_request.
+      PUBLICAR: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+      # En un fork no se publica: no tiene las credenciales del dueño (US-110 D-6).
+      ES_FORK: ${{ github.event.repository.fork }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # La etiqueta y el repositorio de destino. En un PR (o un fork) no hay
+      # usuario de Docker Hub: el nombre local `safari` no se publica nunca.
+      - name: Etiqueta y destino
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+        run: |
+          echo "IMAGE_TAG=sha-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+          echo "REGISTRO=${DOCKERHUB_USERNAME:-safari}" >> "$GITHUB_ENV"
+          if [ "$PUBLICAR" = true ] && [ "$ES_FORK" = true ]; then
+            echo "SUBIR=false" >> "$GITHUB_ENV"
+            echo "::notice::Repositorio fork: se construyen las imágenes, pero no se publican."
+            echo "> Repositorio fork: las imágenes se construyeron, pero no se publicaron (US-110 D-6)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "SUBIR=$PUBLICAR" >> "$GITHUB_ENV"
+          fi
+
+      # Falla aquí, y con un mensaje que los nombra, si faltan las credenciales:
+      # no en el login ni en el push. Los secretos no se pueden usar en `if:`, así
+      # que llegan por env y se comprueban en shell.
+      - name: Credenciales de Docker Hub
+        if: env.SUBIR == 'true'
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+        run: |
+          falta=0
+          [ -n "$DOCKERHUB_TOKEN" ] || { echo "::error::Falta el secreto DOCKERHUB_TOKEN (Settings → Secrets and variables → Actions). Guía: docs/github/secretos-github-actions.md"; falta=1; }
+          [ -n "$DOCKERHUB_USERNAME" ] || { echo "::error::Falta la variable DOCKERHUB_USERNAME (Settings → Secrets and variables → Actions → Variables). Guía: docs/github/secretos-github-actions.md"; falta=1; }
+          exit "$falta"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        if: env.SUBIR == 'true'
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Los tres en el mismo builder: la etapa `deps` de la tienda y el admin es
+      # idéntica y se hace una sola vez. La caché de Actions (type=gha) solo se
+      # escribe desde main; los PR la leen y no escriben la suya, para no llenar
+      # el tope del repo. Sin el secreto extra_ca: es opcional (required=false).
+      # provenance: false deja un manifiesto simple, sin la entrada unknown/unknown.
+      - name: Imagen de la API
+        id: api
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/api/rest/Dockerfile
+          platforms: linux/amd64
+          push: ${{ env.SUBIR == 'true' }}
+          provenance: false
+          tags: ${{ env.REGISTRO }}/safari-api:${{ env.IMAGE_TAG }}
+          build-args: GIT_SHA=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=api
+          cache-to: ${{ env.SUBIR == 'true' && 'type=gha,mode=max,scope=api' || '' }}
+
+      - name: Imagen de la tienda
+        id: shop
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/shop/Dockerfile
+          platforms: linux/amd64
+          push: ${{ env.SUBIR == 'true' }}
+          provenance: false
+          tags: ${{ env.REGISTRO }}/safari-shop:${{ env.IMAGE_TAG }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: |
+            type=gha,scope=shop
+            type=gha,scope=admin
+          cache-to: ${{ env.SUBIR == 'true' && 'type=gha,mode=max,scope=shop' || '' }}
+
+      - name: Imagen del admin
+        id: admin
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/admin/rest/Dockerfile
+          platforms: linux/amd64
+          push: ${{ env.SUBIR == 'true' }}
+          provenance: false
+          tags: ${{ env.REGISTRO }}/safari-admin:${{ env.IMAGE_TAG }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: |
+            type=gha,scope=admin
+            type=gha,scope=shop
+          cache-to: ${{ env.SUBIR == 'true' && 'type=gha,mode=max,scope=admin' || '' }}
+
+      - name: Resumen de las imágenes
+        if: always()
+        env:
+          DIGEST_API: ${{ steps.api.outputs.digest }}
+          DIGEST_SHOP: ${{ steps.shop.outputs.digest }}
+          DIGEST_ADMIN: ${{ steps.admin.outputs.digest }}
+        run: |
+          {
+            echo "### Imágenes ($IMAGE_TAG)"
+            echo ""
+            if [ "$SUBIR" = true ]; then echo "Publicadas en Docker Hub."; else echo "Construidas sin publicar (evento \`$GITHUB_EVENT_NAME\`, rama \`$GITHUB_REF_NAME\`)."; fi
+            echo ""
+            echo "| Imagen | Digest |"
+            echo "|---|---|"
+            echo "| \`$REGISTRO/safari-api:$IMAGE_TAG\` | \`${DIGEST_API:-—}\` |"
+            echo "| \`$REGISTRO/safari-shop:$IMAGE_TAG\` | \`${DIGEST_SHOP:-—}\` |"
+            echo "| \`$REGISTRO/safari-admin:$IMAGE_TAG\` | \`${DIGEST_ADMIN:-—}\` |"
+          } | tee -a "$GITHUB_STEP_SUMMARY"

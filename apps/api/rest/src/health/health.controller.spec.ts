@@ -35,11 +35,22 @@ describe('HealthController', () => {
   });
 
   it('liveness responde ok y la réplica, sin tocar la base', () => {
+    vi.stubEnv('GIT_SHA', '');
     expect(controller.liveness()).toEqual({
       status: 'ok',
       instance: hostname(),
+      revision: 'unknown',
     });
     expect(pingDatabaseMock).not.toHaveBeenCalled();
+    vi.unstubAllEnvs();
+  });
+
+  it('liveness devuelve el commit de la imagen en revision (US-110)', () => {
+    vi.stubEnv('GIT_SHA', 'f1067fe0123456789abcdef0123456789abcdef0');
+    expect(controller.liveness().revision).toBe(
+      'f1067fe0123456789abcdef0123456789abcdef0',
+    );
+    vi.unstubAllEnvs();
   });
 
   it('readiness con la base arriba devuelve ok y la latencia', async () => {

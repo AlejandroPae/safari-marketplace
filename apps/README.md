@@ -289,7 +289,7 @@ for i in $(seq 1 30); do
   curl -s -D - -o /dev/null http://localhost:3003/backend/settings | grep -i x-served-by
 done | sort | uniq -c
 
-curl -s http://localhost:9001/api/health    # {"status":"ok","instance":"c413bd18b795"}
+curl -s http://localhost:9001/api/health    # {"status":"ok","instance":"c413bd18b795","revision":"unknown"}
 docker compose logs -f api                  # el log de cada réplica, con su prefijo api-N
 ```
 
@@ -493,7 +493,7 @@ Dos endpoints públicos, sin token, para healthchecks:
 
 | Endpoint | Qué mira | Responde |
 |---|---|---|
-| `GET /api/health` | liveness: solo que el proceso responde, sin tocar la base. `instance` dice qué réplica respondió (US-107) | `200 {"status":"ok","instance":"c413bd18b795"}` |
+| `GET /api/health` | liveness: solo que el proceso responde, sin tocar la base. `instance` dice qué réplica respondió (US-107); `revision`, de qué commit salió la imagen (US-110: el SHA que el CI pasa como `GIT_SHA`; `unknown` en `api-dev` o en una imagen local) | `200 {"status":"ok","instance":"c413bd18b795","revision":"unknown"}` |
 | `GET /api/health/ready` | readiness: un `SELECT 1` real a Postgres, con timeout de 2 s | `200` con `checks.database.status: "up"`; `503` con `"down"` si la base no responde |
 
 ```
@@ -603,6 +603,52 @@ Los scripts de `dev` y `build` llevan `--webpack` (US-82). US-83 volvió a
 probar Turbopack, el default de Next 16, con React 19: en `dev` las dos apps
 piden chunks que no existen (404) y no hidratan, y en `next build` + `next
 start` el shop da errores de hidratación (#418). Ver la US-83.
+
+## Imágenes en Docker Hub (US-110)
+
+El CI (`.github/workflows/ci.yml`, job `images`) construye las imágenes de la
+API, la tienda y el admin en cada PR y en cada push a `main`. Solo las
+**publica** desde `main`, con la etiqueta `sha-<7 primeros del commit>`:
+
+```text
+<usuario>/safari-api:sha-1a2b3c4
+<usuario>/safari-shop:sha-1a2b3c4
+<usuario>/safari-admin:sha-1a2b3c4
+```
+
+- **Sin `latest`:** se despliega siempre un SHA concreto, y volver atrás es
+  cambiar la etiqueta.
+- **Configuración en ejecución:** la misma imagen sirve para cualquier dominio,
+  porque las URLs se leen al ejecutar (US-102, US-103 y US-108). Lo que sí
+  queda fijo en el build: idiomas, versión, las claves públicas de pagos y
+  mapas (vacías) y `images.remotePatterns`.
+- **Trazabilidad:** cada imagen lleva la label
+  `org.opencontainers.image.revision` con el SHA completo. Además, la API lo
+  devuelve en `/api/health` (`revision`).
+- **Plataforma:** solo `linux/amd64`. Un VPS ARM no puede usarlas.
+
+Para que el CI publique, el repositorio necesita en *Settings → Secrets and
+variables → Actions*:
+
+| Nombre | Tipo | Valor |
+|---|---|---|
+| `DOCKERHUB_TOKEN` | secreto | *Personal Access Token* de Docker Hub con **Repo Read & Write** |
+| `DOCKERHUB_USERNAME` | variable | el usuario de Docker Hub |
+
+El paso a paso, con capturas y con `gh`, está en
+[`docs/github/secretos-github-actions.md`](../docs/github/secretos-github-actions.md).
+
+Lo que pasa según el caso:
+- **Faltan las credenciales:** el step «Credenciales de Docker Hub» falla
+  nombrando lo que falta.
+- **Fork:** construye y no publica, con un aviso en el resumen.
+- **PR:** construye sin login ni push, y lee la caché de BuildKit de `main`
+  sin escribir la suya.
+
+Para probar en local una imagen publicada sin reconstruirla, se usa un override
+de compose con `image: <usuario>/safari-<app>:sha-…`, después
+`docker compose ... pull api shop admin` y luego `up -d --no-build`. No uses
+`just stack-up`: hace `--build` y reconstruiría en local.
 
 ## Notas para el despliegue en nube
 

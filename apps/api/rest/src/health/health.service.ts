@@ -28,9 +28,17 @@ export interface ReadinessReport {
 export class HealthService {
   private readonly logger = new Logger(HealthService.name);
 
-  /** `instance` dice qué réplica respondió (US-107), como `X-Served-By`. */
+  /**
+   * `instance` dice qué réplica respondió (US-107), como `X-Served-By`.
+   * `revision` dice de qué commit salió la imagen (US-110): el CI la construye
+   * con `GIT_SHA`. Sin la variable (`api-dev`, una imagen local) es `unknown`.
+   */
   liveness() {
-    return { status: 'ok' as const, instance: INSTANCE };
+    return {
+      status: 'ok' as const,
+      instance: INSTANCE,
+      revision: process.env.GIT_SHA || 'unknown',
+    };
   }
 
   async readiness(): Promise<ReadinessReport> {
