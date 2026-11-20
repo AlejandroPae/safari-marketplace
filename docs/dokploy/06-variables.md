@@ -59,13 +59,16 @@ a `docker-compose.deploy.yml`, y el compose las lee con `${VARIABLE}`.
    > ![Captura — Pestaña Environment del Compose, vacía](img/06-environment.png)
    
 
-4. Pega las variables en el editor y pulsa **Save**.
+   El editor oculta los valores. El botón del ojo, arriba a la derecha, los
+   muestra y los vuelve a ocultar: déjalos ocultos si compartes pantalla.
 
-   > ![Captura — Variables pegadas en el editor, con valores de ejemplo](img/06-variables-guardadas.png)
+4. Pega las variables en el editor y pulsa **Save**. Deja encendido
+   **Create Environment File**: es lo que escribe el `.env` que lee el
+   compose. Si lo apagas, Dokploy ignora estas variables y el despliegue
+   falla.
 
-> **Si vas a sacar capturas o compartir pantalla**, hazlo con los valores de
-> ejemplo de la plantilla, no con los reales. La pestaña **Environment**
-> muestra los secretos en texto plano.
+   > ![Captura — Variables pegadas en el editor, con valores de ejemplo](img/06-variables-guardadas-ejemplo.png)
+   
 
 ## Cuidado con estos valores
 
