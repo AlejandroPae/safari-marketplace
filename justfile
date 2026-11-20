@@ -421,12 +421,18 @@ db-up:
     set -euo pipefail
     docker compose up -d postgres
     echo -n "esperando a Postgres"
+    # Por TCP, no por socket (US-11): con un volumen nuevo, la imagen
+    # inicializa con un servidor temporal que solo escucha en el socket y se
+    # apaga al terminar. Por socket daba «listo» con ese servidor y db-migrate
+    # fallaba con «the database system is shutting down».
+    listo=0
     for i in $(seq 1 30); do
-      if docker compose exec -T postgres pg_isready -U safari -d safari_scraper >/dev/null 2>&1; then
-        echo " listo"; break
+      if docker compose exec -T postgres pg_isready -h 127.0.0.1 -U safari -d safari_scraper >/dev/null 2>&1; then
+        listo=1; echo " listo"; break
       fi
       echo -n "."; sleep 1
     done
+    [ "$listo" -eq 1 ] || { echo; echo "db-up: Postgres no respondió en 30 s"; exit 1; }
     just db-migrate
     if [ ! -f services/scraper-worker/.env ]; then
       cp services/scraper-worker/.env.example services/scraper-worker/.env
