@@ -32,7 +32,7 @@
 | US | Título | Releasable solo | Depende de | LOC est. |
 |----|--------|-----------------|------------|----------|
 | [US-10](./10-receta-just-check.md) ✅ | Receta `just check` (gate local agregador) | Sí | ninguna | ~120 |
-| [US-11](./11-ci-github-actions.md) | CI en GitHub Actions | Sí | US-10 | ~150 |
+| [US-11](./11-ci-github-actions.md) | CI en GitHub Actions (re-refinada 2026-11-19) | Sí | US-10 ✅ | ~150 |
 | [US-12](./12-acotar-variante-graphql.md) ✅ | Decidir y acotar la variante GraphQL | Sí | ninguna | ~100 |
 | [US-73](./73-auditoria-secretos-dependencias.md) | `just audit`: Gitleaks + OSV-Scanner en Docker, en modo reporte y fuera de `check` | Sí | ninguna dura (toca el justfile: no en paralelo con US-10/US-12) | ~150 |
 | [US-74](./74-fronteras-arquitectura-lint.md) | Fronteras de arquitectura como `no-restricted-imports` en los `.eslintrc` existentes | Sí | US-10 | ~80 |
@@ -156,3 +156,25 @@ tiene que decidirlo y anotarlo aquí.
   quiere un reporte agregado al estilo de `smells.mjs`, que sea una receta
   aparte (como `just audit` de US-73, que ya es solo reporte), no un modo de
   `check`.
+
+## Actualización 2026-11-19: re-refinamiento de US-11
+
+> Sección añadida sin reescribir lo anterior.
+
+- **US-11** se re-refinó tras una revisión del sub-agente fable 5 contra
+  `main` @ `7806c9f` y queda en «Listo para ejecución». US-10 ya está
+  implementada, así que su dependencia está satisfecha.
+- **La D-2 de este épico queda superada.** Decía que CI necesita Postgres como
+  service container, pero la precondición de `just check` usa
+  `docker compose exec postgres` (`justfile:338`), y con un service container
+  la receta no arrancaría. El dueño decidió levantar Postgres en CI con
+  `just db-up`: la misma imagen y la misma migración que en local.
+- **Contexto corregido:**
+  - la API ya usa Vitest, no jest (45 specs);
+  - `packages/db` tiene 38 archivos de test;
+  - el `db-test` del scraper está verde (US-10) y no necesita Chromium;
+  - el lint de la API en `check` ya corre sin `--fix`, así que el antiguo
+    CA-9 de US-11 se eliminó.
+- **US-74** quedó desactualizada: habla de `.eslintrc.json` y eslint 8.53,
+  pero shop, admin y API ya usan flat config (`eslint.config.mjs`) y eslint
+  9.39.5. Se re-refina antes de ejecutarla.
