@@ -33,7 +33,7 @@
 | [US-106](./106-imagen-api-liviana.md) ✅ | Imagen liviana de la API: una sola copia de Prisma, sin el CLI | Sí | US-105 | ~60 |
 | [US-107](./107-api-escalable-detras-del-proxy.md) ✅ | API escalable detrás de un balanceador, con balanceo real | Sí | US-105, US-106 | ~150 |
 | [US-108](./108-sitemap-dinamico-en-ejecucion.md) ✅ | Sitemap y robots.txt generados en ejecución, con el dominio real | Sí | US-104, US-107 | ~150 |
-| [US-110](./110-imagenes-en-docker-hub.md) | Construir y publicar las imágenes en Docker Hub desde el CI | Sí | US-109 | ~120 |
+| [US-110](./110-imagenes-en-docker-hub.md) ✅ | Construir y publicar las imágenes en Docker Hub desde el CI | Sí | US-109 | ~120 |
 | [US-111](./111-despliegue-en-dokploy.md) | Desplegar Safari en un VPS con Dokploy, con subdominios | Sí | US-110 | ~150 + guía |
 | [US-112](./112-despliegue-continuo-desde-ci.md) | Despliegue continuo a Dokploy desde el CI, con vuelta atrás | Sí | US-110, US-111 | ~100 |
 | [US-18](./18-terraform-minimo.md) | Terraform mínimo para el stack contenedorizado (en pausa, ver Actualización 2026-11-20) | Sí | US-15, US-17 | ~300 |
