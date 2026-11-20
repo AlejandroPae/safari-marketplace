@@ -134,6 +134,10 @@ detiene y lo reporta.
   `workflow_dispatch` en `main` falla en el paso de validación con el mensaje
   que nombra `DOCKERHUB_TOKEN`, no en un paso posterior. La corrida roja
   queda en `main`, aceptada.
+  **Ajuste (2026-11-20):** el dueño creó el secreto y la variable antes de
+  ejecutar la US (guía `docs/github/secretos-github-actions.md`). Para no
+  tocarlos, CA-6 se prueba en una rama con PR cuyo workflow fuerza el camino
+  de publicación y lee un secreto inexistente. Ese PR se cierra sin merge.
 - **CA-7 — `concurrency`.** Dos pushes seguidos a `main`: la primera corrida
   termina (no se cancela) y publica sus imágenes.
 
