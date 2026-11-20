@@ -50,27 +50,6 @@ cada despliegue y ejecuta ese archivo.
    Despliegas tú, eligiendo la versión (`IMAGE_TAG`).
 
    > ![Captura — Interruptor Auto Deploy apagado](img/05-auto-deploy.png)
-   
-
-5. **Isolated Deployment:** déjalo **apagado** (pestaña **Advanced**, sección
-   *Enable Isolated Deployment*). Dokploy lo marca como **Deprecated** desde
-   la versión 0.30 y ya no hace falta:
-
-   > ![Captura — Pestaña Advanced del Compose](img/05-isolated-deployments-1.png)
-
-   > ![Captura — Enable Isolated Deployment apagado, con el aviso Deprecated](img/05-isolated-deployment-apagado.png)
-
-   - Docker Compose crea una **red propia del stack**
-     (`<App Name>_default`). Ahí se encuentran `postgres`, `api`, `shop`,
-     `admin` y el resto, y sus nombres no chocan con los de otras
-     aplicaciones del servidor.
-   - Al desplegar, Dokploy conecta a la red compartida `dokploy-network`
-     **solo el servicio que tiene dominio** (`proxy`, [paso 07](07-dominios.md)),
-     sin sacarlo de la red del stack. Así Traefik llega al proxy y el proxy
-     sigue llegando a la tienda, al admin y a la API.
-
-   No hace falta tocar la sección **Networks** que sugiere el aviso, ni
-   declarar `dokploy-network` en el compose.
 
 Todavía **no despliegues**: sin las variables del paso siguiente, el Compose
 falla al arrancar con un mensaje que nombra la variable que falta.
