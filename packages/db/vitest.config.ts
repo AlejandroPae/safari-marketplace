@@ -12,5 +12,10 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     fileParallelism: false,
+    // En CI, `just check` pide los conteos en JSON para el resumen (US-109).
+    ...(process.env.VITEST_JSON_OUT && {
+      reporters: ['default', 'json'],
+      outputFile: { json: process.env.VITEST_JSON_OUT },
+    }),
   },
 });

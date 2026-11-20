@@ -2,6 +2,11 @@
 # Request y en cada push a main. El workflow no reimplementa ningún paso: solo
 # prepara las herramientas y llama recetas del justfile.
 #
+# Cada paso de `check` y cada build es un step propio (US-109): `just check <id>`
+# corre ese paso de la misma lista que usa `just check` en local. GitHub corta en
+# el primer step rojo, como el corte local, y `just check resumen` escribe al
+# final la tabla de la corrida (pasos, duración y pruebas).
+#
 # Postgres va por `just db-up` (docker compose), no por un service container:
 # la precondición de `check` usa `docker compose exec postgres`, y así la imagen
 # fijada y la migración (pg_trgm + schema + seed + VACUUM) son las de local.
@@ -25,7 +30,8 @@ concurrency:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # Fija, no `ubuntu-latest`: esa etiqueta cambia de imagen sin aviso (US-109).
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     env:
       # Credencial local del Postgres de docker-compose.yml (packages/db/.env.example),
@@ -75,4 +81,49 @@ jobs:
 
       - run: just db-up
 
-      - run: just check
+      # Cada paso deja su resultado aquí, y vitest sus conteos, para el resumen.
+      - name: Preparar el resumen
+        run: echo "CHECK_REPORT=$RUNNER_TEMP/check-report.txt" >> "$GITHUB_ENV"
+
+      - name: Build de packages/db
+        run: just check db-build
+      - name: Lint de packages/db
+        run: just check db-lint
+      - name: Typecheck de packages/db
+        run: just check db-typecheck
+      - name: Typecheck de la API
+        run: just check api-typecheck
+      - name: Lint de la API
+        run: just check api-lint
+      - name: Lint del admin
+        run: just check admin-lint
+      - name: Lint de la tienda
+        run: just check shop-lint
+      - name: Pruebas de la API
+        run: just check api-test
+      - name: Pruebas de packages/db
+        run: just check db-test
+      - name: Prueba del pipeline del scraper
+        run: just check scraper-test
+
+      # Los .env de la tienda, el admin y la API, desde sus plantillas: los builds
+      # de Next leen de ahí sus NEXT_PUBLIC_*. Van después de las pruebas para que
+      # nada de lo anterior dependa de ellos.
+      - name: Crear los .env desde las plantillas
+        run: just env
+
+      - name: Build de la API
+        run: just check api-build
+      # Sin APPLICATION_MODE=production (el de la plantilla), next build no
+      # ignora los errores de TypeScript: este step vigila los tipos de la tienda.
+      # El admin no se puede (TS2688 de minimatch) y sigue con el de la plantilla.
+      - name: Build del admin
+        run: just check admin-build
+      - name: Build de la tienda
+        run: just check shop-build
+        env:
+          APPLICATION_MODE: development
+
+      - name: Resumen
+        if: always()
+        run: just check resumen

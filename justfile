@@ -321,8 +321,9 @@ doctor:
 #
 # Pide: `just install`, `just db-up` y `just scraper-install`. Si falta algo,
 # lo dice antes de correr nada. No necesita API, tienda ni admin levantados.
-# En CI (US-11), .github/workflows/ci.yml la corre tras `just install-ci` y
-# `just db-up`.
+# En CI, .github/workflows/ci.yml corre cada paso como un step propio
+# (`just check <id>`, US-109) tras `just install-ci` y `just db-up`, y al
+# final `just check resumen` escribe la tabla de la corrida.
 #
 # Pasos y duración medida (2026-11-18, secuencial). En total, 568s en frío y
 # 340s con las cachés calientes. La columna es la primera medición:
@@ -342,57 +343,129 @@ doctor:
 # Fuera del gate, y por qué:
 #   - Builds de Next y de la API: van en `just check-full` (lentos). Desde
 #     US-104 ninguno necesita la API levantada.
-#   - `tsc` de shop y admin: no son scripts del repo; `next build` ya
-#     comprueba los tipos.
+#   - `tsc` de shop y admin: no son scripts del repo. OJO: `next build` NO
+#     comprueba tipos con APPLICATION_MODE=production, que traen las
+#     plantillas .env. El CI construye la tienda con development (US-109);
+#     el admin no los comprueba en ningún lado (TS2688 de minimatch).
 #   - Tests de frontend: no existen.
 #   - Variante GraphQL: congelada (US-12).
 [group('verify')]
-[doc('Gate local (US-10): lint, typecheck y tests del monorepo; corta al primer rojo (~6-10 min)')]
-check:
+[doc('Gate local (US-10): lint, typecheck y tests del monorepo; corta al primer rojo (~6-10 min). `just check <id>...` corre solo esos pasos')]
+check *ids:
     #!/usr/bin/env bash
     set -uo pipefail
+    # Una sola lista de pasos (US-109): id|nombre|carpeta|comando|grupo.
+    #   grupo `check`: los 10 que corre `just check` a secas.
+    #   grupo `build`: los builds de `check-full`; solo corren si se piden por
+    #   id (el CI los pide uno por uno, para verlos como steps separados).
+    pasos=(
+      "db-build|packages/db build|packages/db|npm run build|check"
+      "db-lint|packages/db lint|packages/db|npm run lint|check"
+      "db-typecheck|packages/db typecheck|packages/db|npm run typecheck|check"
+      "api-typecheck|api/rest typecheck|apps/api/rest|npx tsc --noEmit -p tsconfig.json|check"
+      "api-lint|api/rest lint|apps/api/rest|npx eslint \"{src,apps,libs,test}/**/*.ts\"|check"
+      "admin-lint|admin/rest lint|apps/admin/rest|yarn lint|check"
+      "shop-lint|shop lint|apps/shop|yarn lint|check"
+      "api-test|api/rest test|apps/api/rest|npx vitest run|check"
+      "db-test|packages/db test|packages/db|npm test|check"
+      "scraper-test|scraper db-test|.|just db-test|check"
+      "api-build|api/rest build|.|just build-api|build"
+      "admin-build|admin/rest build|.|just build-admin|build"
+      "shop-build|shop build|.|just build-shop|build"
+    )
+    campo() { cut -d'|' -f"$2" <<< "$1"; }
+    read -r -a pedidos <<< "{{ids}}"
+
+    # `just check resumen`: la tabla del CI en $GITHUB_STEP_SUMMARY (US-109 D-4),
+    # con lo que cada paso dejó en $CHECK_REPORT. Lo que no aparece ahí no se
+    # ejecutó (GitHub corta en el primer step rojo).
+    if [ "${pedidos[0]:-}" = "resumen" ]; then
+      reporte="${CHECK_REPORT:?CHECK_REPORT no está definida}"
+      salida="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
+      {
+        echo "### just check — resumen"
+        echo ""
+        echo "| Paso | Resultado | Duración | Pruebas |"
+        echo "|---|---|---|---|"
+        estado="VERDE"; pruebas_ok=0; pruebas_total=0
+        for p in "${pasos[@]}"; do
+          id=$(campo "$p" 1); nombre=$(campo "$p" 2)
+          linea=$(grep "^$id|" "$reporte" 2>/dev/null | tail -1)
+          if [ -z "$linea" ]; then
+            res="— no ejecutado"; dt="—"
+          else
+            res=$(campo "$linea" 2); dt="$(campo "$linea" 3) s"
+            [ "$res" = "OK" ] && res="✅ OK" || { res="❌ FALLA"; estado="ROJO"; }
+          fi
+          tests="—"
+          if [ -f "$reporte.$id.json" ]; then
+            read -r ok tot < <(node -e "const r=require(process.argv[1]);console.log(r.numPassedTests,r.numTotalTests)" "$reporte.$id.json")
+            tests="$ok / $tot"
+            pruebas_ok=$((pruebas_ok + ok)); pruebas_total=$((pruebas_total + tot))
+          fi
+          echo "| $nombre (\`$id\`) | $res | $dt | $tests |"
+        done
+        echo ""
+        echo "**check: $estado** — pruebas: $pruebas_ok de $pruebas_total pasaron."
+      } >> "$salida"
+      exit 0
+    fi
+
+    # Pasos elegidos: sin ids, los del grupo `check`; con ids, esos y en ese orden.
+    seleccion=()
+    if [ "${#pedidos[@]}" -eq 0 ]; then
+      for p in "${pasos[@]}"; do [ "$(campo "$p" 5)" = check ] && seleccion+=("$p"); done
+    else
+      for id in "${pedidos[@]}"; do
+        p=$(printf '%s\n' "${pasos[@]}" | grep "^$id|")
+        [ -n "$p" ] || { echo "check: id desconocido '$id'. Ids: $(printf '%s\n' "${pasos[@]}" | cut -d'|' -f1 | tr '\n' ' ')resumen"; exit 2; }
+        seleccion+=("$p")
+      done
+    fi
+    ids_elegidos=" $(printf '%s\n' "${seleccion[@]}" | cut -d'|' -f1 | tr '\n' ' ')"
+
     falta=0
     precondicion() { echo "PRECONDICIÓN  $1 -> corre '$2'"; falta=1; }
     for d in apps/node_modules apps/api/rest/node_modules packages/db/node_modules; do
       [ -d "$d" ] || precondicion "falta $d" "just install / just db-build"
     done
-    if ! docker compose exec -T postgres pg_isready -U safari -d safari_scraper >/dev/null 2>&1; then
-      precondicion "Postgres no responde en :5433" "just db-up"
+    # Solo dos pasos usan la base, y solo uno el venv del scraper.
+    if [[ "$ids_elegidos" == *" db-test "* || "$ids_elegidos" == *" scraper-test "* ]]; then
+      if ! docker compose exec -T postgres pg_isready -U safari -d safari_scraper >/dev/null 2>&1; then
+        precondicion "Postgres no responde en :5433" "just db-up"
+      fi
     fi
-    [ -x "{{VENV_BIN}}/python" ] || [ -x "{{VENV_BIN}}/python.exe" ] || precondicion "falta el venv del scraper" "just scraper-install"
+    if [[ "$ids_elegidos" == *" scraper-test "* ]]; then
+      [ -x "{{VENV_BIN}}/python" ] || [ -x "{{VENV_BIN}}/python.exe" ] || precondicion "falta el venv del scraper" "just scraper-install"
+    fi
     [ "$falta" -eq 0 ] || { echo "check: NO se ejecutó ningún paso"; exit 2; }
 
     # `cd "$(pwd)/..."` deja la unidad en mayúscula vía MSYS: con c:\ vitest
     # carga dos veces el módulo y da 0 tests (ver la receta db-check).
     raiz="$(pwd)"
-    pasos=(
-      "packages/db build|packages/db|npm run build"
-      "packages/db lint|packages/db|npm run lint"
-      "packages/db typecheck|packages/db|npm run typecheck"
-      "api/rest typecheck|apps/api/rest|npx tsc --noEmit -p tsconfig.json"
-      "api/rest lint|apps/api/rest|npx eslint \"{src,apps,libs,test}/**/*.ts\""
-      "admin/rest lint|apps/admin/rest|yarn lint"
-      "shop lint|apps/shop|yarn lint"
-      "api/rest test|apps/api/rest|npx vitest run"
-      "packages/db test|packages/db|npm test"
-      "scraper db-test|.|just db-test"
-    )
-    total=${#pasos[@]}
+    total=${#seleccion[@]}
     resumen=()
     inicio=$(date +%s)
-    for i in "${!pasos[@]}"; do
-      IFS='|' read -r nombre dir cmd <<< "${pasos[$i]}"
+    for i in "${!seleccion[@]}"; do
+      p="${seleccion[$i]}"
+      id=$(campo "$p" 1); nombre=$(campo "$p" 2); dir=$(campo "$p" 3); cmd=$(campo "$p" 4)
       n=$((i + 1))
       echo ""
       echo "━━━ [$n/$total] $nombre ($cmd)"
+      # En CI, vitest deja sus conteos en JSON para `just check resumen`.
+      if [ -n "${CHECK_REPORT:-}" ]; then export VITEST_JSON_OUT="$CHECK_REPORT.$id.json"; fi
       t0=$(date +%s)
       (cd "$raiz/$dir" && eval "$cmd")
       rc=$?
       dt=$(( $(date +%s) - t0 ))
+      if [ -n "${CHECK_REPORT:-}" ]; then
+        [ "$rc" -eq 0 ] && r=OK || r=FALLA
+        echo "$id|$r|$dt" >> "$CHECK_REPORT"
+      fi
       if [ "$rc" -ne 0 ]; then
         resumen+=("FALLA [$n/$total] $nombre  ${dt}s  (exit $rc)")
         for j in $(seq $((n + 1)) "$total"); do
-          resumen+=("  --   [$j/$total] $(cut -d'|' -f1 <<< "${pasos[$((j - 1))]}")  no ejecutado")
+          resumen+=("  --   [$j/$total] $(campo "${seleccion[$((j - 1))]}" 2)  no ejecutado")
         done
         echo ""; echo "━━━ Resumen de just check"; printf '%s\n' "${resumen[@]}"
         echo "check: ROJO en '$nombre'"
