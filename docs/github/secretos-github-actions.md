@@ -242,6 +242,9 @@ La prueba definitiva es la siguiente ejecución del workflow después de un
 push a `main`: el paso de login en Docker Hub debe terminar en verde y las
 imágenes deben aparecer en `https://hub.docker.com/repositories/<tu-usuario-de-docker-hub>`.
 
+Qué publica el CI, con qué etiquetas y qué pasa en un PR o en un fork: ver
+la sección «Imágenes en Docker Hub» de [`apps/README.md`](../../apps/README.md).
+
 ---
 
 ## Problemas frecuentes
