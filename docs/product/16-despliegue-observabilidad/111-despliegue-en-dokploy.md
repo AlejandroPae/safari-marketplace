@@ -256,10 +256,16 @@ Lo que requiere el VPS se valida **con el dueño**, que pega las salidas.
   secundario: la base y el proxy quedan versionados con la API, así que volver
   atrás también vuelve el esquema y la configuración (se reduce R-4: lo único
   que sale de HEAD es el propio `docker-compose.deploy.yml`).
-- **Red (resuelve R-3).** Se usa **Isolated Deployments**: Dokploy crea una
-  red propia para el Compose y conecta Traefik a ella, sin declarar
-  `dokploy-network`. Así los nombres genéricos (`postgres`, `api`) no chocan
-  con otras apps del VPS.
+- **Red (resuelve R-3).** No hace falta declarar `dokploy-network`. Al
+  desplegar, Dokploy conecta a esa red solo el servicio con dominio (`proxy`)
+  y le mantiene la red `default` del stack (`addDokployNetworkToService` en
+  `packages/server/src/utils/docker/domain.ts` de Dokploy, v0.31.4). El resto
+  queda en la red propia del Compose, así que los nombres genéricos
+  (`postgres`, `api`) no chocan con otras apps del VPS.
+  - Primero se eligió **Isolated Deployment**. Al configurar el panel
+    (2026-11-20), Dokploy lo mostró como *Deprecated*: desde la v0.30 lo
+    reemplaza asignar redes por servicio. Se cambió a dejarlo **apagado**
+    (decisión del dueño), sin usar la sección Networks.
 - **Plantilla de variables:** `deploy.variables.example`, en vez de
   `.env.deploy.example`. Un nombre con `.env` choca con el hook del proyecto
   que bloquea leer archivos `.env` (US-72), y el contenido no es un `.env`

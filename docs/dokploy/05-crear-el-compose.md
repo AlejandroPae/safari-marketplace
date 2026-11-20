@@ -15,11 +15,13 @@ cada despliegue y ejecuta ese archivo.
    **Compose**.
 
    > ![Captura — Menú «Create Service» con la opción Compose](img/05-create-service.png)
+   
 
 2. Completa el formulario:
    - **Name:** `safari`
    - **App Name:** déjalo como lo propone Dokploy. Es el nombre interno del
-     stack en el servidor (y de su red aislada).
+     stack en el servidor (y de su red). Dokploy le agrega un sufijo al
+     final, por ejemplo `marketplace-safari-t14qck`.
    - **Compose Type:** **Docker Compose** (no *Stack*).
 
    Pulsa **Create**.
@@ -37,6 +39,7 @@ cada despliegue y ejecuta ese archivo.
    Pulsa **Save**.
 
    > ![Captura — Proveedor Git con la URL del fork, la rama main y el Compose Path](img/05-proveedor-git.png)
+   
 
 > No uses el `docker-compose.yml` de la raíz: es el de desarrollo. Construye
 > las imágenes, publica puertos y trae valores de prueba.
@@ -47,13 +50,27 @@ cada despliegue y ejecuta ese archivo.
    Despliegas tú, eligiendo la versión (`IMAGE_TAG`).
 
    > ![Captura — Interruptor Auto Deploy apagado](img/05-auto-deploy.png)
+   
 
-5. **Isolated Deployments:** actívalo (pestaña **Advanced**). Con esta opción,
-   Dokploy crea una red propia para tu Compose y conecta Traefik a ella. Así
-   los nombres de los servicios (`postgres`, `api`…) no chocan con otras
-   aplicaciones del servidor, y no hay que declarar `dokploy-network`.
+5. **Isolated Deployment:** déjalo **apagado** (pestaña **Advanced**, sección
+   *Enable Isolated Deployment*). Dokploy lo marca como **Deprecated** desde
+   la versión 0.30 y ya no hace falta:
 
-   > ![Captura — Isolated Deployments activado](img/05-isolated-deployments.png)
+   > ![Captura — Pestaña Advanced del Compose](img/05-isolated-deployments-1.png)
+
+   > ![Captura — Enable Isolated Deployment apagado, con el aviso Deprecated](img/05-isolated-deployment-apagado.png)
+
+   - Docker Compose crea una **red propia del stack**
+     (`<App Name>_default`). Ahí se encuentran `postgres`, `api`, `shop`,
+     `admin` y el resto, y sus nombres no chocan con los de otras
+     aplicaciones del servidor.
+   - Al desplegar, Dokploy conecta a la red compartida `dokploy-network`
+     **solo el servicio que tiene dominio** (`proxy`, [paso 07](07-dominios.md)),
+     sin sacarlo de la red del stack. Así Traefik llega al proxy y el proxy
+     sigue llegando a la tienda, al admin y a la API.
+
+   No hace falta tocar la sección **Networks** que sugiere el aviso, ni
+   declarar `dokploy-network` en el compose.
 
 Todavía **no despliegues**: sin las variables del paso siguiente, el Compose
 falla al arrancar con un mensaje que nombra la variable que falta.

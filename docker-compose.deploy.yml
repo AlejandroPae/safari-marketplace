@@ -2,9 +2,12 @@
 #
 # Es independiente del docker-compose.yml de desarrollo:
 #   - usa las imágenes que el CI publica en Docker Hub (US-110), sin `build:`;
-#   - no publica puertos en el host: todo entra por Traefik, que Dokploy
-#     conecta a la red del compose (Isolated Deployments) y enruta según los
-#     dominios del panel: tienda -> proxy:3003, admin -> proxy:3002;
+#   - no publica puertos en el host: todo entra por Traefik, que enruta según
+#     los dominios del panel (tienda -> proxy:3003, admin -> proxy:3002). Al
+#     desplegar, Dokploy conecta solo `proxy` (el servicio con dominio) a
+#     dokploy-network, sin sacarlo de la red del stack; el resto queda en la
+#     red propia del compose. Isolated Deployment va apagado: está deprecado
+#     desde Dokploy 0.30 y no hace falta;
 #   - no usa container_name (Dokploy lo desaconseja: rompe logs y métricas);
 #   - no monta nada del repo: el esquema, el seed y los Caddyfiles van dentro
 #     de las imágenes safari-db-init y safari-proxy, porque Dokploy hace un
