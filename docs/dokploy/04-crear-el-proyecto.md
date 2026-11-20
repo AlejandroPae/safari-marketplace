@@ -9,8 +9,7 @@ esta guía se llama **`marketplace`** y va a contener un solo servicio: el
 Compose del paso siguiente, con todo el stack (Postgres, API, tienda, admin y
 los dos Caddy).
 
-Si en tu Dokploy ya hay otros proyectos (de otra materia o de otro grupo),
-**no pongas Safari dentro de ellos**. Un proyecto propio mantiene separados sus
+Un proyecto propio mantiene separados sus
 servicios, sus variables y sus despliegues, y se puede borrar entero sin tocar
 lo demás.
 
@@ -18,23 +17,25 @@ lo demás.
 
 1. En el menú lateral, entra a **Projects**.
 
-   > ![Captura — Menú lateral de Dokploy con «Projects»](img/04-projects.png)
+   > ![Captura — Menú lateral de Dokploy con «Projects»](img/04-projects.png)   
 
 2. Pulsa **Create Project** (o **+ Project**).
 3. Completa:
    - **Name:** `marketplace`
-   - **Description** (opcional): por ejemplo, «Safari: tienda, admin y API».
+   - **Description** (opcional): por ejemplo, «ECommerce: tienda, admin y API».
 
    > ![Captura — Formulario «Create Project» con el nombre marketplace](img/04-create-project.png)
+   
 
 4. Pulsa **Create**. El proyecto aparece en la lista, todavía sin servicios.
 
    > ![Captura — Lista de proyectos con marketplace creado](img/04-proyecto-creado.png)
+   
 
 5. Entra al proyecto `marketplace`. Dokploy crea un entorno por defecto
    (**production**): ahí va el Compose del paso siguiente.
 
-   > ![Captura — Proyecto marketplace abierto, sin servicios](img/04-proyecto-vacio.png)
+   > ![Captura — Proyecto marketplace abierto, sin servicios](img/04-proyecto-vacio.png)   
 
 ## Un nombre, varios lugares
 
