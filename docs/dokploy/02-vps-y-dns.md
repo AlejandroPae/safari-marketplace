@@ -21,6 +21,10 @@ Anota la **IP pública** del VPS.
 
 ## Configurar el DNS
 
+> ¿Todavía no tienes dominio, o lo vas a manejar en Cloudflare? La guía
+> [`docs/cloudflare/`](../cloudflare/README.md) cubre, con capturas, cómo crear
+> la cuenta, comprar el dominio y crear estos registros.
+
 En el panel de tu dominio, crea tres registros **A** que apunten a la IP del
 VPS:
 
