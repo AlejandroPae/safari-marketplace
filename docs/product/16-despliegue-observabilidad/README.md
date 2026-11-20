@@ -33,10 +33,14 @@
 | [US-106](./106-imagen-api-liviana.md) ✅ | Imagen liviana de la API: una sola copia de Prisma, sin el CLI | Sí | US-105 | ~60 |
 | [US-107](./107-api-escalable-detras-del-proxy.md) ✅ | API escalable detrás de un balanceador, con balanceo real | Sí | US-105, US-106 | ~150 |
 | [US-108](./108-sitemap-dinamico-en-ejecucion.md) ✅ | Sitemap y robots.txt generados en ejecución, con el dominio real | Sí | US-104, US-107 | ~150 |
-| [US-18](./18-terraform-minimo.md) | Terraform mínimo para el stack contenedorizado | Sí | US-15, US-17 | ~300 |
+| [US-110](./110-imagenes-en-docker-hub.md) | Construir y publicar las imágenes en Docker Hub desde el CI | Sí | US-109 | ~120 |
+| [US-111](./111-despliegue-en-dokploy.md) | Desplegar Safari en un VPS con Dokploy, con subdominios | Sí | US-110 | ~150 + guía |
+| [US-112](./112-despliegue-continuo-desde-ci.md) | Despliegue continuo a Dokploy desde el CI, con vuelta atrás | Sí | US-110, US-111 | ~100 |
+| [US-18](./18-terraform-minimo.md) | Terraform mínimo para el stack contenedorizado (en pausa, ver Actualización 2026-11-20) | Sí | US-15, US-17 | ~300 |
 
 **Orden sugerido:** US-17 (barata, desbloquea healthchecks honestos) →
-US-105 → US-106 → US-107 → US-108 → US-18 (requiere el stack dockerizado del Épico 13).
+US-105 → US-106 → US-107 → US-108 → US-109 (Épico 9) → US-110 → US-111 →
+US-112. US-18, en pausa.
 
 ## Refinamiento — Decisiones tomadas
 
@@ -108,3 +112,28 @@ US-105 → US-106 → US-107 → US-108 → US-18 (requiere el stack dockerizado
   despliegue la misma imagen con su dominio, el sitemap sale de
   `NEXTAUTH_URL` en ejecución. Como US-105 a US-107, no depende de la
   decisión abierta del proveedor (decisión 3).
+
+## Actualización 2026-11-20: US-110, US-111 y US-112
+
+> Sección añadida sin reescribir lo anterior.
+
+- **De dónde salen:** `_backlog/110-imagenes-en-docker-hub.md` y
+  `_backlog/111-despliegue-en-dokploy.md`, tras una revisión del sub-agente
+  fable 5. El dueño partió el segundo en US-111 (compose de despliegue, guía
+  y primer despliegue manual) y US-112 (job `deploy` del CI y vuelta atrás).
+  Las tres quedan en «Listo para ejecución», en serie, después de US-109
+  (Épico 9).
+- **La decisión 3 (proveedor) queda respondida de hecho:** un VPS con
+  Dokploy, con las imágenes en Docker Hub. **US-18 (Terraform) queda en
+  pausa**, sin bloquear nada; si se retoma, se reorienta a lo que haga falta
+  aprovisionar.
+- **Topología de producción:** la misma que en local (`proxy` + `api-lb`,
+  US-107) detrás de Traefik. US-111 reescribe «Dominios en Dokploy» de
+  `apps/README.md`, que describía otra.
+- **Riesgos que la revisión sacó a la luz y quedan en las US:**
+  - el seed reaplicado en cada despliegue (US-111 D-4: solo sobre la base
+    vacía);
+  - las contraseñas demo con el admin público (US-111 D-8);
+  - la falta de migraciones de esquema;
+  - un despliegue que parece verde sin haber cambiado de versión (US-112 D-3:
+    `revision` en `/api/health`).

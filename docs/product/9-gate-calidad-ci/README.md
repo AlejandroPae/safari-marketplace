@@ -36,6 +36,7 @@
 | [US-12](./12-acotar-variante-graphql.md) ✅ | Decidir y acotar la variante GraphQL | Sí | ninguna | ~100 |
 | [US-73](./73-auditoria-secretos-dependencias.md) | `just audit`: Gitleaks + OSV-Scanner en Docker, en modo reporte y fuera de `check` | Sí | ninguna dura (toca el justfile: no en paralelo con US-10/US-12) | ~150 |
 | [US-74](./74-fronteras-arquitectura-lint.md) | Fronteras de arquitectura como `no-restricted-imports` en los `.eslintrc` existentes | Sí | US-10 | ~80 |
+| [US-109](./109-ci-pasos-segregados-y-builds.md) | CI con pasos segregados, builds y resumen visible | Sí | US-11 ✅ | ~150-180 |
 
 **Orden sugerido:** US-10 → US-11; US-12 en cualquier momento (no comparte
 archivos con US-10/11 salvo el justfile — no paralelizar con US-10).
@@ -178,3 +179,19 @@ tiene que decidirlo y anotarlo aquí.
 - **US-74** quedó desactualizada: habla de `.eslintrc.json` y eslint 8.53,
   pero shop, admin y API ya usan flat config (`eslint.config.mjs`) y eslint
   9.39.5. Se re-refina antes de ejecutarla.
+
+## Actualización 2026-11-20: US-109
+
+> Sección añadida sin reescribir lo anterior.
+
+- **US-109** (CI con pasos segregados, builds y resumen visible) sale de
+  `_backlog/109-ci-pasos-segregados-y-builds.md` tras una revisión del
+  sub-agente fable 5. Queda en «Listo para ejecución». Va antes de US-110,
+  US-111 y US-112 (Épico 16), que tocan el mismo `ci.yml`.
+- **Hallazgo:** los builds nativos de la tienda y el admin no comprueban
+  tipos. Las plantillas `.env` traen `APPLICATION_MODE=production`, que
+  activa `typescript.ignoreBuildErrors`. El comentario de `check` que dice
+  lo contrario se corrige en US-109.
+- **Decisión del dueño:** todo el CI/CD vive en `ci.yml`, en un solo job
+  `check` del que dependen las imágenes y el despliegue. Esto revierte la
+  parte de la D-1 de US-11 que mandaba las imágenes a un `images.yml` aparte.
