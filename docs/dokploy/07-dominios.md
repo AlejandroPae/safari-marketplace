@@ -30,18 +30,27 @@ API.
 
    > ![Captura — Pestaña Domains del Compose, sin dominios](img/07-domains.png)
 
-2. Completa el formulario:
+2. Si el formulario muestra **«Services not found»** y la lista
+   **Service Name** está vacía, pulsa el botón de **refrescar** (↻) que está
+   al lado. Dokploy descarga el `docker-compose.deploy.yml` del fork y llena
+   la lista con sus servicios.
+
+   > ![Captura — Botón de refrescar junto a Service Name](img/07-refrescar-servicios.png)
+
+3. Completa el formulario:
 
    | Campo | Valor |
    |---|---|
    | Service Name | `proxy` |
    | Host | `tienda.<tu-dominio>` |
    | Path | `/` |
-   | Internal Path | vacío (o `/`) |
+   | Internal Path | `/` |
    | Strip Path | apagado |
    | Container Port | `3003` |
+   | Custom Entrypoint | apagado |
    | HTTPS | activado |
    | Certificate Provider | Let's Encrypt |
+   | Middlewares | vacío |
 
    Pulsa **Create**.
 
@@ -49,7 +58,7 @@ API.
 
 ## Crear el dominio del admin
 
-3. Pulsa otra vez **Add Domain** y repite el formulario con dos cambios:
+4. Pulsa otra vez **Add Domain** y repite el formulario con dos cambios:
 
    | Campo | Valor |
    |---|---|
@@ -60,7 +69,7 @@ API.
 
    > ![Captura — Formulario del dominio del admin: proxy, puerto 3002](img/07-dominio-admin.png)
 
-4. La pestaña **Domains** muestra los dos dominios.
+5. La pestaña **Domains** muestra los dos dominios.
 
    > ![Captura — Pestaña Domains con los dominios tienda y admin](img/07-dominios-creados.png)
 
