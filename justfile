@@ -8,7 +8,7 @@
 #        just verify       -> comprueba que los tres responden
 #        just check        -> gate local: lint + typecheck + tests (corta al primer rojo)
 #
-# Requiere: Node 20+, yarn 1 (`npm i -g yarn`), Python 3.11+ (solo scraper).
+# Requiere: Node 22.22.3+ (.nvmrc; lo pide el CLI de Nest 12), yarn 1 (`npm i -g yarn`), Python 3.11+ (solo scraper).
 # Detalle de cada paso y problemas conocidos: apps/README.md
 
 set shell := ["bash", "-uc"]
@@ -139,6 +139,25 @@ install-apps:
 [working-directory: 'apps/api/rest']
 install-api:
     yarn install --network-timeout 600000
+
+# Instalación del CI (US-11): todo lo que pide `just check`, sin reescribir
+# ningún lockfile. Si un package.json no coincide con su lockfile, falla en
+# vez de actualizarlo. En local siguen siendo `just install`, `just db-build`
+# y `just scraper-install`.
+#   - packages/db con --ignore-scripts: su `prepare` construye, y el paso 1 de
+#     `just check` ya lo hace (~107 s menos).
+#   - El scraper sin el navegador de Playwright: el `db-test` de `check` solo
+#     usa psycopg.
+[group('setup')]
+[doc('Instalación del CI (US-11): lockfiles congelados y scraper sin Playwright')]
+install-ci:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    (cd apps && yarn install --frozen-lockfile --network-timeout 600000)
+    (cd apps/api/rest && yarn install --frozen-lockfile --network-timeout 600000)
+    (cd packages/db && npm ci --ignore-scripts)
+    python -m venv "{{SCRAPER_DIR}}/.venv"
+    "{{VENV_BIN}}/python" -m pip install -r "{{SCRAPER_DIR}}/requirements.txt"
 
 
 # ──────────────────────── desarrollo ─────────────────────────
@@ -302,6 +321,8 @@ doctor:
 #
 # Pide: `just install`, `just db-up` y `just scraper-install`. Si falta algo,
 # lo dice antes de correr nada. No necesita API, tienda ni admin levantados.
+# En CI (US-11), .github/workflows/ci.yml la corre tras `just install-ci` y
+# `just db-up`.
 #
 # Pasos y duración medida (2026-11-18, secuencial). En total, 568s en frío y
 # 340s con las cachés calientes. La columna es la primera medición:

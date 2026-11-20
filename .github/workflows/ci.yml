@@ -1,0 +1,78 @@
+# CI (US-11): el mismo gate que en local, `just check` (US-10), en cada Pull
+# Request y en cada push a main. El workflow no reimplementa ningún paso: solo
+# prepara las herramientas y llama recetas del justfile.
+#
+# Postgres va por `just db-up` (docker compose), no por un service container:
+# la precondición de `check` usa `docker compose exec postgres`, y así la imagen
+# fijada y la migración (pg_trgm + schema + seed + VACUUM) son las de local.
+#
+# Las actions van fijadas por SHA completo, con el tag en el comentario: un tag
+# es mutable (incidente tj-actions/changed-files).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Credencial local del Postgres de docker-compose.yml (packages/db/.env.example),
+      # no un secreto. Los tests de packages/db la leen de packages/db/.env, que en
+      # el runner no existe; `just db-test` también la toma de aquí.
+      DATABASE_URL: postgresql://safari:safari@localhost:5433/safari_scraper
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Caché de las descargas de yarn v1 (los dos lockfiles); no de node_modules.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: |
+            apps/yarn.lock
+            apps/api/rest/yarn.lock
+
+      # Segunda llamada solo para la caché de npm de packages/db: setup-node
+      # admite un gestor por llamada. La versión de Node es la misma.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: packages/db/package-lock.json
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: services/scraper-worker/requirements.txt
+
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: 1.54.0
+
+      - name: Versiones
+        run: node --version && yarn --version && npm --version && python --version && just --version && docker compose version
+
+      # Lockfiles congelados: falla si un package.json no coincide con su lockfile.
+      - run: just install-ci
+
+      # Red por si --frozen-lockfile de yarn v1 con workspaces deja pasar algo:
+      # ninguna instalación puede cambiar un archivo versionado.
+      - name: Árbol limpio tras instalar
+        run: git status --porcelain && git diff --exit-code
+
+      - run: just db-up
+
+      - run: just check
