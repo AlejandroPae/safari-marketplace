@@ -46,31 +46,26 @@ limitado.
 1. Entra a https://hub.docker.com e inicia sesión.
 2. Haz clic en tu avatar (arriba a la derecha) y elige **Account settings**.
 
-   > **[Captura 1 — Menú del avatar con «Account settings»]**
-   > Archivo sugerido: `img/01-dockerhub-account-settings.png`
+   > ![Captura 1 — Menú del avatar con «Account settings»](img/01-dockerhub-account-settings.png)
 
 3. En el menú lateral, entra a **Personal access tokens** y pulsa
    **Generate new token**.
 
-   > **[Captura 2 — Página «Personal access tokens» con el botón «Generate new token»]**
-   > Archivo sugerido: `img/02-dockerhub-personal-access-tokens.png`
+   > ![Captura 2 — Página «Personal access tokens» con el botón «Generate new token»](img/02-dockerhub-personal-access-tokens.png)
 
 4. Completa el formulario:
    - **Access token description:** algo que te diga para qué es, p. ej.
-     `github-actions-safari`.
-   - **Expiration date:** la que pida tu curso (por ejemplo, hasta el fin
-     del semestre).
-   - **Access permissions:** **Read & Write**. Hace falta escritura para
-     publicar imágenes.
+     `github-actions-marketplace`.
+   - **Expiration date:** 30 days.
+   - **Access permissions:** **Repo Read & Write**. Hace falta escritura
+     para publicar imágenes.
 
-   > **[Captura 3 — Formulario del token con «Read & Write» seleccionado]**
-   > Archivo sugerido: `img/03-dockerhub-token-form.png`
+   > ![Captura 3 — Formulario del token con «Repo Read & Write» seleccionado](img/03-dockerhub-token-form.png)
 
 5. Pulsa **Generate** y **copia el token**. Docker Hub solo lo muestra una
    vez: si cierras la ventana sin copiarlo, tendrás que generar otro.
 
-   > **[Captura 4 — Token generado, con el botón de copiar]**
-   > Archivo sugerido: `img/04-dockerhub-token-generado.png`
+   > ![Captura 4 — Token generado, con el botón de copiar](img/04-dockerhub-token-generado.png)
 
 Guárdalo un momento en un lugar seguro (tu gestor de contraseñas, por
 ejemplo) mientras haces los pasos siguientes.
@@ -87,14 +82,12 @@ ejemplo) mientras haces los pasos siguientes.
    repositorio). Si no la ves, no tienes permisos de administrador en ese
    repositorio: pídeselos a quien lo creó.
 
-   > **[Captura 5 — Barra del repositorio con la pestaña «Settings» resaltada]**
-   > Archivo sugerido: `img/05-github-settings-tab.png`
+   > ![Captura 5 — Barra del repositorio con la pestaña «Settings» resaltada](img/05-github-settings-tab.png)
 
 3. En el menú lateral izquierdo, abre **Secrets and variables** y elige
    **Actions**.
 
-   > **[Captura 6 — Menú lateral con «Secrets and variables → Actions»]**
-   > Archivo sugerido: `img/06-github-secrets-and-variables.png`
+   > ![Captura 6 — Menú lateral con «Secrets and variables → Actions»](img/06-github-secrets-and-variables.png)
 
    Atajo: también puedes ir directo a
    `https://github.com/<tu-usuario>/<tu-repo>/settings/secrets/actions`.
@@ -103,42 +96,36 @@ ejemplo) mientras haces los pasos siguientes.
 
 1. En la pestaña **Secrets**, pulsa **New repository secret**.
 
-   > **[Captura 7 — Pestaña «Secrets» con el botón «New repository secret»]**
-   > Archivo sugerido: `img/07-github-new-repository-secret.png`
+   > ![Captura 7 — Pestaña «Secrets» con el botón «New repository secret»](img/07-github-new-repository-secret.png)
 
 2. Completa:
    - **Name:** `DOCKERHUB_TOKEN` (exactamente así, en mayúsculas).
    - **Secret:** pega el token de Docker Hub.
 
-   > **[Captura 8 — Formulario «New secret» con el nombre DOCKERHUB_TOKEN]**
-   > Archivo sugerido: `img/08-github-secret-form.png`
+   > ![Captura 8 — Formulario «New secret» con el nombre DOCKERHUB_TOKEN](img/08-github-secret-form.png)
 
 3. Pulsa **Add secret**. El secreto aparece en la lista con la fecha de
    actualización; su valor ya no se puede ver.
 
-   > **[Captura 9 — Lista de secretos con DOCKERHUB_TOKEN creado]**
-   > Archivo sugerido: `img/09-github-secret-creado.png`
+   > ![Captura 9 — Lista de secretos con DOCKERHUB_TOKEN creado](img/09-github-secret-creado.png)
 
 ### A.3 Crear la variable `DOCKERHUB_USERNAME`
 
 1. En la misma página, cambia a la pestaña **Variables** y pulsa
    **New repository variable**.
 
-   > **[Captura 10 — Pestaña «Variables» con el botón «New repository variable»]**
-   > Archivo sugerido: `img/10-github-new-repository-variable.png`
+   > ![Captura 10 — Pestaña «Variables» con el botón «New repository variable»](img/10-github-new-repository-variable.png)
 
 2. Completa:
    - **Name:** `DOCKERHUB_USERNAME`
    - **Value:** tu usuario de Docker Hub, tal como aparece en tu perfil
      (sin `@` ni la URL).
 
-   > **[Captura 11 — Formulario «New variable» con DOCKERHUB_USERNAME]**
-   > Archivo sugerido: `img/11-github-variable-form.png`
+   > ![Captura 11 — Formulario «New variable» con DOCKERHUB_USERNAME](img/11-github-variable-form.png)
 
 3. Pulsa **Add variable**.
 
-   > **[Captura 12 — Lista de variables con DOCKERHUB_USERNAME creada]**
-   > Archivo sugerido: `img/12-github-variable-creada.png`
+   > ![Captura 12 — Lista de variables con DOCKERHUB_USERNAME creada](img/12-github-variable-creada.png)
 
 Listo. Sigue con [Comprobar que quedó bien](#comprobar-que-quedó-bien).
 
@@ -264,7 +251,7 @@ imágenes deben aparecer en `https://hub.docker.com/repositories/<tu-usuario-de-
 | No veo la pestaña **Settings** | No eres administrador del repositorio | Pide el rol *Admin* o que el dueño cree el secreto |
 | El CI dice que falta `DOCKERHUB_TOKEN` o `DOCKERHUB_USERNAME` | El nombre está mal escrito, o lo creaste en otro repositorio | Revisa mayúsculas y guiones bajos, y el repositorio en `gh secret list` |
 | `unauthorized: incorrect username or password` en el login | Token mal pegado, vencido o revocado | Genera un token nuevo y reemplaza el secreto (mismo nombre) |
-| `denied: requested access to the resource is denied` al publicar | El token es de solo lectura, o el usuario no coincide con el de la imagen | Crea el token con **Read & Write** y revisa `DOCKERHUB_USERNAME` |
+| `denied: requested access to the resource is denied` al publicar | El token es de solo lectura, o el usuario no coincide con el de la imagen | Crea el token con **Repo Read & Write** y revisa `DOCKERHUB_USERNAME` |
 | En un *fork* el CI no publica | GitHub no comparte los secretos con los forks | Crea los secretos en **tu** repositorio (el fork) |
 | `gh: command not found` | `gh` no está instalado o la terminal no se reinició | Repite B.1 y abre una terminal nueva |
 
