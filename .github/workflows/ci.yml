@@ -13,7 +13,9 @@
 #
 # Las actions van fijadas por SHA completo, con el tag en el comentario: un tag
 # es mutable (incidente tj-actions/changed-files).
-name: CI
+name: CI/CD
+# Nombre de cada corrida en la lista de Actions: el PR con su título, o el commit.
+run-name: "${{ github.event_name == 'pull_request' && format('PR #{0} · {1}', github.event.pull_request.number, github.event.pull_request.title) || github.event.head_commit.message }}"
 
 on:
   pull_request:
@@ -35,6 +37,7 @@ concurrency:
 
 jobs:
   check:
+    name: Calidad · lint, tipos, pruebas y builds
     # Fija, no `ubuntu-latest`: esa etiqueta cambia de imagen sin aviso (US-109).
     runs-on: ubuntu-26.04
     timeout-minutes: 30
@@ -138,6 +141,8 @@ jobs:
   # Hub solo desde main (push, o workflow_dispatch sobre main), con la etiqueta
   # sha-<7 primeros del commit>. Sin `latest`: el despliegue apunta a un SHA.
   images:
+    # Dice qué hace en cada corrida: en un PR solo construye; en main publica.
+    name: ${{ github.event_name == 'pull_request' && 'Imágenes Docker · solo build' || 'Imágenes Docker · build y publicación' }}
     needs: check
     runs-on: ubuntu-26.04
     timeout-minutes: 40
