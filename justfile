@@ -381,7 +381,7 @@ check *ids:
     # ejecutó (GitHub corta en el primer step rojo).
     if [ "${pedidos[0]:-}" = "resumen" ]; then
       reporte="${CHECK_REPORT:?CHECK_REPORT no está definida}"
-      salida="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
+      # Va al resumen del job y también al log del step, que sí se puede leer por API.
       {
         echo "### just check — resumen"
         echo ""
@@ -407,7 +407,7 @@ check *ids:
         done
         echo ""
         echo "**check: $estado** — pruebas: $pruebas_ok de $pruebas_total pasaron."
-      } >> "$salida"
+      } | if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then tee -a "$GITHUB_STEP_SUMMARY"; else cat; fi
       exit 0
     fi
 
