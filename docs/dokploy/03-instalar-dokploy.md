@@ -4,6 +4,13 @@
 
 ---
 
+> **Video de apoyo:** [«Dokploy me ha hecho olvidar Vercel (y no pienso volver
+> atrás)»](https://www.youtube.com/watch?v=7XU74Di9UmE&t=270s), del canal Kuro.
+> El enlace empieza en el minuto 4:30, donde se ve la instalación en un VPS.
+> Sirve para ver el proceso en pantalla. La interfaz de Dokploy puede cambiar
+> entre versiones: si algo no coincide, sigue los pasos de esta guía y la
+> [documentación oficial](https://docs.dokploy.com/docs/core/installation).
+
 1. Conéctate al VPS por SSH como `root`, o con un usuario con `sudo`:
 
    ```bash
