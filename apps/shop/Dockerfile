@@ -64,7 +64,7 @@ ENV FRAMEWORK_PROVIDER=rest \
     NEXT_PUBLIC_GOOGLE_MAP_API_KEY=${NEXT_PUBLIC_GOOGLE_MAP_API_KEY} \
     NEXT_TELEMETRY_DISABLED=1
 
-# --- 2. Build: next build (standalone) + next-sitemap (postbuild)
+# --- 2. Build: next build (standalone)
 #
 # Sin APPLICATION_MODE=production: `next build` comprueba los tipos de la
 # tienda, que hoy pasan. Y no necesita la API (US-104). NEXT_OUTPUT activa

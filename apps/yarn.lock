@@ -1144,11 +1144,6 @@
     "@babel/helper-string-parser" "^7.29.11"
     "@babel/helper-validator-identifier" "^7.29.7"
 
-"@corex/deepmerge@^4.0.43":
-  version "4.0.43"
-  resolved "https://registry.yarnpkg.com/@corex/deepmerge/-/deepmerge-4.0.43.tgz#9bd42559ebb41cc5a7fb7cfeea5f231c20977dca"
-  integrity sha512-N8uEMrMPL0cu/bdboEWpQYb/0i2K5Qn8eCsxzOmxSggJbbQte7ljMRoXm917AbntqTGOzdTu+vP3KOOzoC70HQ==
-
 "@corvu/utils@~0.4.2":
   version "0.4.2"
   resolved "https://registry.yarnpkg.com/@corvu/utils/-/utils-0.4.2.tgz#ae867221297fd1e362efe41f081c42d7c746ff61"
@@ -2728,11 +2723,6 @@
   version "16.4.5"
   resolved "https://registry.yarnpkg.com/@next/env/-/env-16.4.5.tgz#15c73eab0f392c2755c15f34030f8d4e8ee35fbc"
   integrity sha512-JwSPwpdkZL5VMl2jA/q+JI8MZdweAL3xmw5/tb9y/TLtmS0YXZnmYDzSihwk8xTj1OL+WM53gTqaj96yuLp6Xw==
-
-"@next/env@^13.4.3":
-  version "13.5.11"
-  resolved "https://registry.yarnpkg.com/@next/env/-/env-13.5.11.tgz#6712d907e2682199aa1e8229b5ce028ee5a8001b"
-  integrity sha512-fbb2C7HChgM7CemdCY+y3N1n8pcTKdqtQLbC7/EQtPdLvlMUT9JX/dBYl8MMZAtYG4uVMyPFHXckb68q/NRwqg==
 
 "@next/eslint-plugin-next@14.2.35":
   version "14.2.35"
@@ -5990,7 +5980,7 @@ fast-glob@3.3.1:
     merge2 "^1.3.0"
     micromatch "^4.0.4"
 
-fast-glob@^3.1.1, fast-glob@^3.2.12, fast-glob@^3.2.9, fast-glob@^3.3.0:
+fast-glob@^3.1.1, fast-glob@^3.2.9, fast-glob@^3.3.0:
   version "3.3.3"
   resolved "https://registry.yarnpkg.com/fast-glob/-/fast-glob-3.3.3.tgz#d06d585ce8dba90a16b0505c543c3ccfb3aeb818"
   integrity sha512-7MptL8U0cqcFdzIzwOTHoilX9x5BrNqye7Z/LuC7kCMRio1EMSyqRK3BEAUD7sXRq4iT4AzTVuZdhgQ2TCvYLg==
@@ -7984,7 +7974,7 @@ minimist@1.2.5:
   resolved "https://registry.yarnpkg.com/minimist/-/minimist-1.2.5.tgz#67d66014b66a6a8aaa0c083c5fd58df4e4e97602"
   integrity sha512-FM9nNUYrRBAELZQT3xeZQ7fmMOBg6nWNmJKTcgsJeaLstP/UODVpGsr5OhXhhXg6f+qtJ8uiZ+PUxkDWcgIXLw==
 
-minimist@^1.2.0, minimist@^1.2.3, minimist@^1.2.6, minimist@^1.2.8:
+minimist@^1.2.0, minimist@^1.2.3, minimist@^1.2.6:
   version "1.2.8"
   resolved "https://registry.yarnpkg.com/minimist/-/minimist-1.2.8.tgz#c1a464e7693302e082a075cee0c057741ac4772c"
   integrity sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==
@@ -8120,16 +8110,6 @@ next-seo@6.6.0:
   version "6.6.0"
   resolved "https://registry.yarnpkg.com/next-seo/-/next-seo-6.6.0.tgz#10c6278cc3be51f9db1ede6780812e5664742974"
   integrity sha512-0VSted/W6XNtgAtH3D+BZrMLLudqfm0D5DYNJRXHcDgan/1ZF1tDFIsWrmvQlYngALyphPfZ3ZdOqlKpKdvG6w==
-
-next-sitemap@4.2.3:
-  version "4.2.3"
-  resolved "https://registry.yarnpkg.com/next-sitemap/-/next-sitemap-4.2.3.tgz#5db3f650351a51e84b9fd6b58c5af2f9257b5058"
-  integrity sha512-vjdCxeDuWDzldhCnyFCQipw5bfpl4HmZA7uoo3GAaYGjGgfL4Cxb1CiztPuWGmS+auYs7/8OekRS8C2cjdAsjQ==
-  dependencies:
-    "@corex/deepmerge" "^4.0.43"
-    "@next/env" "^13.4.3"
-    fast-glob "^3.2.12"
-    minimist "^1.2.8"
 
 next@16.4.5:
   version "16.4.5"
