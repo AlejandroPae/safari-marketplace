@@ -10,11 +10,15 @@
    confirma.
 
    > ![Captura — Botón Deploy en la pestaña General](img/08-deploy.png)
+   
 
 2. Entra a la pestaña **Deployments**. El despliegue aparece arriba de la
    lista; pulsa **View** para ver su log en vivo.
 
-   > ![Captura — Pestaña Deployments con el despliegue en curso](img/08-deployments.png)
+   > ![Captura — Pestaña Deployments](img/08-deployments-1.png)
+
+   > ![Captura — Pestaña Deployments con el despliegue en curso](img/08-deployments-2.png)
+
 
 3. El primer arranque tarda unos minutos: baja las cinco imágenes y crea la
    base. El orden es:
@@ -40,6 +44,7 @@
 
    > ![Captura — Pestaña Containers con los servicios running y db-init exited](img/08-containers.png)
 
+
 5. En la pestaña **Logs**, elige el contenedor `db-init`. En el primer
    despliegue aparece:
 
@@ -49,6 +54,7 @@
    ```
 
    > ![Captura — Log de db-init con «seed aplicado»](img/08-log-db-init.png)
+
 
    En los despliegues siguientes dice
    `la base ya tiene datos …, seed omitido`. Los datos iniciales se cargan
@@ -76,20 +82,24 @@ curl -s https://tienda.<tu-dominio>/robots.txt | grep -i sitemap
 
 > ![Captura — Salida de los curl en la terminal](img/08-curl.png)
 
+
 Después, en el navegador:
 
 - `https://tienda.<tu-dominio>` muestra productos;
 
   > ![Captura — La tienda con productos, en su dominio](img/08-tienda.png)
+  
 
 - `https://admin.<tu-dominio>` permite entrar con `admin@demo.com` y la
   contraseña demo, que cambias en [09 · Contraseñas demo](09-contrasenas-demo.md);
 
   > ![Captura — El login del admin, en su dominio](img/08-admin-login.png)
+  
 
 - el candado del navegador muestra un certificado válido de Let's Encrypt.
 
   > ![Captura — Detalle del certificado de Let's Encrypt en el navegador](img/08-certificado.png)
+  
 
 Si algo no responde, revisa
 [11 · Problemas frecuentes](11-limitaciones-y-problemas.md).
