@@ -36,11 +36,16 @@
 | [US-110](./110-imagenes-en-docker-hub.md) ✅ | Construir y publicar las imágenes en Docker Hub desde el CI | Sí | US-109 | ~120 |
 | [US-111](./111-despliegue-en-dokploy.md) | Desplegar Safari en un VPS con Dokploy, con subdominios | Sí | US-110 | ~150 + guía |
 | [US-112](./112-despliegue-continuo-desde-ci.md) | Despliegue continuo a Dokploy desde el CI, con vuelta atrás | Sí | US-110, US-111 | ~100 |
+| [US-113](./113-ci-publica-en-forks.md) | El CI publica las imágenes en un fork configurado | Sí | US-110 | ~70 |
+| [US-114](./114-correcciones-guias-despliegue.md) | Correcciones de las guías de despliegue y un solo juego de ejemplos | Sí | US-111 | ~150 |
+| [US-116](./116-punto-de-entrada-del-estudiante.md) | El punto de entrada del estudiante en `docs/` y la guía del fork | Sí | US-113, US-114 | ~200 |
 | [US-18](./18-terraform-minimo.md) | Terraform mínimo para el stack contenedorizado (en pausa, ver Actualización 2026-11-20) | Sí | US-15, US-17 | ~300 |
 
 **Orden sugerido:** US-17 (barata, desbloquea healthchecks honestos) →
 US-105 → US-106 → US-107 → US-108 → US-109 (Épico 9) → US-110 → US-111 →
-US-112. US-18, en pausa.
+US-113 → US-114 → US-116 → US-112. US-18, en pausa. US-113 puede ir antes
+del cierre de US-111 (no comparte archivos con su guía salvo
+`docs/dokploy/01`).
 
 ## Refinamiento — Decisiones tomadas
 
@@ -137,3 +142,25 @@ US-112. US-18, en pausa.
   - la falta de migraciones de esquema;
   - un despliegue que parece verde sin haber cambiado de versión (US-112 D-3:
     `revision` en `/api/health`).
+
+## Actualización 2026-11-21: US-113, US-114 y US-116
+
+> Sección añadida sin reescribir lo anterior.
+
+- **De dónde salen:** una revisión de `docs/` pensada en el recorrido del
+  estudiante (sub-agente fable 5, 2026-11-20). Los borradores
+  `_backlog/113-ci-publica-en-forks.md` y
+  `_backlog/114-recorrido-del-estudiante-docs.md` se refinaron con fable;
+  el dueño partió el segundo en US-114 (correcciones de las guías) y US-116
+  (punto de entrada y guía del fork).
+- **US-113 modifica una decisión de US-110 (D-6):** en un fork, el CI
+  publica si existe la variable `DOCKERHUB_USERNAME`; si no, construye sin
+  publicar y avisa. El repositorio original no cambia. Se prueba con un fork
+  en una segunda cuenta de GitHub del dueño.
+- **US-112 debe tener en cuenta** que en un fork sin configurar el job
+  `images` queda verde sin haber publicado.
+- **Orden:** US-113 → (cierre de US-111) → US-114 → US-116 → US-112. US-114
+  y US-116 comparten `docs/dokploy/` con US-111: ninguna en paralelo con
+  ella.
+- **Archivo de `docs/product/`:** va en US-115 (standalone), después de
+  cerrar US-111. Este épico queda en la raíz mientras tenga US abiertas.
