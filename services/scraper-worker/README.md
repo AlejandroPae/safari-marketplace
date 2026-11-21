@@ -1,11 +1,11 @@
 # 🛒 Multi-Store Tech Scraper - Colombia Edition
 
-![Python](https://img.shields.io/badge/Python-3.x-blue?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python&logoColor=white)
 ![Scrapy](https://img.shields.io/badge/Scrapy-2.8+-green?logo=scrapy)
 ![Playwright](https://img.shields.io/badge/Playwright-Automated-orange?logo=playwright)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?logo=postgresql&logoColor=white)
 
-Un ecosistema avanzado de web scraping diseñado para la extracción masiva y automatizada de productos tecnológicos de las principales tiendas en Colombia. Este proyecto es una solución robusta para el monitoreo de precios y análisis de mercado en tiempo real.
+Seis spiders que extraen productos tecnológicos de las principales tiendas de Colombia y los guardan en la **misma tabla `products` que muestra la tienda** de Safari. Cada corrida se lanza a mano (`just scrape <spider>`) y actualiza el precio de cada producto.
 
 ## 📋 Tabla de Contenidos
 
@@ -27,10 +27,10 @@ Este proyecto implementa un sistema multi-tienda capaz de navegar sitios web mod
 - 📱 Celulares y Tablets
 - 🎮 Componentes Gaming y Periféricos
 
-### Casos de Uso:
-- 📊 **Análisis competitivo**: Comparativa entre las 6 tiendas tecnológicas más grandes del país.
-- 📈 **Histórico de precios**: Rastreo de variaciones y detección de ofertas reales.
-- 💹 **Business Intelligence**: Recolección de datos para toma de decisiones comerciales.
+### Para qué sirve:
+- 📊 **Análisis competitivo**: comparar precios entre las 6 tiendas con una sola consulta SQL (ver «Sobre la base de datos»).
+- 🛍️ **Catálogo real para la tienda**: los productos que trae el scraper aparecen en Safari junto a los del seed.
+- 📈 **Base para extender**: el histórico de precios o el comparador entre tiendas no existen todavía; quedan como ejercicios (ver «Ejercicios sugeridos»).
 
 ---
 
@@ -55,7 +55,7 @@ El sistema cuenta con 6 spiders especializados y optimizados:
 ## ⭐ Características Técnicas
 
 - **Renderizado Dinámico**: Manejo de JavaScript mediante `scrapy-playwright`.
-- **Evasión de Bloqueos**: Rotación de cabeceras y gestión de tiempos de espera inteligentes.
+- **Cortesía con los sitios**: un `User-Agent` de navegador fijo (`settings.py`) y una pausa entre pedidos (`DOWNLOAD_DELAY`), ajustada por spider; en Falabella, además, aleatoria.
 - **Pipelines de Limpieza**: Los precios llegan del spider como texto (`"1.299.900 COP"`,
   `"44%"`) y el pipeline los convierte a `NUMERIC` antes de guardarlos. Sin esa
   conversión la base rechaza la fila: es el contrato que un esquema relacional
