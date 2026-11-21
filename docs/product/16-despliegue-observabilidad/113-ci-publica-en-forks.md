@@ -5,7 +5,7 @@
 
 **Épico:** [Épico 16](./README.md)
 **Fecha:** 2026-11-21
-**Status:** Listo para ejecución (promovida desde `_backlog/`, refinada con fable)
+**Status:** Implementada (2026-11-21; commit `69bd3b1`, PR #6)
 **Depende de:** US-110
 **LOC est.:** ~40 en `ci.yml` + ~30 de documentación
 
@@ -147,3 +147,40 @@ Feature: Publicación de imágenes en forks
 - «Sync fork» genera un push a `main`: cada sincronización publica cinco
   imágenes en la cuenta del estudiante. Es esperado; se menciona en la guía.
 - Pedir confirmación antes de cualquier push: dispara publicaciones reales.
+
+## Resultado
+
+Implementada en `69bd3b1` (PR #6). Verificada con corridas reales en el
+repositorio original y en un fork de una segunda cuenta
+(`rcuellotecnologico/safari-marketplace`, Docker Hub de prueba
+`rokumentor`), todas sobre el commit `69bd3b1`.
+
+| CA | Corrida | Resultado |
+|---|---|---|
+| CA-6 — PR no publica | [rcuello #44870191901](https://github.com/rcuello/safari-marketplace/actions/runs/44870191901) (PR #6) | Job «Imágenes Docker · solo build», verde. Resumen: «Construidas sin publicar (evento `pull_request`, rama `6/merge`)» |
+| CA-1 — original sin cambios | [rcuello #44870766309](https://github.com/rcuello/safari-marketplace/actions/runs/44870766309) (push a `main`) | Job «build y publicación», verde. «Publicadas en Docker Hub, en la cuenta `ronaldcuello`», cinco imágenes `sha-69bd3b1` con digest |
+| CA-3 — fork sin configurar | [fork #44871614745](https://github.com/rcuellotecnologico/safari-marketplace/actions/runs/44871614745) (`workflow_dispatch`) | Job «solo build», verde. «Construidas sin publicar: este fork no tiene la variable `DOCKERHUB_USERNAME`» con la guía y cómo relanzar. Duración: calidad 6 min 50 s, imágenes 6 min 58 s (sin cache) |
+| CA-4 — variable sin secreto | [fork #44873798462](https://github.com/rcuellotecnologico/safari-marketplace/actions/runs/44873798462) | Job «build y publicación», rojo en «Credenciales de Docker Hub»: `##[error]Falta el secreto DOCKERHUB_TOKEN (Settings → Secrets and variables → Actions)` |
+| CA-5 y CA-2 — relanzar tras configurar | [fork #44874599432](https://github.com/rcuellotecnologico/safari-marketplace/actions/runs/44874599432) (`workflow_dispatch`) | Job «build y publicación», verde. «Publicadas en Docker Hub, en la cuenta `rokumentor`» |
+
+Imágenes del fork en Docker Hub (consultadas por la API pública):
+
+```text
+api      sha-69bd3b1 sha256:a7030e3f8c5e
+shop     sha-69bd3b1 sha256:fa7d6194ecc7
+admin    sha-69bd3b1 sha256:3b54d62ad7e8
+db-init  sha-69bd3b1 sha256:dd652f706d99
+proxy    sha-69bd3b1 sha256:ef9e38953903
+```
+
+- YAML validado con PyYAML; no hay `actionlint` en la máquina, así que las
+  expresiones nuevas (nombre del job con `vars` y `fork`) se validaron en la
+  corrida del PR.
+- La variable y el secreto llegan por `env:`; no hay `${{ }}` dentro de `run:`.
+- El agente no creó ni leyó secretos: el dueño configuró el fork.
+- **Para US-112:** en un fork sin configurar, `images` queda verde sin haber
+  publicado (CA-3); el job `deploy` no debe asumir que hay imagen.
+- **Durante la ejecución** se agregó la guía del fork
+  (`docs/github/01-fork-y-actions.md`) y la de secretos pasó a
+  `docs/github/02-secretos-github-actions.md`; los mensajes del CI apuntan a
+  la ruta nueva desde el commit siguiente a `69bd3b1`.

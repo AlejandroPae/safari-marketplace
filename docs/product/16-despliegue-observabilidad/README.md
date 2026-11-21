@@ -36,7 +36,7 @@
 | [US-110](./110-imagenes-en-docker-hub.md) ✅ | Construir y publicar las imágenes en Docker Hub desde el CI | Sí | US-109 | ~120 |
 | [US-111](./111-despliegue-en-dokploy.md) | Desplegar Safari en un VPS con Dokploy, con subdominios | Sí | US-110 | ~150 + guía |
 | [US-112](./112-despliegue-continuo-desde-ci.md) | Despliegue continuo a Dokploy desde el CI, con vuelta atrás | Sí | US-110, US-111 | ~100 |
-| [US-113](./113-ci-publica-en-forks.md) | El CI publica las imágenes en un fork configurado | Sí | US-110 | ~70 |
+| [US-113](./113-ci-publica-en-forks.md) ✅ | El CI publica las imágenes en un fork configurado | Sí | US-110 | ~70 |
 | [US-114](./114-correcciones-guias-despliegue.md) | Correcciones de las guías de despliegue y un solo juego de ejemplos | Sí | US-111 | ~150 |
 | [US-116](./116-punto-de-entrada-del-estudiante.md) | El punto de entrada del estudiante en `docs/` y la guía del fork | Sí | US-113, US-114 | ~200 |
 | [US-18](./18-terraform-minimo.md) | Terraform mínimo para el stack contenedorizado (en pausa, ver Actualización 2026-11-20) | Sí | US-15, US-17 | ~300 |
