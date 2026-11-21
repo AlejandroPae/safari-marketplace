@@ -171,7 +171,8 @@ const RecentOrderBar = ({ user }: IProps) => {
             className="absolute top-16 z-30 w-80 rounded-lg border border-gray-200 bg-white shadow-box end-2 ltr:origin-top-right rtl:origin-top-left focus:outline-hidden sm:top-12 sm:mt-0.5 sm:end-0 lg:top-14 lg:mt-0"
           >
             <Menu.Item>
-              <>
+              {/* Un div, no un fragmento: Headless UI 2 le pasa ref y eventos. */}
+              <div>
                 <div className="flex items-center justify-between rounded-tl-lg rounded-tr-lg border-b border-gray-200/80 px-6 py-4 font-medium">
                   <span>{t('text-orders')}</span>
                   {activeStatus.length > 0 ? (
@@ -213,7 +214,7 @@ const RecentOrderBar = ({ user }: IProps) => {
                 >
                   {t('text-see-all-notification')}
                 </Link>
-              </>
+              </div>
             </Menu.Item>
           </Menu.Items>
         </Transition>

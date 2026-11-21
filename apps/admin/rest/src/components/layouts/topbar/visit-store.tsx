@@ -8,7 +8,9 @@ import { useShopUrl } from '@/utils/shop-url';
 const VisitStore = () => {
   const { t } = useTranslation();
   const { pathname, query } = useRouter();
-  const slug = (pathname === '/[shop]' && `shops/${query?.shop}`) || '/';
+  // Fuera de una tienda, el slug es '' (no '/'): visitStore ya antepone la
+  // barra, y con '/' el enlace quedaba `<SHOP_URL>//`.
+  const slug = (pathname === '/[shop]' && `shops/${query?.shop}`) || '';
   const href = useShopUrl() && Routes.visitStore(slug as string);
   if (!href) return null;
 
@@ -21,7 +23,7 @@ const VisitStore = () => {
         rel="noreferrer"
       >
         <HomeIcon />
-        {slug === '/' ? t('text-visit-site') : t('text-visit-store')}
+        {slug === '' ? t('text-visit-site') : t('text-visit-store')}
       </Link>
     </>
   );
