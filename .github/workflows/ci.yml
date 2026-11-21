@@ -138,32 +138,37 @@ jobs:
   # para detectar un Dockerfile roto antes del merge, y se publican en Docker
   # Hub solo desde main (push, o workflow_dispatch sobre main), con la etiqueta
   # sha-<7 primeros del commit>. Sin `latest`: el despliegue apunta a un SHA.
+  #
+  # Un fork publica en SU Docker Hub si definió la variable DOCKERHUB_USERNAME
+  # (y el secreto DOCKERHUB_TOKEN). Sin la variable, construye sin publicar y
+  # avisa, en verde: así un fork recién creado no falla. El repositorio
+  # original, en cambio, falla si le falta la variable o el secreto.
   images:
-    # Dice qué hace en cada corrida: en un PR solo construye; en main publica.
-    name: ${{ github.event_name == 'pull_request' && 'Imágenes Docker · solo build' || 'Imágenes Docker · build y publicación' }}
+    # Dice qué hace en cada corrida, con la misma condición que SUBIR.
+    name: ${{ (github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (!github.event.repository.fork || vars.DOCKERHUB_USERNAME != '')) && 'Imágenes Docker · build y publicación' || 'Imágenes Docker · solo build' }}
     needs: check
     runs-on: ubuntu-26.04
     timeout-minutes: 40
     env:
       # Publicar: push a main, o dispatch sobre main. Nunca en pull_request.
       PUBLICAR: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
-      # En un fork no se publica: no tiene las credenciales del dueño.
       ES_FORK: ${{ github.event.repository.fork }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # La etiqueta y el repositorio de destino. En un PR (o un fork) no hay
-      # usuario de Docker Hub: el nombre local `safari` no se publica nunca.
+      # La etiqueta y el repositorio de destino. Sin DOCKERHUB_USERNAME (un PR,
+      # o un fork sin configurar) las imágenes se nombran `safari/…` y no se
+      # publican nunca.
       - name: Etiqueta y destino
         env:
           DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
         run: |
           echo "IMAGE_TAG=sha-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
           echo "REGISTRO=${DOCKERHUB_USERNAME:-safari}" >> "$GITHUB_ENV"
-          if [ "$PUBLICAR" = true ] && [ "$ES_FORK" = true ]; then
+          if [ "$PUBLICAR" = true ] && [ "$ES_FORK" = true ] && [ -z "$DOCKERHUB_USERNAME" ]; then
             echo "SUBIR=false" >> "$GITHUB_ENV"
-            echo "::notice::Repositorio fork: se construyen las imágenes, pero no se publican."
-            echo "> Repositorio fork: las imágenes se construyeron, pero no se publicaron." >> "$GITHUB_STEP_SUMMARY"
+            echo "FORK_SIN_DOCKERHUB=true" >> "$GITHUB_ENV"
+            echo "::notice::Fork sin la variable DOCKERHUB_USERNAME: las imágenes se construyen, pero no se publican. Guía: docs/github/secretos-github-actions.md"
           else
             echo "SUBIR=$PUBLICAR" >> "$GITHUB_ENV"
           fi
@@ -292,7 +297,15 @@ jobs:
           {
             echo "### Imágenes ($IMAGE_TAG)"
             echo ""
-            if [ "$SUBIR" = true ]; then echo "Publicadas en Docker Hub."; else echo "Construidas sin publicar (evento \`$GITHUB_EVENT_NAME\`, rama \`$GITHUB_REF_NAME\`)."; fi
+            if [ "$SUBIR" = true ]; then
+              echo "Publicadas en Docker Hub, en la cuenta \`$REGISTRO\`."
+            elif [ "${FORK_SIN_DOCKERHUB:-}" = true ]; then
+              echo "Construidas sin publicar: este fork no tiene la variable \`DOCKERHUB_USERNAME\`."
+              echo "Para publicar en tu Docker Hub, crea la variable y el secreto \`DOCKERHUB_TOKEN\`"
+              echo "(\`docs/github/secretos-github-actions.md\`) y relanza en Actions → CI/CD → Run workflow, sobre \`main\`."
+            else
+              echo "Construidas sin publicar (evento \`$GITHUB_EVENT_NAME\`, rama \`$GITHUB_REF_NAME\`)."
+            fi
             echo ""
             echo "| Imagen | Digest |"
             echo "|---|---|"

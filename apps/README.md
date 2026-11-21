@@ -606,14 +606,17 @@ start` el shop da errores de hidratación (#418). Ver la US-83.
 
 ## Imágenes en Docker Hub (US-110)
 
-El CI (`.github/workflows/ci.yml`, job `images`) construye las imágenes de la
-API, la tienda y el admin en cada PR y en cada push a `main`. Solo las
-**publica** desde `main`, con la etiqueta `sha-<7 primeros del commit>`:
+El CI (`.github/workflows/ci.yml`, job `images`) construye cinco imágenes en
+cada PR y en cada push a `main`: la API, la tienda, el admin, `db-init`
+(esquema y seed) y `proxy` (los Caddyfiles). Solo las **publica** desde
+`main`, con la etiqueta `sha-<7 primeros del commit>`:
 
 ```text
 <usuario>/safari-api:sha-1a2b3c4
 <usuario>/safari-shop:sha-1a2b3c4
 <usuario>/safari-admin:sha-1a2b3c4
+<usuario>/safari-db-init:sha-1a2b3c4
+<usuario>/safari-proxy:sha-1a2b3c4
 ```
 
 - **Sin `latest`:** se despliega siempre un SHA concreto, y volver atrás es
@@ -641,7 +644,13 @@ El paso a paso, con capturas y con `gh`, está en
 Lo que pasa según el caso:
 - **Faltan las credenciales:** el step «Credenciales de Docker Hub» falla
   nombrando lo que falta.
-- **Fork:** construye y no publica, con un aviso en el resumen.
+- **Fork con la variable `DOCKERHUB_USERNAME`:** publica en el Docker Hub de
+  esa cuenta, con sus propias credenciales (si falta el secreto, falla como
+  arriba).
+- **Fork sin la variable:** construye y no publica, en verde, con un aviso en
+  el resumen que dice qué crear. Como no publica, tampoco escribe la caché de
+  BuildKit: cada corrida construye desde cero. Tras configurar, se relanza
+  con *Run workflow* sobre `main` (`workflow_dispatch`).
 - **PR:** construye sin login ni push, y lee la caché de BuildKit de `main`
   sin escribir la suya.
 

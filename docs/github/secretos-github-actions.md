@@ -242,6 +242,20 @@ La prueba definitiva es la siguiente ejecución del workflow después de un
 push a `main`: el paso de login en Docker Hub debe terminar en verde y las
 imágenes deben aparecer en `https://hub.docker.com/repositories/<tu-usuario-de-docker-hub>`.
 
+**Si ya corrió antes de configurar** (por ejemplo, el primer push de tu fork),
+no hace falta otro commit: en **Actions → CI/CD → Run workflow**, elige la rama
+`main` y pulsa **Run workflow**. Con la terminal:
+
+```bash
+gh workflow run ci.yml --ref main --repo <tu-usuario>/<tu-repo>
+```
+
+En un **fork**, el CI publica en **tu** Docker Hub solo si definiste la
+variable `DOCKERHUB_USERNAME`. Sin ella, construye las imágenes, no las
+publica y la corrida queda en verde con un aviso en el resumen. Cada vez que
+sincronizas el fork con **Sync fork**, eso cuenta como un push a `main` y
+publica imágenes nuevas.
+
 Qué publica el CI, con qué etiquetas y qué pasa en un PR o en un fork: ver
 la sección «Imágenes en Docker Hub» de [`apps/README.md`](../../apps/README.md).
 
@@ -255,7 +269,7 @@ la sección «Imágenes en Docker Hub» de [`apps/README.md`](../../apps/README.
 | El CI dice que falta `DOCKERHUB_TOKEN` o `DOCKERHUB_USERNAME` | El nombre está mal escrito, o lo creaste en otro repositorio | Revisa mayúsculas y guiones bajos, y el repositorio en `gh secret list` |
 | `unauthorized: incorrect username or password` en el login | Token mal pegado, vencido o revocado | Genera un token nuevo y reemplaza el secreto (mismo nombre) |
 | `denied: requested access to the resource is denied` al publicar | El token es de solo lectura, o el usuario no coincide con el de la imagen | Crea el token con **Repo Read & Write** y revisa `DOCKERHUB_USERNAME` |
-| En un *fork* el CI no publica | GitHub no comparte los secretos con los forks | Crea los secretos en **tu** repositorio (el fork) |
+| En un *fork*, el resumen dice «Construidas sin publicar: este fork no tiene la variable `DOCKERHUB_USERNAME`» | El fork no hereda las variables ni los secretos del repositorio original | Crea la variable y el secreto en **tu** fork y relanza con **Run workflow** sobre `main` |
 | `gh: command not found` | `gh` no está instalado o la terminal no se reinició | Repite B.1 y abre una terminal nueva |
 
 ## Cambiar o borrar un secreto
