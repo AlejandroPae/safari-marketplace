@@ -24,6 +24,7 @@ Al terminar este paso vas a tener:
    la derecha.
 
    > ![Captura — Botón Fork en el repositorio original](img/fork-01-boton-fork.png)
+   
 
 2. Completa el formulario **Create a new fork**:
 
@@ -36,11 +37,13 @@ Al terminar este paso vas a tener:
    Pulsa **Create fork**.
 
    > ![Captura — Formulario «Create a new fork»](img/fork-02-create-fork.png)
+   
 
 3. GitHub te lleva a tu fork. Debajo del nombre dice
    **forked from rcuello/safari-marketplace**.
 
    > ![Captura — El fork recién creado, con «forked from»](img/fork-03-fork-creado.png)
+   
 
 ## Habilitar GitHub Actions
 
@@ -52,7 +55,7 @@ no corre.
    «Workflows aren't being run on this forked repository». Pulsa
    **I understand my workflows, go ahead and enable them**.
 
-   > ![Captura — Pestaña Actions del fork con el botón para habilitar los workflows](img/fork-04-habilitar-actions.png)
+   > ![Captura — Pestaña Actions del fork con el botón para habilitar los workflows](img/fork-04-habilitar-actions.png)   
 
 5. La pestaña muestra el workflow **CI/CD** en la lista de la izquierda,
    todavía sin corridas.
@@ -65,10 +68,16 @@ El CI corre solo con cada push a `main`. Para la primera vez no hace falta
 ningún commit: se lanza a mano.
 
 6. En **Actions**, elige **CI/CD** en la lista de la izquierda y pulsa
-   **Run workflow**. Deja la rama **main** y pulsa el botón verde
+   **Run workflow**. Deja la rama **main** y pulsa el botón
    **Run workflow**.
 
    > ![Captura — Menú «Run workflow» sobre la rama main](img/fork-06-run-workflow.png)
+
+   > ![Captura — Running workflow](img/fork-06-run-workflow-2.png)
+
+   > ![Captura — Running workflow steps](img/fork-06-run-workflow-3.png)
+
+   
 
 7. La corrida tarda unos 10 a 15 minutos: primero el job de calidad (lint,
    tipos, pruebas y builds) y después el de imágenes.
@@ -80,6 +89,8 @@ ningún commit: se lanza a mano.
    ```text
    Construidas sin publicar: este fork no tiene la variable DOCKERHUB_USERNAME.
    ```
+
+   > ![Captura — finish workflow steps](img/fork-06-sin-publicar.png)
 
    Es lo esperado. En el [paso 02](02-secretos-github-actions.md) configuras
    Docker Hub y relanzas la corrida para que publique.
