@@ -21,6 +21,10 @@ Anota la **IP pública** del VPS.
 
 ### Ejemplo: una máquina virtual con Azure for Students
 
+> **Paso a paso con capturas:** [`docs/azure/`](../azure/README.md) cubre
+> activar la suscripción, crear la VM, abrir los puertos, entrar por SSH y
+> controlar el crédito. Abajo queda el resumen.
+
 Si eres estudiante, **Azure for Students** da USD 100 de crédito por 12 meses,
 sin tarjeta de crédito: solo pide verificar tu email de la universidad
 (https://azure.microsoft.com/free/students). Alcanza para una VM como esta
