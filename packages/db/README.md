@@ -1,810 +1,890 @@
-# @safari/db — la capa de datos del catálogo
+# @safari/db: la capa de datos
 
-Paquete **autónomo** (fuera del workspace de yarn de `apps/`) que expone el
-acceso a Postgres vía Prisma 7 + `@prisma/adapter-pg`: un cliente singleton
-y repositorios de **funciones planas** por agregado.
+`@safari/db` es la única puerta de la API a PostgreSQL. Expone un cliente de
+Prisma 7 (con `@prisma/adapter-pg`) y un repositorio de **funciones planas**
+por agregado: `listTags()`, `createCoupon()`, `findOrderByIdOrTracking()`…
+La API NestJS de `apps/api/rest` lo importa como cualquier dependencia.
+
+**Contenido**
+
+1. [Qué es y por qué existe](#qué-es-y-por-qué-existe)
+2. [Arranque rápido](#arranque-rápido)
+3. [Estructura del paquete](#estructura-del-paquete)
+4. [Cómo lo usa la API](#cómo-lo-usa-la-api)
+5. [El esquema: `db/schema.sql` manda, Prisma no migra](#el-esquema-dbschemasql-manda-prisma-no-migra)
+6. [Convenciones](#convenciones)
+7. [Errores de dominio](#errores-de-dominio)
+8. [Cómo agregar una tabla o un repositorio](#cómo-agregar-una-tabla-o-un-repositorio)
+9. [Cómo se prueba](#cómo-se-prueba)
+10. [Referencia de repositorios](#referencia-de-repositorios)
+11. [Por qué el paquete se construye](#por-qué-el-paquete-se-construye)
+12. [Problemas conocidos](#problemas-conocidos)
+
+---
+
+## Qué es y por qué existe
+
+- **Un solo lugar para el SQL.** Los servicios de Nest no hablan con Prisma
+  directamente: llaman funciones de este paquete. Así las reglas de la base
+  (CHECK, índices, transacciones) viven junto a las consultas que las usan.
+- **Frontera JSON-safe.** Los repositorios no devuelven filas crudas de
+  Prisma, sino *records* (`src/records.ts`) en camelCase, sin `BigInt` ni
+  `Decimal`. La API los traduce al snake_case que publica.
+- **Errores con significado.** Los fallos de escritura salen como errores de
+  dominio con un código cerrado (400, 404 o 409), no como códigos `P2xxx` de
+  Prisma.
+- **Autónomo.** Usa npm, no forma parte del workspace de yarn de `apps/`. Se
+  construye con tsup a `dist/` y la API lo enlaza con `link:`.
+
+El scraper Python (`services/scraper-worker`) **no** usa este paquete: escribe
+con SQL directo (psycopg) en la misma tabla `products`.
+
+---
+
+## Arranque rápido
+
+**Requisitos:** la base corriendo y sembrada (`just db-up` en la raíz) y
+`DATABASE_URL` definida. Los tests la leen del `.env` de `packages/db`; cópialo
+de `.env.example` (`just setup` no lo crea) o exporta la variable.
+
+Desde la raíz del repositorio:
 
 ```bash
+just db-build      # npm install + npm run build (prisma generate + tsup -> dist/)
+just db-check      # npm run typecheck + npm test (requiere just db-up)
+```
+
+O dentro de `packages/db`:
+
+```bash
+npm install         # dependencias propias (no forma parte de apps/)
+npm run build       # prisma generate + tsup -> dist/ (CJS + .d.ts)
+npm run dev         # tsup --watch: reconstruye dist/ al guardar
+npm run typecheck   # tsc --noEmit
+npm run lint        # biome check .
+npm run format      # biome check --write . (reescribe archivos)
+npm test            # vitest run: integración contra el Postgres local
+npm run generate    # solo prisma generate -> generated/
+```
+
+`dist/` y `generated/` están en `.gitignore`: tras clonar hay que construir.
+No confíes en el script `prepare` para eso; ver
+[Problemas conocidos](#problemas-conocidos).
+
+---
+
+## Estructura del paquete
+
+```text
+packages/db/
+├── index.ts                 barrel explícito: el único punto de entrada
+├── prisma/schema.prisma     espejo de la base (prisma db pull), revisado a mano
+├── prisma.config.ts         ruta del schema y DATABASE_URL (con dotenv)
+├── generated/               cliente de Prisma (gitignored; npm run generate)
+├── dist/                    build de tsup (gitignored; npm run build)
+├── tsup.config.ts           build CJS + .d.ts, con shims (ver más abajo)
+├── vitest.config.ts         tests en serie (fileParallelism: false)
+├── biome.json               lint y formato
+└── src/
+    ├── client.ts            singleton lazy de PrismaClient + setPrismaLogSink()
+    ├── clock.ts             now() y _setNowProvider() (reloj de los timestamps)
+    ├── domain-errors.ts     errores de dominio y translateCatalogWriteError()
+    ├── errors.ts            helpers para clasificar errores de Prisma
+    ├── health.ts            pingDatabase() para /health
+    ├── pagination.ts        buildPaginator(): el envoltorio de paginación
+    ├── records.ts           tipos *Record y sus mappers _to*Record
+    ├── slug.ts              generateSlug() y normalizeSlug()
+    └── repositories/        un *.repository.ts por agregado (34)
+                             y sus *.integration.test.ts
+```
+
+Piezas de `src/` que conviene conocer:
+
+| Archivo | Qué hace |
+|---|---|
+| `client.ts` | Crea el `PrismaClient` en el **primer acceso** a `prisma`, no al importar (un `Proxy`). Si falta `DATABASE_URL`, lanza un error claro en ese momento. En `NODE_ENV=development` imprime las consultas. `setPrismaLogSink()` manda errores y warnings de Prisma a otro logger (la API los manda al `Logger` de Nest en `main.ts`). |
+| `health.ts` | `pingDatabase(timeoutMs = 2000)` hace `SELECT 1` con timeout y nunca lanza: devuelve `{ ok, latencyMs, error? }`. Lo usa `apps/api/rest/src/health/health.service.ts`. |
+| `slug.ts` | `generateSlug()` normaliza con `SELECT slugify($1)` de Postgres (una sola fuente de la regla) y añade sufijos `-2`, `-3`… si el slug ya existe. Cada repositorio le pasa su propia función de búsqueda (`ExistingSlugLookup`), así el nombre de la tabla nunca llega al SQL. Un texto que normaliza a vacío da `EmptySlugError`. |
+| `errors.ts` | `parsePrismaError`, `isPrismaConnectionError`, `getUserFriendlyMessage`… Son helpers de lectura. Para escrituras se usa `translateCatalogWriteError` de `domain-errors.ts`, que sí distingue P2002, P2003 y P2025. |
+
+---
+
+## Cómo lo usa la API
+
+`apps/api/rest/package.json` declara:
+
+```json
+"@safari/db": "link:../../../packages/db"
+```
+
+`link:` crea un enlace simbólico: `apps/api/rest/node_modules/@safari/db`
+apunta a `packages/db`. La API carga **`dist/`**, no el código fuente. Por eso:
+
+- Tras cambiar algo en `packages/db`, corre `npm run build` (o deja
+  `npm run dev` abierto). No hace falta reinstalar la API.
+- `DATABASE_URL` debe estar en el `.env` de la API. `just setup` la añade si
+  falta.
+
+Un servicio de Nest típico importa las funciones del barrel, traduce
+camelCase a snake_case y convierte los errores de dominio en HTTP:
+
+```ts
+import { createTag, listTags, type TagRecord } from '@safari/db';
+import { toWriteHttpException } from '#src/common/errors/domain-error.mapper.js';
+
+async create(dto: CreateTagDto) {
+  try {
+    const tag = await createTag({ name: dto.name, typeId: dto.type_id });
+    return toTagResponse(tag); // camelCase -> snake_case
+  } catch (error) {
+    throw toWriteHttpException(error); // 400 / 404 / 409 / 503 / 500
+  }
+}
+```
+
+`toWriteHttpException` vive en
+`apps/api/rest/src/common/errors/domain-error.mapper.ts`. Es el único sitio
+que traduce los códigos de dominio a HTTP, y un agregado nuevo no lo modifica.
+
+En los tests de la API, 37 de los 44 specs mockean `@safari/db` con
+`vi.mock('@safari/db', …)`, así que no necesitan Postgres.
+
+---
+
+## El esquema: `db/schema.sql` manda, Prisma no migra
+
+La base la crea y la siembra `just db-migrate` (lo llama `just db-up`)
+aplicando `db/schema.sql` y `db/seed.sql`. Ese SQL es el único dueño del DDL.
+
+- Este paquete **no tiene `prisma/migrations/`, a propósito.** Dos dueños del
+  DDL terminan en drift.
+- `schema.prisma` es un **espejo introspectado** con `prisma db pull` y luego
+  revisado a mano: modelos en PascalCase, campos en camelCase con `@map`,
+  relaciones con nombre.
+- **No uses `prisma migrate dev` ni `prisma db push`** contra esta base.
+
+Si cambia `db/schema.sql`:
+
+```bash
+just db-reset                  # recrea la base con el DDL nuevo
 cd packages/db
-npm install           # dependencias propias (NO forma parte de apps/)
-npm run build         # prisma generate + tsup → dist/ (CJS + .d.ts)
-npm run typecheck     # tsc --noEmit
-npm test              # integración contra el Postgres del docker-compose
-npm run dev           # tsup --watch, para iterar
+npx prisma db pull             # OJO: pisa los renombres manuales
+# revisa el diff y vuelve a aplicar los renombres y los @map, luego:
+npm run generate && npm test
 ```
 
-`dist/` y `generated/` están gitignored, así que tras clonar hay que
-construirlos. El script `prepare` los genera en una instalación **limpia** (y
-cuando otro paquete instala este por `file:`), pero **npm se salta los
-lifecycle scripts si el árbol de dependencias ya está al día**: en un `npm
-install` repetido no pasa nada. El comando fiable es siempre explícito:
+### Lo que Prisma no modela
 
-```bash
-npm run build      # o, desde la raíz del repo:  just db-build
-```
+La cabecera de `prisma/schema.prisma` lista el detalle. En resumen:
 
-Requiere la base corriendo y sembrada: `just db-up` en la raíz del repo.
-La conexión sale de `DATABASE_URL` (ver `.env.example`).
+| Qué | Cómo se cubre |
+|---|---|
+| **CHECK constraints** (`products_rebaja_valida`, `coupons_vigencia_valida`, `reviews_rating_check`, los de `orders`…; la lista completa está en la cabecera de `schema.prisma`) | Prisma no los conoce. El repositorio valida **antes de escribir** y lanza un error de dominio (ver [Errores de dominio](#errores-de-dominio)). |
+| **Índice único parcial** `products_procedencia_key` (`(source_store, source_product_id) WHERE source_store IS NOT NULL`) | Sí está en el schema, gracias al preview `partialIndexes`. **No quites ese preview**: sin él, Prisma trataría el unique como total y `prisma validate` acusaría drift. `upsertScrapedProduct` opera sobre esa clave. |
+| **Índices únicos de expresión** `users_email_lower_idx` (`lower(email)`) y `reviews_autor_producto_orden_key` (`COALESCE(order_id, 0)`) | Invisibles para Prisma. Por eso `User.email` no lleva `@unique`, la búsqueda por email usa `$queryRaw` (ver «Identidad y acceso» en la [Referencia de repositorios](#referencia-de-repositorios)) y los P2002 que disparan se traducen a mano. |
+| **Índices trigram** `products_nombre_ilike_trgm_idx` y `questions_question_ilike_trgm_idx` | Sí están modelados, como `@@index(..., type: Gin)` sobre la columna. Así el `ILIKE` que genera `contains` + `mode: 'insensitive'` los usa. |
 
-## Estructura
+---
 
-```
-index.ts                        barrel explícito (el único entry point)
-prisma/schema.prisma            introspección de la base, revisada a mano
-generated/                      cliente Prisma (gitignored; `npm run generate`)
-src/
-  client.ts                     singleton lazy de PrismaClient (adapter pg);
-                                 setPrismaLogSink() redirige sus errores y
-                                 warnings a otro logger (US-17)
-  clock.ts                      now() inyectable para tests (alcance de
-                                 _setNowProvider documentado en su cabecera,
-                                 US-32 CA-3)
-  errors.ts                     parseo/clasificación de errores de Prisma
-  health.ts                     pingDatabase() para /health endpoints
-  pagination.ts                 buildPaginator() — el envoltorio del mock
-  records.ts                    frontera de serialización (tipos *Record)
-  repositories/
-    products.repository.ts      listado con filtros, detalle, upsert scraper
-    categories.repository.ts    árbol y listado por type.slug
-    types|shops|manufacturers|tags.repository.ts
-    settings.repository.ts      la fila única
-    products.integration.test.ts
-```
+## Convenciones
 
-## Decisiones
+### Records: camelCase, JSON-safe
 
-### `Decimal` y `BigInt` nunca cruzan la frontera
+Los repositorios devuelven tipos `*Record` de `src/records.ts`, construidos
+por mappers internos `_to*Record`:
 
-Los repositorios no devuelven filas crudas de Prisma sino **records**
-(`src/records.ts`) que son JSON-safe por construcción:
+| Tipo en Postgres | En el record | Por qué |
+|---|---|---|
+| `bigserial` (ids) | `number` | `JSON.stringify` falla con `BigInt`, y los ids reales están lejos de `MAX_SAFE_INTEGER`. |
+| `numeric(12,2)` (precios, importes) | `number` | El frontend espera `price: 40.5`, como lo servía el mock. Con 12 dígitos y 2 decimales un double no pierde precisión práctica. Si algún día hace falta aritmética exacta, el único punto de cambio es `_dec()` en `records.ts`. |
+| `timestamptz` | `Date` | Nest lo serializa a ISO-8601 solo. |
+| `json` / `jsonb` | `Prisma.JsonValue` | Con columnas `json`, las claves salen en el orden del texto guardado. |
 
-- **`numeric(12,2)` (precios) → `number`.** El frontend de Pickbazar espera
-  `price: 40.5` como número JSON, igual que lo sirve el mock. Con 12 dígitos
-  y 2 decimales un double lo representa sin pérdida práctica. Si algún día
-  se necesitara aritmética exacta río abajo, el punto único de cambio es
-  `_dec()` en `records.ts` (pasar a `string`).
-- **`bigserial` (ids) → `number`.** `JSON.stringify` revienta con BigInt y
-  los ids reales están lejos de `MAX_SAFE_INTEGER`.
-- Las fechas quedan como `Date`; el framework consumidor las serializa a
-  ISO-8601 solo.
+**snake_case solo en la API.** La capa de datos habla camelCase; la
+traducción al contrato HTTP (snake_case) vive en los servicios de Nest.
 
-### Paginación: el contrato del mock, calcado
+**Excepción de escritura: dinero exacto.** Las escrituras de órdenes reciben
+el dinero como **texto decimal** (`"0.044"`) para que llegue exacto a
+`numeric`. Para ese cálculo el barrel exporta `Decimal`, el de Prisma.
 
-`buildPaginator()` reproduce **exactamente** la aritmética y las claves de
-`apps/api/rest/src/common/pagination/paginate.ts` (`total`, `current_page`,
-`count`, `last_page`, `per_page`, `firstItem`, `lastItem`, `*_page_url`) —
-incluida su rareza de que `prev_page_url` apunta a la página actual — para
-que la API real pueda sustituir el mock sin cambiar su contrato. Los
-repositorios devuelven `{ items, total }` y el caller arma el envoltorio:
+### Listados: `{ items, total }`
+
+Los listados paginados devuelven `{ items, total }`; el que llama arma el
+envoltorio. Son paginación por offset, con `page` 1-based y un `limit` por
+defecto que depende del repositorio (30 en la mayoría).
 
 ```ts
 const { items, total } = await listProducts({ typeSlug: 'gadget', page, limit });
 return buildPaginator({ data: items, total, page, limit, baseUrl });
 ```
 
-Offset-based, `limit` default 30, como el mock. Las `*_page_url` son `null`
-si no se pasa `baseUrl` (APP_URL es configuración de la app, no de la capa
-de datos).
+`buildPaginator()` reproduce exactamente la aritmética y las claves de
+`apps/api/rest/src/common/pagination/paginate.ts` (`total`, `current_page`,
+`count`, `last_page`, `per_page`, `firstItem`, `lastItem`, `*_page_url`),
+incluida su rareza: `prev_page_url` apunta a la página actual. Las
+`*_page_url` son `null` si no se pasa `baseUrl` (`APP_URL` es configuración
+de la app, no de la capa de datos). Hoy la mayoría de los servicios usan el
+`paginate()` de la API y dos (`shops` y `users`) usan `buildPaginator`; dan el
+mismo contrato.
 
-### `db/schema.sql` sigue siendo la verdad — Prisma NO migra
+Algunos listados no paginan y devuelven un array: `listTaxes`,
+`listShippings`, `listAttributes`, `listTopAuthors`, `listStaffShops` y las
+listas del dashboard.
 
-La base la crea y la siembra `just db-migrate` aplicando `db/schema.sql` +
-`db/seed.sql`. Este paquete **no tiene `prisma/migrations/` a propósito** y
-no debe tenerlo mientras ese flujo exista: dos dueños del DDL es una receta
-para drift. El `schema.prisma` es un **espejo introspectado** (`prisma db
-pull`), luego revisado a mano (modelos PascalCase, campos camelCase con
-`@map`, relaciones con nombre). Si `db/schema.sql` cambia:
+### Guardas de id
 
-```bash
-just db-reset                  # re-crea la base con el DDL nuevo
-cd packages/db
-npx prisma db pull             # OJO: pisa los renombres manuales
-# re-aplicar renombres/@map revisando el diff, luego:
-npm run generate && npm test
-```
+Antes de escribir, los repositorios validan las referencias con
+**`Number.isSafeInteger`**, no `Number.isInteger`:
 
-No usar `prisma migrate dev` ni `prisma db push` contra esta base.
+- `Number.isInteger(1e21)` es `true`, pero ese valor llega a Postgres como
+  `bigint` inválido y el error no trae `.code` de Prisma: acabaría en un 500.
+- Con la guarda, un id mal formado (`"abc"`, `NaN`, `1.5`, `1e21`) da
+  `InvalidReferenceError` (400) con el nombre del campo, sin tocar la base.
+- `null` sigue siendo legal donde la FK lo admite (limpia la referencia).
+- Un id cero o negativo **no** se rechaza en la guarda: llega a Postgres, la
+  FK falla (P2003) y se traduce al mismo 400.
 
-### Lo que Prisma no modela (y cómo se cubre)
+Ejemplo: `_assertValidTypeId` en `src/repositories/tags.repository.ts`.
 
-- **El índice único parcial** `products_procedencia_key`
-  (`(source_store, source_product_id) WHERE source_store IS NOT NULL`) sí
-  quedó en el schema, pero solo gracias al preview feature `partialIndexes`
-  que la introspección de Prisma 7 activó. No quitar el preview: sin él
-  Prisma trataría el unique como total. `upsertScrapedProduct` opera sobre
-  esa clave y está cubierto por el test de integración.
-- **Los CHECK constraints** (`products_rebaja_valida`,
-  `products_simple_con_precio`, `products_procedencia_completa`, y desde
-  US-47 `faqs_faq_type_check` y `terms_and_conditions_type_check`, y desde
-  US-48 `refund_policies_target_check` y `refund_policies_status_check`, y
-  desde US-49 `taxes_rate_check`, `shippings_amount_check` y
-  `shippings_type_check`, y desde US-51 `store_notices_priority_check`,
-  `store_notices_type_check` y `store_notices_vigencia_valida`, y desde
-  US-52 `coupons_type_check`, `coupons_amount_check`,
-  `coupons_minimum_cart_amount_check` y `coupons_vigencia_valida`, y desde
-  US-54 `reviews_rating_check`, `reviews_photos_check`, los dos
-  `reviews_*_feedbacks_count_check`, `abusive_reports_model_type_check` y
-  `abusive_reports_message_check`, y desde US-55 `questions_question_check` y
-  los dos `questions_*_feedbacks_count_check`, y desde US-56
-  `messages_body_check`, y desde US-57 `order_statuses_serial_check` y
-  `order_statuses_color_check`, y desde US-58 los de `orders` (tracking de
-  14 dígitos, dinero ≥ 0, los tres enums, direcciones `object|array` y
-  `orders_padre_o_hija`) y los de `order_products` (`line_no`,
-  `order_quantity`, `unit_price`, `subtotal`)) no existen
-  para Prisma. Los repositorios los validan antes de escribir (tipos +
-  guard de `salePrice < price`) y traducen la violación que llegue de
-  Postgres a errores de dominio: `InvalidSalePriceError`,
-  `MissingPriceError`, `IncompleteProvenanceError`. Los CHECK de valor
-  simple, que solo restringen un campo a una lista o a un rango, usan la
-  clase genérica `InvalidFieldValueError(aggregate, field, value,
-  constraint)` de `domain-errors.ts`, con `code = InvalidReference` (400).
-  Un agregado nuevo no necesita su propia clase. Las tres de `products` se
-  quedan aparte porque sus reglas cruzan varios campos.
-- **El 409 por clave única** es `SlugConflictError` para cualquier P2002,
-  sea slug o no (`code` de cupones, el único de tres columnas de reseñas o
-  de reportes). Su mensaje nombra el campo, no el valor: «Ya existe un
-  registro de `coupons` con el mismo valor en `code`.» (US-67). Bajo
-  adapter-pg, `meta.target` no llega, así que el campo sale del
-  `uniqueField` del repositorio o, si falta, de `'slug'`.
-- **Los índices trigram** de la búsqueda por texto
-  (`products_nombre_ilike_trgm_idx`, `questions_question_ilike_trgm_idx`)
-  **sí** están modelados, como `@@index(..., type: Gin)`: van sobre la
-  columna para que el `ILIKE` de `contains` + `mode: 'insensitive'` los
-  use (US-69). Los anteriores, sobre `lower(...)`, eran de expresión: Prisma
-  no los modelaba y el `ILIKE` no los usaba.
+### Reloj de los timestamps
 
-### Contenido (US-47, Épico 46) — `faqs` y `terms-and-conditions`
+Spec viva: [`data-layer-clock-policy`](../../openspec/specs/data-layer-clock-policy/spec.md).
 
-`FaqRecord` y `TermsAndConditionsRecord` (`records.ts`), con dos
-repositorios de funciones planas calcados de `tags.repository.ts`:
+- **Ninguna tabla tiene trigger de `updated_at`.** Lo fija la capa de datos
+  con `now()` de `src/clock.ts`: cada `update`/`upsert` escribe
+  `updatedAt: now()`. El final de `db/schema.sql` lo explica.
+- **`created_at` sale de `@default(now())` de Prisma**, que usa el mismo
+  reloj de Node. Una fila, un reloj: así `updated_at >= created_at` siempre.
+  Con triggers, el reloj de Postgres podía ir cientos de milisegundos por
+  detrás del de Node y una fila salía con `updated_at` anterior a
+  `created_at`.
+- Otros instantes de dominio también salen de `now()`: `consumedAt` de los
+  tokens, `scrapedAt` de productos, los `tracking_number` de órdenes, los
+  `transaction_identifier` de transferencias.
+- En tests, `_setNowProvider(() => fecha)` fija `now()`. No afecta a
+  `created_at`.
+- **Tabla nueva = misma regla.** No añadas triggers; fija `updatedAt: now()`.
 
-- `faqs.repository.ts`: `listFaqs`, `findFaqById`, `createFaq`, `updateFaq`
-  y `deleteFaq`.
-- `terms-and-conditions.repository.ts`: `listTermsAndConditions`,
-  `findTermsAndConditionsBySlug`, `createTermsAndConditions`,
-  `updateTermsAndConditions`, `deleteTermsAndConditions` y
-  `setTermsApproval` (la moderación que el mock mutaba en memoria).
+### SQL crudo
 
-Los listados ordenan por `id ASC` (el orden del mock) y filtran con AND:
-`shopId`, tipo e `issuedBy` por igualdad exacta, título con `contains`
-insensible a mayúsculas, y `isApproved` en los términos.
+Se usa `$queryRaw` (tagged template: cada `${valor}` viaja como parámetro,
+nunca concatenado) solo donde Prisma no alcanza:
 
-**Regla propia: tipo y emisor derivados de la tienda.**
-`resolveContentIssuer` resuelve el emisor de lo que se crea:
+| Repositorio | Para qué |
+|---|---|
+| `users` | `WHERE lower(email) = lower($1)`, el único que usa `users_email_lower_idx`. |
+| `conversations` | `DISTINCT ON` para el último mensaje de cada conversación de la página. |
+| `analytics` | `count(*) FILTER (...)` y agrupación por mes UTC. |
+| `ownership-transfers`, `flash-sale-requests` | `SELECT … FOR UPDATE` para bloquear filas dentro de una transacción. |
+| `slug.ts`, `health.ts` | `SELECT slugify($1)` y `SELECT 1`. |
 
-- sin `shopId`, el contenido es `global` y lo emite `GLOBAL_CONTENT_ISSUER`
-  (`'Super Admin'`);
-- con `shopId`, es `shop` y el emisor es el nombre de esa tienda;
-- una tienda inexistente o un id que no sea entero seguro da
-  `InvalidReferenceError` (400) antes de escribir.
+`$queryRawUnsafe` no se usa en el código del paquete (solo en dos tests).
 
-Así los CHECK `faqs_faq_type_check` y `terms_and_conditions_type_check` no
-pueden violarse desde el paquete. El `slug` es inmutable en las
-actualizaciones, y `updatedAt` se fija con `now()` de `clock.ts` (US-32).
+### Transacciones
 
-### Reembolsos (US-48, Épico 46) — `refund-policies` y `refund-reasons`
+`$transaction` aparece en 12 repositorios: `attributes`, `auth-tokens`,
+`conversations`, `flash-sale`, `flash-sale-requests`, `orders`,
+`ownership-transfers`, `questions`, `reviews`, `staff`, `store-notices` y
+`users`. Cuando basta con un **nested write** (padre e hijos en un solo
+`create`), se prefiere ese: Prisma lo ejecuta en una transacción y una FK
+inválida no deja filas sueltas.
 
-`RefundPolicyRecord` y `RefundReasonRecord`, con dos repositorios calcados
-de `tags.repository.ts`. Los dos ordenan por `id ASC`, toman el slug del
-cuerpo si llega no vacío (el admin lo envía) y lo mantienen inmutable en las
-actualizaciones.
+---
 
-- `refund-policies.repository.ts`: `listRefundPolicies` (filtra `target` y
-  `status` por igualdad y el título con `contains`), `findRefundPolicyBySlug`,
-  `createRefundPolicy`, `updateRefundPolicy` y `deleteRefundPolicy`. Los dos
-  CHECK de la tabla se validan antes de escribir con
-  `InvalidFieldValueError` (ver «Lo que Prisma no modela»). Los valores
-  admitidos se exportan como `REFUND_POLICY_TARGETS` y
-  `REFUND_POLICY_STATUSES`.
-- `refund-reasons.repository.ts`: `listRefundReasons` (filtra por nombre),
-  `findRefundReasonBySlug`, `createRefundReason`, `updateRefundReason` y
-  `deleteRefundReason`. Los timestamps son contrato, por eso `update` fija
-  `updatedAt` con `now()`.
+## Errores de dominio
 
-### Configuración fiscal y de envío (US-49, Épico 46) — `taxes` y `shippings`
+Spec viva: [`catalog-write-foundations`](../../openspec/specs/catalog-write-foundations/spec.md).
 
-`TaxRecord` y `ShippingRecord` (con `rate`/`amount` vía `_dec`), y dos
-repositorios gemelos. A diferencia del resto, **los listados no paginan**:
-`listTaxes`/`listShippings` devuelven un array (`id ASC`, filtro opcional por
-nombre), porque eso es lo que el admin espera. Los demás son
-`findTaxById`/`findShippingById`, `create*`, `update*` (fija `updatedAt` con
-`now()`) y `delete*`. Los CHECK se validan antes de escribir con
-`InvalidFieldValueError`: `rate` no finito o negativo, y `amount` o `type`
-fuera de su CHECK. Los tipos válidos se exportan como `SHIPPING_TYPES`.
+`src/domain-errors.ts` define un conjunto **cerrado** de cinco códigos. Todas
+las clases extienden `CatalogWriteError` y reciben el agregado y el campo por
+parámetro, así que un agregado nuevo no añade clases ni toca este archivo.
 
-### Atributos (US-50, Épico 46) — `attributes.repository.ts`
+| Clase | `code` | HTTP | Cuándo |
+|---|---|---|---|
+| `EmptySlugError` | `CATALOG_EMPTY_SLUG` | 400 | El nombre (o el slug) normaliza a vacío. |
+| `InvalidReferenceError` | `CATALOG_INVALID_REFERENCE` | 400 | Una FK apunta a algo que no existe (P2003) o el id está mal formado. |
+| `InvalidFieldValueError` | `CATALOG_INVALID_REFERENCE` | 400 | Un valor viola un CHECK de valor simple. El repositorio lo lanza antes de escribir; el mensaje nombra el CHECK real. |
+| `RecordNotFoundError` | `CATALOG_RECORD_NOT_FOUND` | 404 | Actualizar o borrar algo que no existe (P2025). |
+| `DependentRowsError` | `CATALOG_DEPENDENT_ROWS` | 409 | Borrar dejaría filas huérfanas. |
+| `SlugConflictError` | `CATALOG_SLUG_CONFLICT` | 409 | **Cualquier** clave única repetida (P2002), sea slug o no: el `code` de un cupón, el único de tres columnas de reseñas… El mensaje nombra el campo, no el valor. |
 
-`AttributeRecord` (con `values: AttributeValueRecord[]`, en `id ASC`) y
-cinco funciones:
+Cómo se usan:
 
-- **`listAttributes`** devuelve un array sin paginar en `id DESC`, con filtro
-  por `shopId` y por nombre.
-- **`findAttributeByIdOrSlug`** busca por id si el parámetro es un entero
-  seguro y por slug si no, como hacía el mock.
-- **`createAttribute`** es un único nested write (padre y valores), que
-  Prisma ejecuta en una sola transacción: una tienda inexistente da
-  `InvalidReferenceError` sin dejar valores sueltos. En ese caso el campo se
-  nombra `shop_id` a mano, porque en un nested write el adaptador no informa
-  del campo de la FK.
-- **`updateAttribute`** reconcilia los valores con el body en un
-  `$transaction` de array (precedente `auth-tokens.repository.ts`). Un id del
-  atributo se actualiza, un id nulo, ausente o no entero se inserta, y un
-  valor existente que no aparece en el body se borra. Un id que pertenece a
-  **otro** atributo da `InvalidReferenceError` y no se reasigna. El slug del
-  atributo y el de cada valor existente son inmutables.
-- **`deleteAttribute`** devuelve el atributo con sus valores; Postgres los
-  borra en cascada.
+- **`translateCatalogWriteError(error, { aggregate, id?, uniqueField? })`**
+  convierte P2002, P2003 y P2025 en la clase que toca y devuelve intacto
+  cualquier otro error. El repositorio lo llama en su `catch` y lo lanza.
+- Con adapter-pg, `meta.target` del P2002 no llega. Por eso el campo sale de
+  `uniqueField` o, si falta, se asume `'slug'`.
+- **`isCatalogWriteError(error)`** compara por `code`, no por `instanceof`: un
+  mock del barrel o dos copias del build crean clases distintas para el mismo
+  error.
 
-Los slugs de los valores nuevos salen de `generateSlug` con un lookup en
-memoria (los existentes del atributo más los ya asignados en el lote), así
-que el esquema de sufijos (`-2`, `-3`…) es el mismo del resto del paquete y
-se calcula antes de la transacción.
+Errores propios de un repositorio, para reglas que cruzan varios campos o
+estados:
 
-### Avisos de tienda (US-51, Épico 46) — `store-notices.repository.ts`
+| Error | Dónde | Código que reutiliza |
+|---|---|---|
+| `InvalidSalePriceError`, `MissingPriceError`, `IncompleteProvenanceError` | `products` | Traducen los CHECK multicampo de `products`. |
+| `DuplicateEmailError` | `users` | Email repetido (el índice de expresión). |
+| `InsufficientStockError` | `orders` | 409. |
+| `SameOwnerError` | `ownership-transfers` | 409. |
+| `InvalidFlashSaleRequestError` | `flash-sale-requests` | 400. |
+| `FlashSaleRequestStateError` | `flash-sale-requests` | 409. |
 
-`StoreNoticeRecord` es la fila plana. `StoreNoticeDetailRecord` le añade lo
-que la API emite: el `creator` con sus `permissions`, los `recipients`
-(usuarios), las `shops` y los `reads` (estado de lectura por usuario). El
-orden de cada relación es fijo: destinatarios y lecturas por `userId DESC`,
-tiendas por `shopId ASC` y permisos por `permissionId ASC`.
+Los que reutilizan un código de la tabla de arriba pasan por
+`toWriteHttpException` sin cambios en la API.
 
-- **`listStoreNotices`** filtra por texto, por usuario destinatario
-  (`userId`), por tienda destinataria (`shopId` o `shopSlug`) y acepta
-  `orderBy` (`STORE_NOTICE_SORTABLE`) con desempate por `id DESC`.
-- **`findStoreNoticeById`**, **`deleteStoreNotice`** (devuelve el detalle;
-  los pivotes caen por CASCADE).
-- **`createStoreNotice`**: los destinatarios los decide el `type` (ver
-  `db/README.md`), y cada usuario destinatario recibe una lectura en
-  `false`. Es un único nested write, así que un id de `receivedBy`
-  inexistente da `InvalidReferenceError` sin filas sueltas.
-- **`updateStoreNotice`**: si llegan `type` o `receivedBy`, reconcilia los
-  pivotes en un `$transaction` y conserva la lectura de quien sigue siendo
-  destinatario. Fija `updatedBy` y `updatedAt`.
-- **`markStoreNoticeRead`**: upsert de la lectura del usuario.
+---
 
-Los tres CHECK de `store_notices` se validan antes de escribir con
-`InvalidFieldValueError`. Los valores admitidos se exportan como
-`STORE_NOTICE_PRIORITIES` y `STORE_NOTICE_TYPES`.
+## Cómo agregar una tabla o un repositorio
 
-### Cupones (US-52, Épico 46) — `coupons.repository.ts`
+Toma como plantilla `src/repositories/tags.repository.ts` y su test: es corto
+y tiene lectura, escritura, slug, guarda de id y reloj.
 
-`CouponRecord` es la fila plana: importes como number (`_dec`), `target`
-e `isApprove` booleanos e `image` tal cual sale de la columna `json`, con
-su orden de claves. **No trae `isValid`**: depende del reloj y lo calcula la
-API con `now()`.
+1. **DDL en `db/schema.sql`.** Con `IF NOT EXISTS`, sin trigger de
+   `updated_at`, y CHECK con nombre (lo cita el error de dominio). Si la tabla
+   tiene datos de referencia, van en el seed (`db/README.md` explica cómo se
+   genera).
+2. **Recrea la base:** `just db-reset`. `db-migrate` no altera tablas
+   existentes.
+3. **Espejo de Prisma:** `npx prisma db pull`, y revisa el diff. Renombra el
+   modelo a PascalCase y los campos a camelCase con `@map`; vuelve a aplicar
+   los renombres que el pull haya pisado en otros modelos. Añade los CHECK
+   nuevos a la cabecera de `schema.prisma`. Luego `npm run generate`.
+4. **Record en `src/records.ts`:** el tipo `XxxRecord` y su mapper
+   `_toXxxRecord` (ids y `numeric` con `Number`/`_dec`).
+5. **Repositorio en `src/repositories/xxx.repository.ts`:** funciones planas
+   que usan `prisma` de `../client`.
+   - Listados: `{ items, total }` y un `orderBy` determinista (con desempate
+     por `id`).
+   - Escrituras: guardas (`Number.isSafeInteger`, CHECK) antes de escribir,
+     `updatedAt: now()` en los updates y `translateCatalogWriteError` en el
+     `catch`.
+   - Si exportas los valores admitidos de un CHECK, hazlo como constante
+     (`SHIPPING_TYPES`, `COUPON_TYPES`…).
+6. **Exporta en `index.ts`.** El barrel es explícito: lo que no esté ahí no
+   existe para la API.
+7. **Test de integración** `xxx.integration.test.ts` (ver
+   [Cómo se prueba](#cómo-se-prueba)).
+8. **Build y gate:** `npm run build`, `npm run lint`, `npm run typecheck` y
+   `npm test`. Después, en la API, el servicio que lo consuma.
 
-- **`listCoupons`**: paginado en `id DESC`; `shopId` y `code` (parcial,
-  case-insensitive) se combinan con AND. `{items, total}`.
-- **`findCouponByCode`** (exacto, distingue mayúsculas) y
-  **`findCouponById`**: `null` si no existe.
-- **`createCoupon`**: nace con `isApprove` en `false`. Un `code`
-  repetido da `SlugConflictError` (409) y una tienda inexistente
-  `InvalidReferenceError` en `shop_id`.
-- **`updateCoupon`**: `shopId`/`userId` no cambian; la vigencia se valida
-  contra la fila, así que basta con que cambie una fecha. Fija `updatedAt`.
-- **`setCouponApproval`** (moderación) y **`deleteCoupon`** (devuelve la
-  fila borrada). Id inexistente ⇒ `RecordNotFoundError`.
+---
 
-Los cuatro CHECK se validan antes de escribir con `InvalidFieldValueError`
-(`NaN` y fechas inválidas incluidos). Los tipos admitidos se exportan como
-`COUPON_TYPES`. `image: null` se trata como ausente (DD-5, como `tags`).
+## Cómo se prueba
 
-### Lista de deseos (US-53, Épico 46) — `wishlists.repository.ts`
+- **38 archivos de test, 499 tests** (contados con `npx vitest list` el
+  2026-11-21). Todos son de integración contra el Postgres real salvo
+  `products.repository.test.ts`, que prueba `_toProductRecord` sin base.
+- **Requisitos:** `just db-up` (base sembrada) y `DATABASE_URL`. Cada test
+  carga `dotenv/config`, que lee el `.env` del directorio donde corres.
+- **En serie.** `vitest.config.ts` pone `fileParallelism: false`: los archivos
+  comparten una sola base y algunos tests cuentan filas absolutas, que otro
+  archivo en paralelo alteraría.
+- **Filas centinela.** Las escrituras de cada archivo usan un prefijo propio
+  (`zz-tags-`, `zz-types-`…) y se borran en `beforeAll` (por si una corrida
+  anterior se cortó) y en `afterAll`.
+- **Reloj fijo.** Los tests de `updatedAt` usan `_setNowProvider`.
+- En el gate del repo (`just check`) van tres pasos de este paquete: build,
+  lint y typecheck al principio, y los tests casi al final. En CI, la variable
+  `VITEST_JSON_OUT` hace que vitest escriba además un JSON con los conteos.
 
-No hay `WishlistRecord`: el pivote no se expone. Las lecturas devuelven
-`ProductRecord` con el mismo include (`PRODUCT_INCLUDE`, exportado desde
-`products.repository.ts` solo para uso interno del paquete) y el mismo
-`_toProductRecord`, así que la API proyecta el contrato de `/products` sin
-duplicarlo. Todo va por usuario.
+---
 
-- **`listWishlistProducts(userId, {page, limit})`**: `created_at DESC`,
-  desempate `product_id DESC`; `limit` 30 por defecto. `{items, total}`.
-- **`isInWishlist`** (booleano) y **`findWishlistProduct`** (el producto o
-  `null` si no está en la lista).
-- **`addToWishlist`**: idempotente (`skipDuplicates`); devuelve el producto.
-- **`removeFromWishlist`**: devuelve el producto; si no estaba,
-  `RecordNotFoundError('wishlists', id)`.
-- **`toggleWishlist`**: devuelve el estado nuevo (`true` = ahora está).
+## Referencia de repositorios
 
-Un producto inexistente da `RecordNotFoundError('products', id)` en las tres
-escrituras.
+Todas las funciones se importan de `@safari/db`. Esta tabla es el mapa; el
+detalle de cada uno está en los bloques de abajo y en la cabecera de su
+archivo.
 
-### Reseñas (US-54, Épico 46) — `reviews.repository.ts`
+| Área | Repositorios |
+|---|---|
+| Catálogo | `products`, `categories`, `types`, `tags`, `manufacturers`, `attributes`, `authors` |
+| Tiendas | `shops`, `staff`, `ownership-transfers`, `withdraws`, `become-seller` |
+| Configuración | `settings`, `taxes`, `shippings`, `order-statuses` |
+| Contenido | `faqs`, `terms-and-conditions`, `refund-policies`, `refund-reasons`, `store-notices` |
+| Ventas | `coupons`, `flash-sale`, `flash-sale-requests`, `orders`, `order-files`, `wishlists` |
+| Comunidad | `reviews`, `abusive-reports`, `questions`, `conversations` |
+| Identidad y acceso | `users`, `auth-tokens` |
+| Dashboard | `analytics` |
 
-`ReviewRecord` es la fila plana: `photos` tal cual sale de la columna
-`json`, con su orden de claves. Las lecturas devuelven
-`ReviewDetailRecord`, que añade el autor (`UserRecord`), el producto
-hidratado (`ProductRecord`, con el mismo `PRODUCT_INCLUDE`) y
-`abusiveReportsCount`. El conteo sale de **un** `groupBy` sobre
-`abusive_reports` por página, no de una consulta por reseña: la tabla es
-polimórfica y no hay relación para `_count`.
+<details>
+<summary><strong>Catálogo</strong>: products, categories, types, tags, manufacturers, attributes, authors</summary>
 
-- **`listReviews`**: paginado en `id DESC` (`limit` 30). Filtra por
-  `productId`, `shopId`, `rating` y `typeSlug` (el type del producto),
-  combinados con AND.
-- **`findReviewById`**: `null` si no existe.
-- **`createReview`**: el producto debe existir (`RecordNotFoundError`) y
-  `shopId` debe ser su tienda (`InvalidFieldValueError`). Si se repiten
-  usuario, producto y orden, da `SlugConflictError` (el único de expresión).
-- **`updateReview`**: solo `rating`, `comment` y `photos`; fija `updatedAt`.
-- **`deleteReview`**: borra la reseña y sus reportes en un `$transaction`
-  y la devuelve.
+**`products.repository.ts`**
 
-`rating` (1..5) y `photos` (array) se validan con `InvalidFieldValueError`.
+- `listProducts` (filtros, paginado, `limit` por defecto `DEFAULT_PAGE_SIZE`
+  = 30), `findProductBySlug`, `findProductShopId`.
+- `createProduct`, `updateProduct`, `deleteProduct`.
+- `upsertScrapedProduct` y `deleteScrapedProduct`: escritura idempotente
+  sobre la clave de procedencia (`products_procedencia_key`). Hoy el scraper
+  Python no los usa; existen para una ingesta desde Node o para herramientas
+  de administración.
+- Valida los CHECK de varios campos y los traduce a `InvalidSalePriceError`
+  (`salePrice < price`), `MissingPriceError` (un producto simple necesita
+  precio) e `IncompleteProvenanceError` (`source_store` y
+  `source_product_id` van juntos).
+- `PRODUCT_INCLUDE` y `_toProductRecord` se exportan del archivo, **no** del
+  barrel: los reutilizan otros repositorios (wishlists, reviews, flash-sale…)
+  para devolver el mismo `ProductRecord`.
+- `ProductRecord.inFlashSale` es `true` si el producto tiene alguna fila en
+  `flash_sale_products` (un `_count` en `PRODUCT_INCLUDE`). No mira la
+  vigencia de la venta.
 
-### Reportes de abuso (US-54) — `abusive-reports.repository.ts`
+**`categories.repository.ts`**: `getCategoryTree`, `listCategories`,
+`findCategoryByIdOrSlug`, `createCategory`, `updateCategory`,
+`deleteCategory`. Las escrituras validan la arista madre-hija: no se permiten
+ciclos, y una categoría con hijas no puede cambiar a un `type` distinto del de
+ellas (en la práctica, el `type` solo cambia en una hoja).
 
-`AbusiveReportRecord` es la fila plana (`modelType` corto) y
-`AbusiveReportDetailRecord` le añade el autor.
+**`types`, `tags`, `manufacturers`**: `list*`, `find*BySlug`, `create*`,
+`update*`, `delete*`. `manufacturers` añade
+`findOrCreateManufacturerBySlug`. En todos, el slug es inmutable al
+actualizar. `deleteTag` no cuenta dependientes: `product_tag` se borra en
+cascada.
 
-- **`listAbusiveReports`** (`id DESC`, moderación) y
-  **`listAbusiveReportsByUser`** (`created_at DESC`, `/my-reports`).
-- **`findAbusiveReportById`**, **`updateAbusiveReport`** (solo
-  `message`) y **`deleteAbusiveReport`** (devuelve la fila).
-- **`createAbusiveReport`**: valida el objeto con
-  **`assertReportableExists`**. Una reseña inexistente da
-  `RecordNotFoundError`. `'Question'` y cualquier otro tipo dan
-  `InvalidFieldValueError`. Desde US-55, `'Question'` se valida contra
-  `questions` y una pregunta inexistente da `RecordNotFoundError`. Un
-  reporte repetido da `SlugConflictError`.
-- **`rejectAbusiveReports(modelType, modelId)`** (US-65): rechazar es
-  borrar **todos** los reportes de un objeto y dejar el objeto intacto, lo
-  opuesto de «aceptar», que borra la reseña. Valida el objeto con
-  `assertReportableExists` y borra en un solo `deleteMany`; devuelve
-  cuántos borró (0 si no tenía). Como la fila desaparece, el UNIQUE deja
-  volver a reportarlo.
-- **`_countReports(modelType, ids)`** (interno del paquete): el `groupBy`
-  que usan reseñas y preguntas para su `abusiveReportsCount`.
+**`attributes.repository.ts`**: `AttributeRecord` trae `values` en `id ASC`.
 
-`message` vacío se rechaza con `InvalidFieldValueError`. Los tipos
-admitidos por el CHECK se exportan como `REPORTABLE_MODEL_TYPES`.
+- `listAttributes`: array sin paginar en `id DESC`, filtros por `shopId` y
+  nombre.
+- `findAttributeByIdOrSlug`: por id si el parámetro es un entero seguro, por
+  slug si no.
+- `createAttribute`: un único nested write (padre y valores). Una tienda
+  inexistente da `InvalidReferenceError` en `shop_id` sin dejar valores
+  sueltos; el campo se nombra a mano porque en un nested write el adaptador
+  no lo informa.
+- `updateAttribute`: reconcilia los valores con el body en un
+  `$transaction`. Un id del atributo se actualiza; un id nulo, ausente o no
+  entero se inserta; un valor que no aparece en el body se borra. Un id de
+  **otro** atributo da `InvalidReferenceError`. Los slugs existentes son
+  inmutables; los nuevos salen de `generateSlug` con un lookup en memoria,
+  calculado antes de la transacción.
+- `deleteAttribute`: devuelve el atributo con sus valores; Postgres los borra
+  en cascada.
 
-### Preguntas (US-55, Épico 46) — `questions.repository.ts`
+**`authors.repository.ts`**: `AuthorRecord` lleva `socials`, `image` y
+`coverImage` como `JsonValue`, `born`/`death` como `Date` y `productsCount`
+como dato sembrado (no hay `products.author_id`).
 
-`QuestionRecord` es la fila plana (`answer` null = sin responder). Las
-lecturas devuelven `QuestionDetailRecord`, con el autor, el producto
-hidratado y `abusiveReportsCount`, igual que las reseñas.
+- `listAuthors({ name, isApproved, page, limit })`: `id DESC`, `limit` 30;
+  `name` es ILIKE sobre `name` o `slug`.
+- `listTopAuthors(limit = 10)`: `productsCount DESC, id DESC`, sin paginar.
+- `findAuthorBySlug`, `createAuthor` (`isApproved` por defecto `true`),
+  `updateAuthor` (slug inmutable; un `name` que normaliza a vacío da
+  `EmptySlugError`), `deleteAuthor` (nada referencia a `authors`).
 
-- **`listQuestions`**: paginado en `id DESC` (`limit` 10). Filtra por
-  `productId`, `shopId`, `question` (parcial, case-insensitive) y
-  `typeSlug`, combinados con AND.
-- **`listUserQuestions(userId)`**: `created_at DESC, id DESC` (`limit` 8).
-- **`findQuestionById`**: `null` si no existe.
-- **`createQuestion`**: nace sin respuesta. El producto debe existir y
-  `shopId` debe ser su tienda.
-- **`answerQuestion`** (responde, y cambia `question` solo si llega) y
-  **`updateQuestionText`** (el autor; no toca la respuesta). Las dos fijan
-  `updatedAt`.
-- **`deleteQuestion`**: borra la pregunta y sus reportes en un
-  `$transaction`.
+</details>
 
-`question` vacía se rechaza con `InvalidFieldValueError`. No hay UNIQUE: un
-usuario puede preguntar varias veces sobre el mismo producto.
+<details>
+<summary><strong>Tiendas</strong>: shops, staff, ownership-transfers, withdraws, become-seller</summary>
 
-Quién responde lo decide la API: `super_admin`, el dueño
-(`findShopOwnerById`) o el staff de la tienda. Para el staff está
-**`isShopStaff(userId, shopId)`** (US-66, en `shops.repository.ts`), que
-dice si hay fila en `shop_staff`. Ser dueño no cuenta, y con ids no
-válidos devuelve `false` sin lanzar. Es solo la consulta de pertenencia:
-el CRUD de `/staffs` es US-42.
+**`shops.repository.ts`**: `listShops`, `listShopsNear`, `findShopBySlug`,
+`findShopOwnerById`, `findOrCreateShopBySlug`, `createShop`, `updateShop`,
+`setShopActive` e `isShopStaff(userId, shopId)`. Esta última dice si hay fila
+en `shop_staff`; ser dueño no cuenta, y con ids no válidos devuelve `false`
+sin lanzar.
 
-### Staff de tienda (US-42, Épico 40) — `staff.repository.ts`
+**`staff.repository.ts`**
 
-- **Listados.** No tienen función propia. `listUsersWithRelations` acepta
-  `staffOf: { shopId?, ownerId? }`: usuarios con fila en `shop_staff`,
-  acotados a una tienda, a las tiendas de un dueño o a ambas. `{}` da el
-  staff de cualquier tienda. Pagina usuarios, no filas: el que es staff de
-  dos tiendas sale una vez.
-- **`createShopStaff({ name, email, passwordHash, shopId })`.** En un
-  `$transaction` crea el usuario (permisos `customer` y `staff`, US-101) y
-  su fila del pivote. Fija `createdAt` y `updatedAt` desde `clock.ts`. Según
-  el caso:
-  - tienda inexistente: `InvalidReferenceError`;
-  - el email (sin distinguir mayúsculas) ya es staff de esa tienda:
-    idempotente, `{ created: false }`. No cambia nombre ni password, pero
-    garantiza el permiso `staff`;
-  - el email es de otro usuario: `DuplicateEmailError`. No se ata un
-    usuario existente en silencio.
-- **`removeShopStaff({ userId, shopId?, ownerId? })`.** En un
-  `$transaction`, borra las filas del pivote que pasan el filtro y devuelve
-  cuántas borró. Si el usuario se queda sin ninguna tienda, pierde el permiso
-  `staff` (US-101). El usuario no se borra. El pivote no tiene `updated_at`.
-- **`listStaffShops(userId)`** (US-101). Las tiendas de las que el usuario es
-  staff, `shop_id` asc. `/me` las suma a `shops`.
+- Los listados no tienen función propia: `listUsersWithRelations` acepta
+  `staffOf: { shopId?, ownerId? }`. Pagina usuarios, no filas: quien es staff
+  de dos tiendas sale una vez.
+- `createShopStaff({ name, email, passwordHash, shopId })`: en un
+  `$transaction` crea el usuario (permisos `customer` y `staff`) y su fila del
+  pivote.
+  - Tienda inexistente: `InvalidReferenceError`.
+  - El email (sin distinguir mayúsculas) ya es staff de esa tienda:
+    idempotente, `{ created: false }`; garantiza el permiso `staff`.
+  - El email es de otro usuario: `DuplicateEmailError`. No se ata un usuario
+    existente en silencio.
+- `removeShopStaff({ userId, shopId?, ownerId? })`: borra las filas del
+  pivote que pasan el filtro y devuelve cuántas. Si el usuario se queda sin
+  tiendas, pierde el permiso `staff`. El usuario no se borra.
+- `listStaffShops(userId)`: las tiendas de las que es staff, `shop_id ASC`.
 
 El permiso global `staff` refleja si el usuario es staff de alguna tienda. El
 seed sigue la misma regla.
 
-### Mensajería (US-56, Épico 46) — `conversations.repository.ts`
+**`ownership-transfers.repository.ts`**: los `*Info` son `JsonValue`;
+`OwnershipTransferDetailRecord` añade `previousOwner` y `currentOwner`. Quién
+ve qué lo decide la API y llega como el filtro `participantId`.
 
-Un solo repositorio para el agregado. `ConversationRecord` y `MessageRecord`
-son las filas planas. Las lecturas devuelven `ConversationDetailRecord`, con
-el usuario, la tienda (`ShopRecord`) y `latestMessage` (o `null`), y
-`MessageDetailRecord`, que es el mensaje con su conversación embebida.
+- `listOwnershipTransfers`: `created_at DESC, id DESC`, `limit` 10.
+  `transactionIdentifier` es exacto.
+- `findOwnershipTransferByIdentifier`, `deleteOwnershipTransfer`.
+- `createOwnershipTransfer`: solicitud `pending`; el dueño anterior se lee
+  con `FOR UPDATE`. No toca `shops`.
+- `updateOwnershipTransfer(id, { status, message })`: `status` fuera de
+  `OWNERSHIP_TRANSFER_STATUSES` da `InvalidFieldValueError`.
+- `transferShopOwnership`: en una transacción bloquea la tienda, valida al
+  vendedor (existe y tiene `store_owner`), cambia `shops.owner_id` e inserta
+  la fila `approved`. Devuelve `{ shop, owner, transfer }`. Si el vendedor ya
+  es el dueño: `SameOwnerError` (409).
+- `transaction_identifier` es `YYYY-MM-DD-NNNN` (día UTC de `now()`,
+  secuencial por día). Si otra transacción toma el mismo número, el UNIQUE da
+  P2002 y se reintenta (hasta 5 veces).
 
-- **`latestMessage`** sale de **una** consulta `DISTINCT ON
-  (conversation_id) … ORDER BY conversation_id, created_at DESC, id DESC`
-  (`$queryRaw`) sobre los ids de la página, servida por
-  `messages_conversacion_idx`. Se descartó el `include` con `take: 1`
-  porque Prisma trae todos los mensajes de la página y recorta en memoria.
-- **Visibilidad** (`ConversationViewer = {userId, seeAll}`): con `seeAll`
-  se ve todo; si no, las conversaciones propias y las de las tiendas que el
-  usuario posee (`shops.owner_id`).
-- **`listConversations`**: paginado (`limit` 15), búsqueda por nombre de
-  tienda (`shopName`, case-insensitive) y `orderBy` en
-  `CONVERSATION_SORTABLE` (`id`, `created_at`, `updated_at`); sin
-  `orderBy`, `id ASC`.
-- **`findConversationById(id, viewer?)`**: `null` si no existe o no es
-  visible.
-- **`findOrCreateConversation(userId, shopId)`**: upsert por el par. Una
-  tienda inexistente da `InvalidReferenceError`.
-- **`listMessages(conversationId, {page, limit, readerId})`**: `id DESC`,
-  paginado; una conversación inexistente da `RecordNotFoundError`.
-  `readerId` solo trae la lectura de ese usuario a la conversación embebida.
-- **`createMessage`**: inserta y fija `conversations.updated_at = now()` en
-  un `$transaction`. Un cuerpo vacío da `InvalidFieldValueError`.
-- **`markConversationSeen(id, viewer)`** (US-64): upsert de
-  `conversation_reads.last_seen_at = now()`; repetirla solo mueve la marca.
-  Devuelve la conversación con esa lectura, o `null` si no existe o no es
-  visible, sin escribir nada.
+**`withdraws.repository.ts`**: `amount` con `_dec` (`10`, no `"10.00"`).
+`listWithdraws` (`id DESC`, `limit` 10, filtro `ownerId` para la
+visibilidad), `findWithdrawById`, `createWithdraw` (nace `pending`; `amount`
+fuera de `(0, 1e10)` da 400), `updateWithdrawStatus` (valida contra
+`WITHDRAW_STATUSES`) y `deleteWithdraw`.
 
-`unseen` no vive aquí: depende de quién consulta y lo calcula la API. Lo que
-sí trae cada `ConversationDetailRecord` es `lastSeenAt`, la última lectura
-de quien consulta (`viewer.userId`, o `readerId` en los mensajes): `null`
-si nunca la marcó o si la consulta no tiene lector. Sale de una sola consulta
-por página, como `latestMessage`.
+**`become-seller.repository.ts`**: `getBecomeSeller` y `updateBecomeSeller`
+sobre la fila única de la página «vender con nosotros».
 
-### Estados de pedido (US-57, Épico 46) — `order-statuses.repository.ts`
+</details>
 
-`OrderStatusRecord` es la fila plana (sin `translated_languages`, que emite
-la API).
+<details>
+<summary><strong>Configuración</strong>: settings, taxes, shippings, order-statuses</summary>
 
-- **`listOrderStatuses`**: paginado (`limit` 30), búsqueda parcial por
-  `name` (case-insensitive) y `orderBy` en `ORDER_STATUS_SORTABLE`
-  (`name`, `serial`, `createdAt`, `updatedAt`); sin `orderBy`, `serial
-  ASC`. Desempate por `id ASC`.
-- **`findOrderStatusBySlug`**: `null` si no existe.
-- **`createOrderStatus`**: slug por `generateSlug(name)`. Serial o slug
-  repetido dan `SlugConflictError`; un serial no entero positivo o un
-  color que no sea `#rrggbb` dan `InvalidFieldValueError`.
-- **`updateOrderStatus`**: si llega `name`, **recalcula el slug** sin contar
-  la propia fila (renombrar al mismo nombre lo conserva). Fija `updatedAt:
-  now()`. Inexistente: `RecordNotFoundError`.
-- **`deleteOrderStatus`**: devuelve el snapshot previo. Sin dependientes que
-  contar: `orders` no tiene FK hacia esta tabla.
+- **`settings`**: `getSettings()`, la fila única.
+- **`taxes`** y **`shippings`**: listados **sin paginar** (`id ASC`, filtro
+  opcional por nombre), porque es lo que espera el admin. `find*ById`,
+  `create*`, `update*` y `delete*`. Validan `rate` (finito, ≥ 0), `amount`
+  (≥ 0) y `type` (`SHIPPING_TYPES`).
+- **`order-statuses`**: `listOrderStatuses` (`limit` 30, búsqueda por
+  `name`, `orderBy` en `ORDER_STATUS_SORTABLE`; por defecto `serial ASC`,
+  desempate `id ASC`), `findOrderStatusBySlug`, `createOrderStatus`,
+  `updateOrderStatus` y `deleteOrderStatus`.
+  - Serial o slug repetido: `SlugConflictError`. Serial no entero positivo o
+    color que no sea `#rrggbb`: `InvalidFieldValueError`.
+  - Si llega `name`, **recalcula el slug** sin contar la propia fila.
+  - `orders` no tiene FK hacia esta tabla: borrar no cuenta dependientes.
 
-### Órdenes (US-58, Épico 46) — `orders.repository.ts`
+</details>
 
-Solo lectura; las escrituras son de US-59. `OrderRecord` y
-`OrderProductRecord` son las filas planas: el dinero sale como `number` y
-los snapshots y las direcciones como `Prisma.JsonValue`. Como son columnas
-`json`, Prisma devuelve el objeto con las claves en el orden del texto, y
-el integration test lo fija para las 76 líneas.
+<details>
+<summary><strong>Contenido</strong>: faqs, terms-and-conditions, refund-policies, refund-reasons, store-notices</summary>
 
-`OrderDetailRecord` es la orden con `lines` (por `lineNo`), `shop` (solo
-las hijas, con el `productsCount` de `toShopDto`, vía el `COUNT_PRODUCTS`
-de `shops.repository.ts`) y `children` (por `id`, vacío en las hijas).
+**`faqs`** y **`terms-and-conditions`**: `list*` (paginado, `limit` 10,
+`id ASC`), `findFaqById` / `findTermsAndConditionsBySlug`, `create*`,
+`update*`, `delete*`. Términos añade `setTermsApproval` (moderación). Los
+filtros se combinan con AND: `shopId`, tipo e `issuedBy` exactos, título con
+`contains` sin distinguir mayúsculas, e `isApproved` en los términos.
 
-- **`listOrders`**: paginado (`limit` 15) en `id DESC`. Sin `shopId` ni
-  `trackingNumber`, solo padres; con `shopId`, las hijas de esa tienda;
-  con `trackingNumber`, la orden exacta (padre o hija). `customerId` filtra
-  siempre que llegue; el aislamiento por cliente lo decide la API.
-- **`findOrderByIdOrTracking(number | string)`**: un `number` busca por
-  `id` y un `string` por `tracking_number`. `null` si no existe; no
-  mira de quién es.
+El tipo y el emisor se derivan de la tienda, así los CHECK
+`faqs_faq_type_check` y `terms_and_conditions_type_check` no pueden
+violarse:
 
-Escrituras (US-59). Reciben las cifras ya calculadas por la API: el dinero
-como **texto decimal** (`"0.044"`), para que llegue exacto a `numeric` sin
-pasar por `float`. El barrel exporta `Decimal` (el de Prisma) para ese
-cálculo.
+- sin `shopId`: tipo `global`, emisor `GLOBAL_CONTENT_ISSUER`
+  (`'Super Admin'`);
+- con `shopId`: tipo `shop`, emisor el nombre de la tienda;
+- tienda inexistente o id no entero seguro: `InvalidReferenceError`.
 
-- **`findProductsForOrder(ids)`**: los productos vivos de un carrito, como
-  `ProductRecord`; los inexistentes no vienen.
-- **`createOrderWithChildren(input)`**: en un `$transaction`, el padre, una
-  hija por tienda con sus líneas y el descuento de stock (`updateMany …
-  where quantity >= n`). Sin stock: `InsufficientStockError` (código del
-  409) y rollback. Fija `createdAt`/`updatedAt` con `now()` y genera los
+**`refund-policies`** y **`refund-reasons`**: paginados (`limit` 10,
+`id ASC`). Toman el slug del body si llega no vacío y lo mantienen inmutable.
+`listRefundPolicies` filtra `target` y `status` por igualdad y el título con
+`contains`; valida los dos CHECK con `REFUND_POLICY_TARGETS` y
+`REFUND_POLICY_STATUSES`. `listRefundReasons` filtra por nombre.
+
+**`store-notices.repository.ts`**: `StoreNoticeDetailRecord` añade el
+`creator` con sus `permissions`, los `recipients`, las `shops` y los `reads`
+(lectura por usuario), cada uno en un orden fijo.
+
+- `listStoreNotices`: `limit` 12; filtros por texto, `userId`, `shopId` o
+  `shopSlug`; `orderBy` en `STORE_NOTICE_SORTABLE` con desempate `id DESC`.
+- `findStoreNoticeById`, `deleteStoreNotice` (los pivotes caen por cascada).
+- `createStoreNotice`: el `type` decide los destinatarios (ver
+  `db/README.md`) y cada usuario destinatario recibe una lectura en `false`.
+  Es un único nested write.
+- `updateStoreNotice`: si llegan `type` o `receivedBy`, reconcilia los
+  pivotes en un `$transaction` y conserva la lectura de quien sigue siendo
+  destinatario.
+- `markStoreNoticeRead`: upsert de la lectura del usuario.
+- Valida los tres CHECK; exporta `STORE_NOTICE_PRIORITIES` y
+  `STORE_NOTICE_TYPES`.
+
+</details>
+
+<details>
+<summary><strong>Ventas</strong>: coupons, flash-sale, flash-sale-requests, orders, order-files, wishlists</summary>
+
+**`coupons.repository.ts`**: `CouponRecord` no trae `isValid`, porque depende
+del reloj: lo calcula la API con `now()`. `image: null` se trata como
+ausente.
+
+- `listCoupons`: `id DESC`, `limit` 12; `shopId` y `code` (parcial, sin
+  distinguir mayúsculas) con AND.
+- `findCouponByCode` (exacto, distingue mayúsculas) y `findCouponById`.
+- `createCoupon`: nace con `isApprove` en `false`. `code` repetido:
+  `SlugConflictError`; tienda inexistente: `InvalidReferenceError` en
+  `shop_id`.
+- `updateCoupon`: `shopId` y `userId` no cambian; la vigencia se valida
+  contra la fila, así que basta con que cambie una fecha.
+- `setCouponApproval` y `deleteCoupon`. Valida los cuatro CHECK (`NaN` y
+  fechas inválidas incluidos); exporta `COUPON_TYPES`.
+
+**`flash-sale.repository.ts`**: `FlashSaleRecord` trae `products`
+(hidratados con `PRODUCT_INCLUDE`, en orden de `product_id`).
+`startDate`/`endDate` se leen como UTC de columnas `timestamp` sin zona.
+
+- `listFlashSales` (`id DESC`, `limit` 10, `title` ILIKE, sin filtro de
+  vigencia), `findFlashSaleBySlug`.
+- `listFlashSaleProducts({ slug, page, limit })`: `id ASC`; sin `slug`, los de
+  todas las ventas sin repetir; slug inexistente: `null`.
+- `listProductFlashSales(productId)`: las ventas que contienen el producto;
+  producto inexistente: `null`.
+- `createFlashSale` / `updateFlashSale`: validan los CHECK y que existan
+  todos los `productIds` antes de escribir; venta y tabla puente van en una
+  transacción. `saleBuilder.product_ids` se reescribe con los `productIds`
+  deduplicados. En el update, `productIds` presente **reemplaza** el
+  conjunto; ausente, no lo toca.
+- `deleteFlashSale`: devuelve la venta con los productos que tenía.
+
+**`flash-sale-requests.repository.ts`**: solicitudes de un vendedor para
+entrar en una venta. `status` es `pending | approved | rejected`. La tienda
+se deduce de los productos y no cambia al editar.
+
+- **Visibilidad:** con `viewerId`, las lecturas solo ven solicitudes de
+  tiendas de las que ese usuario es dueño o staff; sin `viewerId` (super
+  admin), todas. La autorización de las escrituras vive en el servicio de
+  Nest.
+- `listFlashSaleRequests`, `findFlashSaleRequestById`,
+  `listFlashSaleRequestProducts` (`null` si no existe o no es visible).
+- `resolveFlashSaleRequestShop(productIds)`: devuelve `{ shopId, productIds }`;
+  sin productos o de dos tiendas: `InvalidFlashSaleRequestError` (400).
+- `createFlashSaleRequest` (`pending`, `note` no vacía) y
+  `updateFlashSaleRequest` (solo si está `pending`, si no
+  `FlashSaleRequestStateError` 409).
+- `deleteFlashSaleRequest`: no se puede borrar una aprobada (409); hay que
+  rechazarla antes.
+- `approveFlashSaleRequest`: mete en la venta los productos que faltan y los
+  marca con `addedToSale`. `rejectFlashSaleRequest`: si estaba aprobada,
+  retira de la venta **solo** los marcados. Así rechazar no quita productos
+  que ya estaban en la venta por otra vía.
+- Aprobar y rechazar bloquean solicitud y venta (`SELECT … FOR UPDATE`),
+  reescriben `sale_builder.product_ids` desde la tabla puente y fijan
+  `updatedAt: now()` en ambas.
+
+**`orders.repository.ts`**: el dinero sale como `number`; snapshots y
+direcciones como `JsonValue`. `OrderDetailRecord` añade `lines` (por
+`lineNo`), `shop` (solo en las hijas) y `children`.
+
+- `listOrders`: `id DESC`, `limit` 15. Sin `shopId` ni `trackingNumber`, solo
+  padres; con `shopId`, las hijas de esa tienda; con `trackingNumber`, la
+  orden exacta. `customerId` filtra si llega; el aislamiento por cliente lo
+  decide la API.
+- `findOrderByIdOrTracking(number | string)`: un `number` busca por `id`, un
+  `string` por `tracking_number`.
+- `findProductsForOrder(ids)`: los productos vivos de un carrito.
+- `createOrderWithChildren`: en un `$transaction`, el padre, una hija por
+  tienda con sus líneas y el descuento de stock (`updateMany … where
+  quantity >= n`). Sin stock: `InsufficientStockError` y rollback. Genera los
   `tracking_number` (`YYYYMMDD` UTC + 6 dígitos, hasta 5 intentos).
-- **`setOrderStatus(id, {orderStatus?, paymentStatus?})`**: valida contra
-  `ORDER_STATUSES`/`PAYMENT_STATUSES` (`InvalidFieldValueError`) y, en un
-  padre, propaga a sus hijas. No se llama `updateOrderStatus` porque ese
-  nombre ya es del catálogo de estados (US-57).
-- **`markOrderPaid(trackingNumber)`**: `order-processing` +
-  `payment-success` en la orden y sus hijas.
-- **`deleteOrder(id)`**: devuelve el snapshot previo; hijas y líneas por
-  CASCADE. Si el `SET NULL` de `reviews.order_id` chocaría con otra
-  reseña del autor sin orden, `SlugConflictError` (409) y no borra nada.
+- `setOrderStatus(id, { orderStatus?, paymentStatus? })`: valida contra
+  `ORDER_STATUSES` / `PAYMENT_STATUSES` y propaga a las hijas. No se llama
+  `updateOrderStatus` porque ese nombre es del catálogo de estados.
+- `markOrderPaid(trackingNumber)`: `order-processing` + `payment-success` en
+  la orden y sus hijas.
+- `deleteOrder`: hijas y líneas por cascada. Si el `SET NULL` de
+  `reviews.order_id` chocaría con otra reseña del autor sin orden, da
+  `SlugConflictError` y no borra nada.
 
-### Descargas (US-60, Épico 46) — `order-files.repository.ts`
+**`order-files.repository.ts`**: descargas digitales, siempre de un cliente.
+`listOrderFilesByCustomer` (`id ASC`, `limit` 30) y
+`findFirstOrderFileByDigitalFileId(digitalFileId, customerId)`.
 
-`OrderFileRecord` es la fila plana; `file` sale de una columna `json` como
-`Prisma.JsonValue`, con las claves en el orden del texto. Solo lectura, y
-siempre de un cliente: no hay función que liste las descargas de todos.
+**`wishlists.repository.ts`**: no hay `WishlistRecord`; las lecturas
+devuelven `ProductRecord`. Todo va por usuario.
 
-- **`listOrderFilesByCustomer(customerId, {page, limit})`**: paginado
-  (`limit` 30) en `id ASC`.
-- **`findFirstOrderFileByDigitalFileId(digitalFileId, customerId)`**: la
-  primera por `id` del cliente con ese `digital_file_id` (se repite entre
-  filas), o `null`.
+- `listWishlistProducts(userId, { page, limit })`: `created_at DESC`,
+  desempate `product_id DESC`, `limit` 30.
+- `isInWishlist`, `findWishlistProduct`.
+- `addToWishlist` (idempotente), `removeFromWishlist`
+  (`RecordNotFoundError('wishlists', id)` si no estaba) y `toggleWishlist`
+  (devuelve `true` si ahora está).
+- Un producto inexistente da `RecordNotFoundError('products', id)`.
 
-### Transferencias de propiedad (US-63, Épico 46) — `ownership-transfers.repository.ts`
+</details>
 
-`OwnershipTransferRecord` es la fila plana; los `*Info` salen de columnas
-`json` como `Prisma.JsonValue`, con las claves en el orden del texto.
-`OwnershipTransferDetailRecord` le añade `previousOwner` y `currentOwner`
-(`UserRecord` + `profile`). Quién ve qué es regla de la API, que llega aquí
-como el filtro `participantId`.
+<details>
+<summary><strong>Comunidad</strong>: reviews, abusive-reports, questions, conversations</summary>
 
-- **`listOwnershipTransfers({transactionIdentifier, shopId, participantId,
-  page, limit})`**: paginado (`limit` 10) en `created_at DESC, id DESC`.
-  `transactionIdentifier` es exacto; `participantId` deja las filas donde
-  ese usuario es el dueño anterior o el nuevo.
-- **`findOwnershipTransferByIdentifier(identifier)`**: o `null`.
-- **`createOwnershipTransfer({shopId, currentOwnerId, createdById,
-  message})`**: solicitud `pending`; el dueño anterior es el de la tienda,
-  leído con `FOR UPDATE` en la misma transacción. No toca `shops`.
-- **`updateOwnershipTransfer(id, {status, message})`**: `status` fuera de
-  `OWNERSHIP_TRANSFER_STATUSES` da `InvalidFieldValueError`; fija
-  `updatedAt: now()`. Tampoco toca `shops`.
-- **`deleteOwnershipTransfer(id)`**: borra y devuelve la fila.
-- **`transferShopOwnership({shopId, vendorId, createdById, message})`**: en
-  una `$transaction` bloquea la tienda, valida al vendedor (existe y tiene
-  `store_owner`), cambia `shops.owner_id` e inserta la fila `approved`.
-  Devuelve `{shop, owner, transfer}`. Tienda inexistente:
-  `RecordNotFoundError` (404); vendedor inválido: 400.
+**`reviews.repository.ts`**: `ReviewDetailRecord` añade el autor, el
+producto hidratado y `abusiveReportsCount`. El conteo sale de **un**
+`groupBy` sobre `abusive_reports` por página: la tabla es polimórfica y no
+hay relación para `_count`.
 
-`transaction_identifier` es `YYYY-MM-DD-NNNN` (día UTC de `now()`,
-secuencial por día) y se calcula dentro de la transacción; si otra se
-adelanta con el mismo número, el UNIQUE da P2002 y la transacción se repite
-(hasta 5 veces). `SameOwnerError` (409, reutiliza el código del conflicto)
-sale cuando el vendedor ya es el dueño.
+- `listReviews`: `id DESC`, `limit` 30; filtros `productId`, `shopId`,
+  `rating` y `typeSlug` con AND.
+- `findReviewById`.
+- `createReview`: el producto debe existir y `shopId` debe ser su tienda.
+  Mismo usuario, producto y orden: `SlugConflictError`.
+- `updateReview`: solo `rating` (1..5), `comment` y `photos` (array).
+- `deleteReview`: borra la reseña y sus reportes en un `$transaction`.
 
-### Retiros (US-62, Épico 46) — `withdraws.repository.ts`
+**`abusive-reports.repository.ts`**
 
-`WithdrawRecord` es la fila plana (`amount` con `_dec`: `10`, no `"10.00"`);
-`WithdrawDetailRecord` le añade su `shop: ShopRecord`. Quién ve qué es regla
-de la API, que llega aquí como el filtro `ownerId`.
+- `listAbusiveReports` (`id DESC`, moderación) y `listAbusiveReportsByUser`
+  (`created_at DESC`).
+- `findAbusiveReportById`, `updateAbusiveReport` (solo `message`, no vacío),
+  `deleteAbusiveReport`.
+- `createAbusiveReport`: valida el objeto con `assertReportableExists`. Tipos
+  `'Review'` y `'Question'` se buscan en su tabla (`RecordNotFoundError` si no
+  existen); cualquier otro tipo da `InvalidFieldValueError`. Reporte
+  repetido: `SlugConflictError`. Tipos admitidos: `REPORTABLE_MODEL_TYPES`.
+- `rejectAbusiveReports(modelType, modelId)`: rechazar es borrar **todos** los
+  reportes del objeto y dejar el objeto intacto. Devuelve cuántos borró. Como
+  las filas desaparecen, el objeto se puede volver a reportar.
 
-- **`listWithdraws({shopId, ownerId, status, page, limit})`**: paginado
-  (`limit` 10) en `id DESC`.
-- **`findWithdrawById(id)`**: con su tienda, o `null`.
-- **`createWithdraw({shopId, amount, paymentMethod, details, note})`**: nace
-  `pending`. `amount` fuera de `(0, 1e10)` da `InvalidFieldValueError`
-  (400) y un `shopId` inexistente, `InvalidReferenceError` (400).
-- **`updateWithdrawStatus(id, status)`**: `status` fuera de
-  `WITHDRAW_STATUSES` da `InvalidFieldValueError`; fija `updatedAt: now()`.
-  Inexistente: `RecordNotFoundError`.
-- **`deleteWithdraw(id)`**: borra y devuelve la fila borrada.
+**`questions.repository.ts`**: `answer` en `null` significa sin responder.
+`QuestionDetailRecord` añade autor, producto y `abusiveReportsCount`, como
+las reseñas.
 
-### Autores (US-93, Épico 92) — `authors.repository.ts`
+- `listQuestions` (`id DESC`, `limit` 10; filtros `productId`, `shopId`,
+  `question` parcial y `typeSlug`) y `listUserQuestions(userId)`
+  (`created_at DESC, id DESC`, `limit` 8).
+- `findQuestionById`, `createQuestion` (el producto debe existir y `shopId`
+  ser su tienda), `answerQuestion`, `updateQuestionText` (el autor; no toca
+  la respuesta) y `deleteQuestion` (con sus reportes, en un
+  `$transaction`).
+- No hay UNIQUE: un usuario puede preguntar varias veces. Quién responde lo
+  decide la API (`super_admin`, el dueño o el staff vía `isShopStaff`).
 
-`AuthorRecord` es la fila plana: `socials`, `image` y `coverImage` como
-`JsonValue` en su orden, `born`/`death` como `Date` y `productsCount` como
-el dato sembrado (no se calcula: no hay `products.author_id`).
+**`conversations.repository.ts`**: `ConversationDetailRecord` trae usuario,
+tienda, `latestMessage` y `lastSeenAt` (la última lectura de quien consulta).
 
-- **`listAuthors({name, isApproved, page, limit})`**: paginado (`limit`
-  30) en `id DESC`. `name` es ILIKE sobre `name` o `slug`.
-- **`listTopAuthors(limit = 10)`**: `productsCount DESC, id DESC`, sin
-  paginar.
-- **`findAuthorBySlug(slug)`**: el autor, o `null`.
-- **`createAuthor(input)`**: slug con `generateSlug(name)` (o el enviado);
-  `isApproved` por defecto `true`.
-- **`updateAuthor(id, input)`**: el slug es inmutable; un `name` que
-  normaliza a vacío da `EmptySlugError`; fija `updatedAt: now()`.
-  Inexistente: `RecordNotFoundError`.
-- **`deleteAuthor(id)`**: borra y devuelve la fila borrada. Nada referencia
-  a `authors`, así que no cuenta dependientes.
+- `latestMessage` sale de **una** consulta `DISTINCT ON (conversation_id)`
+  sobre los ids de la página. Un `include` con `take: 1` traería todos los
+  mensajes y recortaría en memoria.
+- **Visibilidad** (`ConversationViewer = { userId, seeAll }`): con `seeAll`,
+  todo; si no, las propias y las de las tiendas que el usuario posee.
+- `listConversations` (`limit` 15, búsqueda por `shopName`, `orderBy` en
+  `CONVERSATION_SORTABLE`; por defecto `id ASC`), `findConversationById`,
+  `findOrCreateConversation(userId, shopId)`.
+- `listMessages(conversationId, { page, limit, readerId })`: `id DESC`.
+- `createMessage`: inserta y fija `conversations.updated_at = now()` en un
+  `$transaction`. Cuerpo vacío: `InvalidFieldValueError`.
+- `markConversationSeen(id, viewer)`: upsert de `last_seen_at = now()`.
+- `unseen` no vive aquí: depende de quién consulta y lo calcula la API.
 
-### Ventas flash (US-94, Épico 92) — `flash-sale.repository.ts`
+</details>
 
-`FlashSaleRecord` es la venta con `products: ProductRecord[]` (de la tabla
-puente, en orden de `product_id`, hidratados con `PRODUCT_INCLUDE` como en
-`wishlists`). `startDate`/`endDate` son `Date` leídos como UTC de columnas
-`timestamp` sin zona; `rate` es `number`; `saleBuilder`, `image` y
-`coverImage` son `JsonValue` en su orden.
+<details>
+<summary><strong>Identidad y acceso</strong>: users, auth-tokens</summary>
 
-- **`listFlashSales({title, page, limit})`**: paginado (`limit` 10) en
-  `id DESC`. `title` es ILIKE. Sin filtro por vigencia.
-- **`findFlashSaleBySlug(slug)`**: la venta con sus productos, o `null`.
-- **`listFlashSaleProducts({slug, page, limit})`**: productos de la venta,
-  en `id ASC`. Sin `slug`, los de todas las ventas sin repetir. Slug
-  inexistente: `null`.
-- **`listProductFlashSales(productId)`** (US-96): las ventas en las que
-  está el producto, en `id DESC`, con sus productos. `[]` si no está en
-  ninguna; producto inexistente: `null`.
-- **`createFlashSale(input)`**: slug con `generateSlug(title)`. Valida los
-  CHECKs (`InvalidFieldValueError`) y que existan todos los `productIds`
-  (`InvalidReferenceError`) antes de escribir; la venta y sus filas puente
-  van en una transacción. `saleBuilder.product_ids` se reescribe con los
-  `productIds` deduplicados.
-- **`updateFlashSale(id, input)`**: igual, y `productIds` presente
-  **reemplaza** el conjunto de productos en la misma transacción; ausente,
-  no lo toca. Slug inmutable; un `title` que normaliza a vacío da
-  `EmptySlugError`; fija `updatedAt: now()`. Inexistente:
-  `RecordNotFoundError`.
-- **`deleteFlashSale(id)`**: borra (cascada a la tabla puente) y devuelve
-  la venta borrada con los productos que tenía.
+**`users.repository.ts`**: `findUserById`, `findUserWithRelations`,
+`findUserCredentialsByEmail`, `listUsers`, `listUsersWithRelations`,
+`createUser`, `updateUserPasswordHash`, `setUserActive` y `grantPermission`.
 
-`ProductRecord.inFlashSale` (US-96) es `true` si el producto tiene alguna
-fila en `flash_sale_products`. Sale de un `_count` en `PRODUCT_INCLUDE`, así
-que lo traen todos los repositorios que devuelven productos. No mira la
-vigencia de la venta.
+- **El hash no cruza la frontera de serialización.** `passwordHash` solo
+  viaja en el tipo `UserCredentials`, que vive en `users.repository.ts` y no
+  en `records.ts`. La única función que lo devuelve es
+  `findUserCredentialsByEmail`; `createUser` y `updateUserPasswordHash` lo
+  reciben ya hasheado. Hashear y verificar es trabajo de la API: `bcryptjs`
+  no entra en este paquete.
+- **Por qué `findUserCredentialsByEmail` usa `$queryRaw`.** La unicidad del
+  email sin distinguir mayúsculas vive en `users_email_lower_idx`, un índice
+  de expresión sobre `lower(email)`. Ni `mode: 'insensitive'` (genera
+  `ILIKE`) ni normalizar en JS antes de un `equals` usan ese índice; solo
+  `WHERE lower(email) = lower($1)` lo hace. Todo consumidor que compare por
+  email debe seguir esta regla (spec
+  [`identity-schema`](../../openspec/specs/identity-schema/spec.md)).
+- `createUser` traduce el P2002 del email a `DuplicateEmailError`: lo dispara
+  un índice de expresión que Prisma no ve.
+- `updateUserPasswordHash` y `setUserActive` devuelven `null` si el id no
+  existe. `grantPermission` es idempotente.
+- `listUsers` devuelve `{ items, total }`.
 
-### Solicitudes de venta flash (US-97, Épico 95) — `flash-sale-requests.repository.ts`
+**`auth-tokens.repository.ts`**: tokens de recuperación de contraseña y
+códigos OTP. `createPasswordResetToken`, `findLivePasswordResetTokens`,
+`consumePasswordResetToken`, `createOtpCode`, `findLiveOtpCodeById`,
+`consumeOtpCode`, `purgeExpiredAuthTokens` y `findUserIdByProfileContact`.
+`consumedAt` sale de `now()`.
 
-`FlashSaleRequestRecord` es la solicitud con `products: ProductRecord[]`
-(los pedidos, en orden de `product_id`) y `flashSale: FlashSaleRecord` (la
-venta con sus productos). `status` es `FlashSaleRequestStatus`:
-`pending | approved | rejected` (DA-5). La tienda (`shopId`) se deduce de los
-productos y no cambia al editar.
+</details>
 
-**Visibilidad:** con `viewerId`, las lecturas solo ven las solicitudes de las
-tiendas de las que ese usuario es dueño (`shops.owner_id`) o staff
-(`shop_staff`); sin `viewerId` (super admin), todas. La autorización de las
-escrituras vive en el servicio de Nest.
-
-- **`listFlashSaleRequests({title, shopId, viewerId, page, limit})`**:
-  paginado (`limit` 10) en `id DESC`; `title` es ILIKE.
-- **`findFlashSaleRequestById(id, {viewerId})`**: la solicitud, o `null` si
-  no existe o no es visible.
-- **`listFlashSaleRequestProducts({requestId, viewerId, name, page, limit})`**:
-  productos de la solicitud en `id ASC`, `name` ILIKE; `null` si la
-  solicitud no existe o no es visible.
-- **`resolveFlashSaleRequestShop(productIds)`**: deduplica y devuelve
-  `{shopId, productIds}`. Sin productos o de 2 tiendas:
-  `InvalidFlashSaleRequestError` (400); producto inexistente:
-  `InvalidReferenceError`. El servicio la usa para autorizar antes de crear.
-- **`createFlashSaleRequest(input)`**: `pending`. Valida `note` no vacía, la
-  venta y los productos antes de escribir; la solicitud y sus filas puente
-  van en una sola sentencia anidada (atómica).
-- **`updateFlashSaleRequest(id, input)`**: solo `pending`
-  (`FlashSaleRequestStateError`, 409). `productIds` presente **reemplaza**
-  los productos, que deben ser de la tienda de la solicitud. Fija
-  `updatedAt: now()`. Inexistente: `RecordNotFoundError`.
-- **`deleteFlashSaleRequest(id)`**: no `approved` (409: hay que rechazarla
-  antes, US-98). Cascada a la tabla puente; devuelve la solicitud borrada.
-- **`approveFlashSaleRequest(id)`** (US-98): `pending` o `rejected` →
-  `approved`. Mete en la venta los productos que faltan, los marca con
-  `addedToSale` y deja sin marca los que ya estaban. Ya aprobada: 409.
-- **`rejectFlashSaleRequest(id)`** (US-98): `pending` o `approved` →
-  `rejected`. Si estaba aprobada, retira de la venta solo los marcados y
-  les quita la marca (DA-6). Ya rechazada: 409.
-
-Aprobar y rechazar van en una transacción que bloquea la solicitud y la
-venta (`SELECT … FOR UPDATE`, precedente `ownership-transfers`), reescribe
-`sale_builder.product_ids` con la tabla puente (orden de `product_id`) y
-fija `updatedAt: now()` en la venta y en la solicitud.
-
-`InvalidFlashSaleRequestError` y `FlashSaleRequestStateError` son locales
-del repositorio y reutilizan los códigos del 400 y del 409 (precedente
-`SameOwnerError`), así que `toWriteHttpException` los mapea sin cambios.
-
-### Dashboard (US-61, Épico 46) — `analytics.repository.ts`
+<details>
+<summary><strong>Dashboard</strong>: analytics</summary>
 
 Solo lectura y sin tabla propia. Todo en UTC; «ahora» es el `Date` que
-recibe `getDashboardAnalytics` (el servicio pasa `now()` de `clock.ts`).
-Solo cuentan órdenes padre (`parent_id IS NULL`). Usa `$queryRaw`
-parametrizado porque las ventanas son `count(*) FILTER (...)` y el mes UTC
-no se expresa con `groupBy`; los importes salen del `numeric` como texto y
-se convierten con `Number`.
+recibe `getDashboardAnalytics` (la API le pasa `now()`). Solo cuentan
+órdenes padre (`parent_id IS NULL`). Usa `$queryRaw` parametrizado; los
+importes salen de `numeric` como texto y se convierten con `Number`.
 
-- **`getDashboardAnalytics(at)`** → `DashboardAnalyticsRecord`:
-  - M-1 `totalRevenue`: Σ `total` de padres `order-completed` con
-    `created_at <= at`. M-5 `todaysRevenue`: lo mismo en el día UTC de `at`.
-  - M-3 `totalShops` = `count(*)` de `shops`; M-4 `totalVendors` = dueños
-    distintos.
-  - M-6 `totalOrders`: padres con `created_at <= at`.
-  - M-7 `newCustomers`: usuarios con `customer` y sin `super_admin` ni
+- `getDashboardAnalytics(at)` → `DashboardAnalyticsRecord`:
+  - `totalRevenue`: suma de `total` de padres `order-completed` con
+    `created_at <= at`. `todaysRevenue`: lo mismo en el día UTC de `at`.
+  - `totalShops`: tiendas; `totalVendors`: dueños distintos.
+  - `totalOrders`: padres con `created_at <= at`.
+  - `newCustomers`: usuarios con `customer`, sin `super_admin` ni
     `store_owner`, creados en `(at - 30d, at]`.
-  - M-8 `ordersByStatus.{today, weekly, monthly, yearly}`: conteo por
-    `order_status` en el día UTC, `(at - 7d, at]`, el mes UTC y el año UTC.
-    Solo trae los estados con órdenes; la API rellena sus 8 claves.
-  - M-9 `salesByMonth`: 12 importes (enero en `[0]`) de M-1 por mes del año
-    UTC de `at`.
-- **`listCategoryWiseProductCounts({limit})`** (M-10): `category_product ⋈
-  products ⋈ categories ⋈ shops` por (categoría, tienda), `product_count
-  DESC, category_id ASC, shop_id ASC`. Con el seed da `[]`
-  (`category_product` está vacía).
-- **`listLowStockProducts({limit, shopId})`** (M-11): `ProductRecord[]` con
-  `quantity < 10` en `id ASC`.
-- **`listTopRatedProducts({limit, shopId})`** (M-12): `TopRatedProductRecord`
-  = producto + `totalRating`, `ratingCount` y `actualRating`
-  (`round(avg, 2)`), en `actualRating DESC, ratingCount DESC, id ASC`.
+  - `ordersByStatus.{today, weekly, monthly, yearly}`: conteo por
+    `order_status`. Solo trae estados con órdenes; la API rellena el resto.
+  - `salesByMonth`: 12 importes (enero en `[0]`) del año UTC de `at`.
+- `listCategoryWiseProductCounts({ limit })`: productos por categoría y
+  tienda. Con el seed da `[]` (`category_product` está vacía).
+- `listLowStockProducts({ limit, shopId })`: `quantity < 10`, `id ASC`.
+- `listTopRatedProducts({ limit, shopId })`: producto + `totalRating`,
+  `ratingCount` y `actualRating` (`round(avg, 2)`).
 
-`limit` es 10 por defecto en las tres listas; `shopId` filtra por la tienda
-del producto.
+`limit` es 10 por defecto en las tres listas.
 
-### Identidad (US-21, Épico 19) — `users.repository.ts`
+</details>
 
-Mismo agregado por introspección que el catálogo: `users`, `profiles`,
-`permissions`, `permission_user` (sembrados por US-20) sirven ahora
-`UserRecord`/`ProfileRecord`/`PermissionRecord` y siete funciones planas
-en `src/repositories/users.repository.ts`. `PasswordResetToken` y
-`OtpCode` entran como **modelos** de `schema.prisma` solo para que el
-gate de drift cierre en 0 — sus repositorios llegan en US-24, no aquí.
+---
 
-**La frontera del hash es estructural, no de convención (D-2 del
-épico).** `passwordHash` cruza en un único tipo, `UserCredentials`, que
-vive en `users.repository.ts` y **no** en `records.ts` — así la frontera
-de serialización del paquete ni siquiera nombra el campo. La única
-función que lo devuelve es `findUserCredentialsByEmail`; las otras dos
-escrituras (`createUser`, `updateUserPasswordHash`) lo reciben ya
-hasheado. Hashear y verificar sigue siendo de `apps/api/rest` (US-22):
-`bcryptjs` no entra a este paquete.
+## Por qué el paquete se construye
 
-**Por qué `findUserCredentialsByEmail` usa `$queryRaw`.** `users.email`
-no tiene un índice único total: la unicidad case-insensitive vive en
-`users_email_lower_idx`, un índice **de expresión** sobre `lower(email)`
-que Prisma no modela. Evidencia contra
-Postgres real: ni `mode: 'insensitive'` (genera `ILIKE`) ni normalizar el
-email en JS antes de un `equals` plano (genera `email = $1`) usan ese
-índice — solo `WHERE lower(email) = lower($1)` explícito lo hace. Es el
-único SQL crudo de dominio del paquete (el precedente ya existente es
-`health.ts:21`); `${email}` interpola como parámetro del tagged
-template, nunca concatenado. Cualquier consumidor nuevo que necesite
-comparar por email hereda esta misma regla (`lower(email) = lower($1)`,
-`identity-schema/spec.md`).
+La API compila con `nest build` (`tsc`), y **`tsc` no transpila archivos que
+resuelve dentro de `node_modules`**: los revisa y los deja tal cual. Si el
+paquete publicara su `index.ts`, el typecheck pasaría y Node fallaría al
+arrancar, porque no ejecuta TypeScript de `node_modules`. Por eso tsup genera
+`dist/` y `package.json` apunta ahí:
 
-`listUsers` sigue el contrato del paquete (D-2 del proposal): devuelve
-`{ items, total }`, no el envoltorio de `buildPaginator` — el caller
-(el servicio de Nest de US-25) arma el envoltorio con su `baseUrl`.
-`createUser` traduce el P2002 del email duplicado a `DuplicateEmailError`
-(el índice que lo dispara es de expresión, invisible para Prisma, así
-que el código crudo no basta); `updateUserPasswordHash`/`setUserActive`
-traducen P2025 a `null`.
+- **`exports`, y también `main` y `types` en el nivel superior.** La API
+  (TypeScript 6, `moduleResolution: nodenext`) lee `exports`; `main` y
+  `types` cubren a las herramientas que lo ignoran. Sin ellos, alguna caería
+  al `.ts` fuente.
+- **Solo CJS.** El paquete exporta un singleton con estado (el cliente de
+  Prisma). Emitir CJS y ESM a la vez abre el *dual package hazard*: dos
+  copias del módulo, dos clientes y dos pools de conexiones. La API es ESM y
+  aun así importa funciones por nombre, porque tsup deja al final de
+  `dist/index.js` la anotación `0 && (module.exports = { … })` que Node usa
+  para detectar los exports de un CJS. Si algún día hace falta ESM, es añadir
+  `'esm'` a `format` en `tsup.config.ts`.
+- **`shims: true` es obligatorio.** El cliente generado por Prisma 7 arranca
+  con `globalThis['__dirname'] = path.dirname(fileURLToPath(import.meta.url))`.
+  En CJS, esbuild cambia `import.meta` por un objeto vacío y
+  `fileURLToPath(undefined)` lanza un `TypeError` **al cargar el módulo**: el
+  build sale en verde y el artefacto no arranca. El shim lo evita.
+- **`generated/` va dentro del bundle.** Se importa por ruta relativa; solo
+  `@prisma/client`, `@prisma/adapter-pg`, `prisma`, `pg` y `dotenv` quedan
+  como `external`.
 
-### Cómo lo consumirá `apps/api/rest` (paso posterior, NO hecho)
+---
 
-`apps/api/rest` tiene su propio `yarn install` fuera del workspace de
-`apps/`, así que la vía simple es **dependencia por ruta relativa**:
+## Problemas conocidos
 
-```jsonc
-// apps/api/rest/package.json
-"dependencies": { "@safari/db": "file:../../../packages/db" }
-```
+### La API no ve mi cambio
 
-Queda una sola cosa por resolver: **`DATABASE_URL` debe llegar al `.env` de la
-API**.
+La API usa `dist/`, no `src/`. Corre `npm run build` en `packages/db` (o
+deja `npm run dev` abierto) y reinicia la API si no recarga sola.
 
-## Por qué este paquete se construye (y el de referencia no)
+### `prepare` no siempre construye
 
-`agenthub-platform/packages/db` no tiene build: sus `exports` apuntan al `.ts`
-fuente y funciona, porque sus consumidores son apps Next.js, que bundlean con
-SWC y transpilan dependencias.
+`prepare` corre `npm run build`, pero npm se salta los scripts del ciclo de
+vida si el árbol de dependencias ya está al día: un `npm install` repetido no
+construye nada. Y con `link:`, yarn no lo corre al instalar la API. Usa
+siempre `npm run build` o `just db-build`. En CI se instala con
+`npm ci --ignore-scripts` porque el primer paso de `just check` ya construye.
 
-Aquí el consumidor es **NestJS 9, que compila con `tsc` a secas**, y `tsc` no
-transpila archivos que resuelve dentro de `node_modules`: los typechequea y los
-deja intactos. Sin build, esto pasa:
+### `DATABASE_URL no está configurada`
 
-```
-$ tsc            # exit 0, ni una queja
-$ node dist/main.js
-SyntaxError: Unexpected token 'export'
-   at loadESMFromCJS (node:internal/modules/cjs/loader)
-```
+`client.ts` lanza ese error en el primer acceso a la base, no al importar.
+Revisa el `.env` de quien ejecuta: el de `apps/api/rest` para la API, el de
+`packages/db` para los tests.
 
-La brecha es sutil y merece entenderla: **el compilador que typechequea ignora
-el campo `exports` y el runtime que ejecuta lo respeta.** El `tsc` de la API no
-declara `moduleResolution`, así que usa resolución `node10`, que no lee
-`exports`; al no encontrar `main` ni `types` cae a su fallback de directorio,
-localiza `index.ts` y typechequea contra el fuente sin protestar. Node, en
-cambio, sí resuelve `exports`, carga el `.ts` y revienta.
+### vitest corre 0 tests en Windows
 
-De ahí tres detalles del `package.json` que no son decorativos:
+Si el directorio actual tiene la letra de unidad en minúscula (`c:\…`),
+vitest carga el módulo dos veces y falla con «Vitest failed to find the
+current suite» o 0 tests. `just db-check` lo evita con `cd "$(pwd)"`; a mano,
+entra con `C:\…`.
 
-- **`main` y `types` en el nivel superior**, no solo dentro de `exports`. Con
-  resolución `node10` los `exports` se ignoran; sin `main`/`types` la API
-  volvería a leer el `.ts` fuente.
-- **Solo formato CJS.** El paquete exporta un singleton con estado (el cliente
-  de Prisma): emitir CJS y ESM a la vez abre el _dual package hazard_, con dos
-  clientes y dos pools de conexiones. Añadir `'esm'` es una línea en
-  `tsup.config.ts` si algún día Next.js consume el paquete directamente.
-- **`shims: true` en tsup.** El cliente generado por Prisma 7 arranca con
-  `globalThis['__dirname'] = path.dirname(fileURLToPath(import.meta.url))`, y
-  `import.meta` no existe en CommonJS: esbuild lo sustituye por un objeto vacío
-  y `fileURLToPath(undefined)` lanza un `TypeError` **al cargar el módulo**. El
-  build sale en verde y el artefacto no arranca. El shim lo resuelve.
+### `prisma db pull` pisa los renombres
 
-El scraper Python (`services/scraper-worker`) **no** consume este paquete:
-sigue hablando SQL directo. `upsertScrapedProduct` existe para cuando la
-ingesta se mueva a Node, o para herramientas de administración.
+El pull regenera nombres desde la base. Revisa el diff y vuelve a aplicar los
+renombres y los `@map` antes de generar. No quites el preview
+`partialIndexes`.
