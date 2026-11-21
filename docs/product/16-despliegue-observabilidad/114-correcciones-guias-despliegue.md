@@ -44,7 +44,7 @@ en la US-116.
    - SSH con el usuario de la VM (`azureuser` en el ejemplo de Azure) y
      `ssh -i <llave>.pem`;
    - el instalador con `sudo`.
-4. `docs/github/secretos-github-actions.md`: vigencia del token de 90 días o
+4. `docs/github/02-secretos-github-actions.md`: vigencia del token de 90 días o
    la duración del curso (hoy «30 days», `:59`), con aviso de cuándo
    renovarlo.
 5. `docs/dokploy/11-limitaciones-y-problemas.md`: el 404 de `/become-seller`
@@ -104,7 +104,7 @@ Feature: Guías de despliegue coherentes
 | `apps/README.md` | Cinco imágenes y ejemplos |
 | `docs/dokploy/01`, `03`, `11` | Correcciones puntuales |
 | `docs/dokploy/06`, `09` | Nota de Git Bash o WSL |
-| `docs/github/secretos-github-actions.md` | Vigencia del token y ejemplos |
+| `docs/github/02-secretos-github-actions.md` | Vigencia del token y ejemplos |
 | `docs/cloudflare/03-registros-dns.md` | Ejemplos |
 | `deploy.variables.example` | Placeholders (D-2) |
 

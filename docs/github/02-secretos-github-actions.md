@@ -1,4 +1,8 @@
-# Cómo crear secretos y variables en GitHub Actions
+# 02. Secretos y variables de GitHub Actions
+
+[← 01. Crear tu fork y habilitar GitHub Actions](01-fork-y-actions.md) · [Índice](README.md)
+
+---
 
 Esta guía explica cómo guardar en tu repositorio de GitHub las credenciales
 que necesita el CI para publicar tus imágenes en Docker Hub. Se puede hacer
@@ -281,3 +285,7 @@ la sección «Imágenes en Docker Hub» de [`apps/README.md`](../../apps/README.
 - **Si el token se filtró:** primero revócalo en Docker Hub (*Account
   settings → Personal access tokens → Delete*), después crea uno nuevo y
   reemplaza el secreto.
+
+---
+
+[← 01. Crear tu fork y habilitar GitHub Actions](01-fork-y-actions.md) · [Índice](README.md)

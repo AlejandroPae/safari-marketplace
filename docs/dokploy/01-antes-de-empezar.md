@@ -11,7 +11,7 @@ Necesitas:
 - **Un fork del repositorio** en tu cuenta de GitHub.
 - **Una cuenta de Docker Hub** y, en tu fork, el secreto `DOCKERHUB_TOKEN` y
   la variable `DOCKERHUB_USERNAME`. Cómo crearlos:
-  [`docs/github/secretos-github-actions.md`](../github/secretos-github-actions.md).
+  [`docs/github/02-secretos-github-actions.md`](../github/02-secretos-github-actions.md).
 - **Una corrida verde del CI en `main` de tu fork.** El job «Imágenes Docker ·
   build y publicación» debe haber publicado las cinco imágenes en tu Docker
   Hub:

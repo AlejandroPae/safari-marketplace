@@ -168,7 +168,7 @@ jobs:
           if [ "$PUBLICAR" = true ] && [ "$ES_FORK" = true ] && [ -z "$DOCKERHUB_USERNAME" ]; then
             echo "SUBIR=false" >> "$GITHUB_ENV"
             echo "FORK_SIN_DOCKERHUB=true" >> "$GITHUB_ENV"
-            echo "::notice::Fork sin la variable DOCKERHUB_USERNAME: las imágenes se construyen, pero no se publican. Guía: docs/github/secretos-github-actions.md"
+            echo "::notice::Fork sin la variable DOCKERHUB_USERNAME: las imágenes se construyen, pero no se publican. Guía: docs/github/02-secretos-github-actions.md"
           else
             echo "SUBIR=$PUBLICAR" >> "$GITHUB_ENV"
           fi
@@ -183,8 +183,8 @@ jobs:
           DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
         run: |
           falta=0
-          [ -n "$DOCKERHUB_TOKEN" ] || { echo "::error::Falta el secreto DOCKERHUB_TOKEN (Settings → Secrets and variables → Actions). Guía: docs/github/secretos-github-actions.md"; falta=1; }
-          [ -n "$DOCKERHUB_USERNAME" ] || { echo "::error::Falta la variable DOCKERHUB_USERNAME (Settings → Secrets and variables → Actions → Variables). Guía: docs/github/secretos-github-actions.md"; falta=1; }
+          [ -n "$DOCKERHUB_TOKEN" ] || { echo "::error::Falta el secreto DOCKERHUB_TOKEN (Settings → Secrets and variables → Actions). Guía: docs/github/02-secretos-github-actions.md"; falta=1; }
+          [ -n "$DOCKERHUB_USERNAME" ] || { echo "::error::Falta la variable DOCKERHUB_USERNAME (Settings → Secrets and variables → Actions → Variables). Guía: docs/github/02-secretos-github-actions.md"; falta=1; }
           exit "$falta"
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -302,7 +302,7 @@ jobs:
             elif [ "${FORK_SIN_DOCKERHUB:-}" = true ]; then
               echo "Construidas sin publicar: este fork no tiene la variable \`DOCKERHUB_USERNAME\`."
               echo "Para publicar en tu Docker Hub, crea la variable y el secreto \`DOCKERHUB_TOKEN\`"
-              echo "(\`docs/github/secretos-github-actions.md\`) y relanza en Actions → CI/CD → Run workflow, sobre \`main\`."
+              echo "(\`docs/github/02-secretos-github-actions.md\`) y relanza en Actions → CI/CD → Run workflow, sobre \`main\`."
             else
               echo "Construidas sin publicar (evento \`$GITHUB_EVENT_NAME\`, rama \`$GITHUB_REF_NAME\`)."
             fi

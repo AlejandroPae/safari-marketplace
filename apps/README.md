@@ -639,7 +639,7 @@ variables → Actions*:
 | `DOCKERHUB_USERNAME` | variable | el usuario de Docker Hub |
 
 El paso a paso, con capturas y con `gh`, está en
-[`docs/github/secretos-github-actions.md`](../docs/github/secretos-github-actions.md).
+[`docs/github/02-secretos-github-actions.md`](../docs/github/02-secretos-github-actions.md).
 
 Lo que pasa según el caso:
 - **Faltan las credenciales:** el step «Credenciales de Docker Hub» falla
