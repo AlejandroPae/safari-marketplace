@@ -146,8 +146,9 @@ justfile            Todas las tareas, en español, agrupadas (setup/dev/build/ve
   migraciones incrementales.
 - **`packages/db/prisma/schema.prisma` NO genera migraciones.** Sale de
   `prisma db pull` contra la base real + renombres manuales. Las CHECK
-  constraints y el índice trigram que Prisma no modela se validan en los
-  repositorios y se documentan en la cabecera del schema. No quitar el
+  constraints, que Prisma no modela, se validan en los repositorios y se
+  documentan en la cabecera del schema. Los índices trigram sí están
+  modelados (`@@index(..., type: Gin)`). No quitar el
   preview `partialIndexes` (el unique parcial de procedencia lo necesita).
 - **Contratos HTTP preservados byte a byte** al migrar endpoints del mock a
   Postgres. La API publica snake_case (lo que el frontend consume); la capa
