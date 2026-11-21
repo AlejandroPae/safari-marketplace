@@ -1,4 +1,4 @@
-# Imagen de db-init para el despliegue (US-111): Postgres con el esquema, el
+# Imagen de db-init para el despliegue: Postgres con el esquema, el
 # seed y el script que los aplica. Con los archivos dentro de la imagen, el
 # compose de despliegue no monta nada del repo. En Dokploy cada despliegue
 # hace un git clone nuevo, y un montaje relativo queda vacío o viejo. Además,

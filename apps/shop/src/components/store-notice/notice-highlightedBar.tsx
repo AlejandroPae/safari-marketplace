@@ -94,9 +94,8 @@ const ShopNotices = () => {
 };
 
 // Los avisos son mensajes del admin a los vendedores y `GET /store-notices`
-// es solo de admin y dueño (R-6 del Épico 46). Para clientes y anónimos no se
-// piden: la barra no aparece y no hay un 401/403 en cada página de tienda
-// (US-71).
+// es solo de admin y dueño. Para clientes y anónimos no se piden: la barra
+// no aparece y no hay un 401/403 en cada página de tienda.
 const NoticeHighlightedBar = () => {
   const [isAuthorize] = useAtom(authorizationAtom);
   const { permissions } = getAuthCredentials();

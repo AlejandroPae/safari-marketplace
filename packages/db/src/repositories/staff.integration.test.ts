@@ -1,6 +1,6 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`).
- * Staff de tienda (US-42): `createShopStaff`, `removeShopStaff` y el filtro
+ * Staff de tienda: `createShopStaff`, `removeShopStaff` y el filtro
  * `staffOf` de `listUsersWithRelations`.
  *
  * Datos del seed que se usan: `shop_staff` trae al usuario 2 en las tiendas
@@ -84,7 +84,7 @@ describe('createShopStaff', () => {
       include: { permissions: { include: { permission: true } } },
     });
     expect(user.passwordHash).toBe('hash-de-prueba');
-    // US-101: `staff` para poder entrar al admin.
+    // `staff` para poder entrar al admin.
     expect(user.permissions.map((p) => p.permission.name).sort()).toEqual([
       'customer',
       'staff',
@@ -134,7 +134,7 @@ describe('createShopStaff', () => {
   });
 });
 
-describe('permiso staff (US-101)', () => {
+describe('permiso staff', () => {
   it('el alta repetida garantiza el permiso a un staff que no lo tenía', async () => {
     const { userId } = await createShopStaff(input('sin-permiso'));
     await prisma.permissionUser.deleteMany({

@@ -3,7 +3,7 @@ import Cookies from 'js-cookie';
 import Router from 'next/router';
 
 /**
- * Prefijo relativo con el que el navegador habla con la API (US-102). El
+ * Prefijo relativo con el que el navegador habla con la API. El
  * reverse proxy, o el `rewrites()` de `next dev`, lo manda a la API. Es igual
  * en todos los entornos. El admin no llama a la API desde el servidor, así que
  * no necesita una URL interna.

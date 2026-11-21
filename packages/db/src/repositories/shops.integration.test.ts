@@ -25,7 +25,7 @@ import {
 } from './shops.repository';
 
 // ---------------------------------------------------------------------------
-// US-30: centinela por prefijo de slug (DD30-6, `zz-tiendas-`, NO
+// Centinela por prefijo de slug (`zz-tiendas-`, NO
 // `zz-shops-`: ese prefijo rompería `toBe(7)` de abajo si la centinela
 // quedara activa, porque el filtro de `listShops({name:...})` es sobre
 // `name`, y el nombre es lo que deriva el slug). `ownerId: 3` en todos los
@@ -53,7 +53,7 @@ describe('listShops', () => {
     expect(() => JSON.stringify(items)).not.toThrow();
   });
 
-  it('incluye las 3 filas reconstruidas (CA-3)', async () => {
+  it('incluye las 3 filas reconstruidas', async () => {
     const { items } = await listShops();
     const slugs = items.map((r) => r.slug);
     expect(slugs).toEqual(
@@ -61,7 +61,7 @@ describe('listShops', () => {
     );
   });
 
-  it('productsCount filtrado por publish/visibility_public (Decisión E)', async () => {
+  it('productsCount filtrado por publish/visibility_public', async () => {
     const { items } = await listShops();
     const bySlug = Object.fromEntries(items.map((r) => [r.slug, r]));
     expect(bySlug['grocery-shop'].productsCount).toBe(584);
@@ -75,7 +75,7 @@ describe('listShops', () => {
 });
 
 describe('findShopBySlug', () => {
-  it('trae el mismo productsCount filtrado que el listado (Decisión E)', async () => {
+  it('trae el mismo productsCount filtrado que el listado', async () => {
     const row = await findShopBySlug('gadget');
     expect(row?.productsCount).toBe(44);
   });
@@ -86,11 +86,11 @@ describe('findShopBySlug', () => {
 });
 
 // ---------------------------------------------------------------------------
-// US-5: listShopsNear — haversine real sobre las 6 tiendas con coordenadas
+// listShopsNear — haversine real sobre las 6 tiendas con coordenadas
 // válidas (ids 1..6); las 6 restantes (7,9,11,12,14,15) no tienen lat/lng
 // numéricos (location:[] o sin la clave) y se descartan sin lanzar.
 // ---------------------------------------------------------------------------
-describe('listShopsNear (US-5)', () => {
+describe('listShopsNear', () => {
   const SIN_COORDENADAS = [7, 9, 11, 12, 14, 15];
 
   it('dos orígenes distintos dan órdenes de ids distintos, ≤6 filas, sin ids sin coordenadas', async () => {
@@ -112,11 +112,11 @@ describe('listShopsNear (US-5)', () => {
       }
     }
 
-    // Orígenes lejanos entre sí → órdenes de ids distintos (B-1: cercanía real).
+    // Orígenes lejanos entre sí → órdenes de ids distintos (cercanía real).
     expect(desdeNY.map((s) => s.id)).not.toEqual(desdeBogota.map((s) => s.id));
   });
 
-  it('lat/lng no finitos (NaN) → [] sin lanzar (B-4, guard en el repositorio)', async () => {
+  it('lat/lng no finitos (NaN) → [] sin lanzar (guard en el repositorio)', async () => {
     expect(await listShopsNear(Number.NaN, Number.NaN)).toEqual([]);
   });
 
@@ -128,13 +128,12 @@ describe('listShopsNear (US-5)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// US-30: escrituras (camino feliz, PR#1). Los describes de escritura van
-// DESPUÉS de los de lectura (vitest ejecuta los `describe` en orden de
-// archivo), así que el no-regresión de arriba corre antes de que exista
-// ningún centinela. `ownerId: 3` en todos (DD30-6): dueño de cero tiendas
-// hoy. Cada `it` borra lo que crea.
+// Escrituras (camino feliz). Los describes de escritura van DESPUÉS de
+// los de lectura (vitest ejecuta los `describe` en orden de archivo), así
+// que el no-regresión de arriba corre antes de que exista ningún centinela.
+// `ownerId: 3` en todos: dueño de cero tiendas hoy. Cada `it` borra lo que crea.
 // ---------------------------------------------------------------------------
-describe('createShop / updateShop / setShopActive (escritura, US-30)', () => {
+describe('createShop / updateShop / setShopActive (escritura)', () => {
   it('crea con is_active por rol: store_owner (false) y super_admin (true)', async () => {
     const inactive = await createShop({
       name: `${SENTINEL_PREFIX}store-owner`,
@@ -187,7 +186,7 @@ describe('createShop / updateShop / setShopActive (escritura, US-30)', () => {
     });
     expect(updated.address).toEqual({ city: 'Bogotá', country: 'CO' });
     expect(updated.settings).toEqual({ contact: { phone: '3000000000' } });
-    // CA-2 / DD30-2: slug invariante pese a cambiar `name`.
+    // Slug invariante pese a cambiar `name`.
     expect(updated.slug).toBe(`${SENTINEL_PREFIX}editable`);
 
     await prisma.shop.delete({ where: { id: created.id } });
@@ -213,12 +212,12 @@ describe('createShop / updateShop / setShopActive (escritura, US-30)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// D30-4 / DD30-5: `productsCount` en una escritura debe coincidir con el de
+// `productsCount` en una escritura debe coincidir con el de
 // la lectura, nunca `0` por el `?? 0` de `shops.service.ts`. Única mutación
 // sobre el seed: `gadget.updated_at` (ninguna prueba lee esa columna). El id
 // se resuelve por slug, nunca hardcodeado.
 // ---------------------------------------------------------------------------
-describe('productsCount en updateShop (D30-4)', () => {
+describe('productsCount en updateShop', () => {
   it('un update idempotente sobre "gadget" conserva sus datos y trae productsCount 44', async () => {
     const before = await findShopBySlug('gadget');
     if (!before) throw new Error('seed sin la tienda "gadget"');
@@ -236,14 +235,13 @@ describe('productsCount en updateShop (D30-4)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// US-30, PR#2: batería hostil de integración. Excluye deliberadamente "id no
-// entero" — su precondición documentada es un id ya guardado por el
-// llamador (DD30-3); ese `it` vive en PR#4 (jest), sobre `@Body('id')` del
-// servicio. `ownerId: 3` en todos los centinelas (DD30-6). Cada `it` borra
-// lo que crea.
+// Batería hostil de integración. Excluye deliberadamente "id no entero" —
+// su precondición documentada es un id ya guardado por el llamador; ese
+// caso se prueba en la API, sobre `@Body('id')` del servicio. `ownerId: 3`
+// en todos los centinelas. Cada `it` borra lo que crea.
 // ---------------------------------------------------------------------------
 
-describe('404 de P2025 en updateShop/setShopActive con id borrado (DD30-10)', () => {
+describe('404 de P2025 en updateShop/setShopActive con id borrado', () => {
   it('updateShop(id borrado, …) → RecordNotFoundError', async () => {
     const created = await createShop({
       name: `${SENTINEL_PREFIX}404-update`,
@@ -271,7 +269,7 @@ describe('404 de P2025 en updateShop/setShopActive con id borrado (DD30-10)', ()
   });
 });
 
-describe('409 de slug duplicado (P2002, solo por carrera) y 400 de owner_id inexistente (P2003, DD30-10)', () => {
+describe('409 de slug duplicado (P2002, solo por carrera) y 400 de owner_id inexistente (P2003)', () => {
   it('dos createShop concurrentes con el mismo name: uno gana, el otro → SlugConflictError', async () => {
     // `createShop` deriva el slug de `name` vía `generateSlug`: un duplicado
     // NUNCA es alcanzable en secuencia (el segundo `POST` recibiría un
@@ -293,7 +291,7 @@ describe('409 de slug duplicado (P2002, solo por carrera) y 400 de owner_id inex
     expect(winner).not.toBeNull();
     expect(loser).not.toBeNull();
     if (loser) expect(loser.reason).toBeInstanceOf(SlugConflictError);
-    // US-67: con slug, la palabra sale una sola vez (antes «con el slug `slug`»).
+    // Con slug, la palabra sale una sola vez (no «con el slug `slug`»).
     if (loser) {
       expect((loser.reason as Error).message).toBe(
         'Ya existe un registro de `shops` con el mismo valor en `slug`.'
@@ -302,7 +300,7 @@ describe('409 de slug duplicado (P2002, solo por carrera) y 400 de owner_id inex
     if (winner) await prisma.shop.delete({ where: { id: winner.value.id } });
   });
 
-  it('owner_id inexistente → InvalidReferenceError vía P2003, mensaje "shops.desconocida" (DD30-10, sin uniqueField)', async () => {
+  it('owner_id inexistente → InvalidReferenceError vía P2003, mensaje "shops.desconocida" (sin uniqueField)', async () => {
     let error: unknown;
     try {
       await createShop({
@@ -316,15 +314,15 @@ describe('409 de slug duplicado (P2002, solo por carrera) y 400 de owner_id inex
     expect(error).toBeInstanceOf(InvalidReferenceError);
     // Bajo Prisma 7 + adapter-pg un P2003 llega sin `meta.field_name`
     // (verificado en runtime, no solo leído en `translateCatalogWriteError`):
-    // el mensaje culpa a `desconocida`, divergencia ya declarada en US-28.
+    // el mensaje culpa a `desconocida`: divergencia conocida y aceptada.
     expect((error as Error).message).toContain('shops.desconocida');
   });
 });
 
-describe('REPLACE completo de settings (D30-1, ratificada) y no-op de logo/cover_image (DD30-2/DD30-4)', () => {
+describe('REPLACE completo de settings y no-op de logo/cover_image', () => {
   const NULL_JSON = null as unknown as Prisma.InputJsonValue;
 
-  it('un segundo PUT sin un sub-campo previo de settings lo BORRA — la pérdida se demuestra, no se oculta (D30-1)', async () => {
+  it('un segundo PUT sin un sub-campo previo de settings lo BORRA — la pérdida se demuestra, no se oculta', async () => {
     const created = await createShop({
       name: `${SENTINEL_PREFIX}settings-replace`,
       ownerId: 3,
@@ -382,14 +380,14 @@ describe('REPLACE completo de settings (D30-1, ratificada) y no-op de logo/cover
 
 describe('Monotonía de updated_at: solo update→update y setActive→setActive, updatedAt explícito', () => {
   // `updateShop`/`setShopActive` fijan `updatedAt: now()` desde `clock.ts`
-  // (US-32); ya no hay trigger de base de datos. `toBeGreaterThan` estricto:
+  //; ya no hay trigger de base de datos. `toBeGreaterThan` estricto:
   // con `>=`, una ruta que olvide fijar `updatedAt` produce una igualdad y
   // el test pasaría igual.
   afterEach(() => {
     _setNowProvider(() => new Date());
   });
 
-  it('updated_at sale de clock.ts y cumple updated_at >= created_at (CA-2 de US-32)', async () => {
+  it('updated_at sale de clock.ts y cumple updated_at >= created_at', async () => {
     const created = await createShop({
       name: `${SENTINEL_PREFIX}reloj`,
       ownerId: 3,
@@ -402,11 +400,11 @@ describe('Monotonía de updated_at: solo update→update y setActive→setActive
 
     // (a) ruta olvidada: sin `updatedAt` el valor sería el del INSERT y FALLA.
     expect(updated.updatedAt.getTime()).toBe(future.getTime());
-    // (b) el invariante de CA-2.
+    // (b) el invariante updated_at >= created_at.
     expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(
       updated.createdAt.getTime()
     );
-    // (c) createdAt NO es mockeable (D-5, no-goal declarado).
+    // (c) createdAt NO es mockeable, a propósito.
     expect(updated.createdAt.getTime()).toBeLessThan(future.getTime());
 
     await prisma.shop.delete({ where: { id: created.id } });
@@ -451,7 +449,7 @@ describe('Monotonía de updated_at: solo update→update y setActive→setActive
   });
 });
 
-describe('findOrCreateShopBySlug — excepción de update vacío (D-4 de US-32)', () => {
+describe('findOrCreateShopBySlug — excepción de update vacío', () => {
   it('correr el scraper dos veces sobre la misma tienda no mueve updated_at', async () => {
     const primero = await findOrCreateShopBySlug({
       slug: `${SENTINEL_PREFIX}scraper`,
@@ -469,15 +467,15 @@ describe('findOrCreateShopBySlug — excepción de update vacío (D-4 de US-32)'
 });
 
 // ---------------------------------------------------------------------------
-// Tripwire (DD30-6): NO puede apoyarse en `listShops`, que filtra
+// Tripwire: NO puede apoyarse en `listShops`, que filtra
 // `isActive: input.isActive ?? true` — las 12 filas del seed están todas
 // activas, así que una centinela INACTIVA superviviente (el caso normal de
-// esta US) dejaría `toBe(12)`/`id 15` en verde por `listShops()`. La forma
+// estas escrituras) dejaría `toBe(12)`/`id 15` en verde por `listShops()`. La forma
 // normativa cuenta sin filtro y verifica la cola de moderación vacía.
 //
-// VA EL ÚLTIMO A PROPÓSITO. El diseño lo exige y PR#2 lo había dejado a
-// media altura del archivo, custodiando solo el primer describe de escritura:
-// los seis que venían después quedaban sin red. vitest ejecuta los `describe`
+// VA EL ÚLTIMO A PROPÓSITO: a media altura del archivo custodiaría solo los
+// describes de escritura anteriores y dejaría sin red los que vienen
+// después. vitest ejecuta los `describe`
 // de un archivo en orden de declaración, así que solo desde el final cubre
 // toda la batería. Al añadir un describe de escritura nuevo, va ANTES de este.
 // ---------------------------------------------------------------------------

@@ -13,8 +13,7 @@ import { MyReports } from './entities/report.entity.js';
 
 /**
  * `/my-reports`: los reportes de abuso del usuario que llama,
- * `created_at DESC` (US-54). Antes servía las 3 filas del mock a cualquiera
- * (V-7). Sin paginador, como hoy.
+ * `created_at DESC`. Sin paginador.
  */
 @Injectable()
 export class ReportsService {

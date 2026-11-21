@@ -26,7 +26,7 @@ import { Faq } from './entities/faq.entity.js';
 /**
  * `FaqRecord` → las 8 claves de `faqs.json`, en su orden. `shop_id`,
  * `user_id` y los timestamps tienen columna pero el mock NO los emite, así
- * que tampoco aquí (US-47, D-1). `translated_languages` es constante (D-6).
+ * que tampoco aquí. `translated_languages` es constante.
  */
 function toFaqDto(record: FaqRecord): Faq {
   return {
@@ -58,12 +58,12 @@ function readError(error: unknown): never {
 @Injectable()
 export class FaqsService {
   /**
-   * Filtros reales con AND (US-47, V-1): el mock aplicaba Fuse con el último
+   * Filtros reales con AND: el mock aplicaba Fuse con el último
    * token sobre todo el array y, con la página vacía, servía las primeras N
    * con `total: 0`. `shop_id` llega como query (shop) o como token (admin);
    * `faq_type` e `issued_by` llegan dentro de `search` desde el shop.
    * `page`/`limit` se pasan crudos a `paginate()` para conservar
-   * `per_page` como string cuando el cliente manda `limit` (Decision A).
+   * `per_page` como string cuando el cliente manda `limit`.
    */
   async findAllFaqs({
     search,
@@ -103,7 +103,7 @@ export class FaqsService {
     return { data, ...paginate(result.total, page, limit, data.length, url) };
   }
 
-  /** Por id, como el mock; inexistente o id mal formado ⇒ 404 (V-4). */
+  /** Por id, como el mock; inexistente o id mal formado ⇒ 404. */
   async getFaq(param: string, _language?: string): Promise<Faq> {
     const id = Number(param);
     if (!Number.isSafeInteger(id) || id <= 0) {
@@ -148,7 +148,10 @@ export class FaqsService {
     }
   }
 
-  /** Guarda de id de US-31 antes de tocar el driver. */
+  /**
+   * Guarda de id antes de tocar el driver: `1e21` o un id fuera de `bigint`
+   * serían un 500.
+   */
   async update(id: number, updateFaqDto: UpdateFaqDto): Promise<Faq> {
     if (!Number.isSafeInteger(id) || id <= 0) {
       throw new NotFoundException(`No existe una FAQ con id ${id}.`);
@@ -172,7 +175,7 @@ export class FaqsService {
     }
   }
 
-  /** Devuelve la FAQ borrada (V-6: el mock devolvía un string). */
+  /** Devuelve la FAQ borrada (el mock devolvía un string). */
   async remove(id: number): Promise<Faq> {
     if (!Number.isSafeInteger(id) || id <= 0) {
       throw new NotFoundException(`No existe una FAQ con id ${id}.`);

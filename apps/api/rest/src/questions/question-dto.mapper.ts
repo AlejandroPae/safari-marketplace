@@ -4,10 +4,10 @@ import { toReviewUserDto } from '#src/reviews/review-dto.mapper.js';
 import { Question } from './entities/question.entity.js';
 
 /**
- * `QuestionDetailRecord` → las 15 claves del mock de preguntas en su orden
- * (US-55). `deleted_at` y `my_feedback` son constantes (`feedbacks` es un
- * stub); `product` sale de `toProductDto` (V-3) y `user` de la proyección
- * mínima de las reseñas, con `email_verified` (V-4).
+ * `QuestionDetailRecord` → las 15 claves del mock de preguntas en su orden.
+ * `deleted_at` y `my_feedback` son constantes (`feedbacks` es un stub);
+ * `product` sale de `toProductDto` y `user` de la proyección mínima de las
+ * reseñas, con `email_verified`.
  */
 export function toQuestionDto(record: QuestionDetailRecord): Question {
   return {

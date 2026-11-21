@@ -4,9 +4,9 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * US-99, DA-1: el stub de `POST /social-login-token` registra el proveedor y
- * nunca el `access_token`. Con el login de Google de US-70 activo, ese token
- * es el real del usuario.
+ * El stub de `POST /social-login-token` registra el proveedor y nunca el
+ * `access_token`. Con el login de Google activo, ese token es el real del
+ * usuario.
  */
 import 'reflect-metadata';
 import { Logger } from '@nestjs/common';

@@ -1,19 +1,19 @@
-# Reverse proxy del stack en compose (US-15), en local y en el despliegue.
+# Reverse proxy del stack en compose, en local y en el despliegue.
 #
 # Cada frontend y la API comparten origen, y `/backend/*` llega a la API como
 # `/api/*`. Sin esto, todo lo que el navegador pide a /backend (login,
 # carrito, el admin entero) daría 404: el rewrite de next.config.js solo
-# existe en `next dev` (US-102). En Dokploy (US-111), Traefik termina el TLS
+# existe en `next dev`. En Dokploy, Traefik termina el TLS
 # y pasa a este mismo proxy, que va dentro de la imagen safari-proxy.
 #
-# `/backend` no va a `api` directo sino al balanceador `api-lb` (US-107,
-# docker/api-lb.Caddyfile), que reparte entre las réplicas. `api-lb` es un
+# `/backend` no va a `api` directo sino al balanceador `api-lb`
+# (docker/api-lb.Caddyfile), que reparte entre las réplicas. `api-lb` es un
 # solo contenedor, así que aquí basta un upstream estático.
 {
 	# Solo HTTP en local: sin certificados ni redirección a HTTPS.
 	auto_https off
 	admin off
-	# Detrás de Traefik (US-111): confiar en los X-Forwarded-* que llegan desde
+	# Detrás de Traefik: confiar en los X-Forwarded-* que llegan desde
 	# la red interna. Sin esto, Caddy reescribe X-Forwarded-Proto con lo que ve
 	# (http) y la tienda no sabría que el navegador entró por https. En local
 	# no cambia nada: nadie manda esas cabeceras.

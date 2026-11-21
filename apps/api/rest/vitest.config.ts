@@ -3,7 +3,7 @@ import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 
 /**
- * Batería unitaria de la API (US-88). Sigue la receta de Vitest de la
+ * Batería unitaria de la API. Sigue la receta de Vitest de la
  * documentación de Nest (recipes/swc):
  *
  * - `unplugin-swc` transpila los specs y el código que importan. esbuild, el
@@ -11,11 +11,11 @@ import { defineConfig } from 'vitest/config';
  *   Nest resuelve la inyección de `Test.createTestingModule` con esos
  *   metadatos. SWC lee `experimentalDecorators`/`emitDecoratorMetadata` del
  *   `tsconfig.json`.
- * - `globals: true`: `describe`/`it`/`expect`/`vi` sin import (DA-2 a). Los
+ * - `globals: true`: `describe`/`it`/`expect`/`vi` sin import. Los
  *   tipos los da el `/// <reference types="vitest/globals" />` de cada spec,
  *   porque `tsconfig.json` fija `types` y no se toca.
  *
- * Los alias reproducen el campo `imports` de `package.json` (US-90), pero
+ * Los alias reproducen el campo `imports` de `package.json`, pero
  * apuntando a `src/` y no a `dist/`: la condición `types` de esos `imports`
  * solo la lee `tsc`, y los tests corren sobre el código fuente.
  */
@@ -43,7 +43,7 @@ export default defineConfig({
     root: './',
     include: ['src/**/*.spec.ts'],
     environment: 'node',
-    // En CI, `just check` pide los conteos en JSON para el resumen (US-109).
+    // En CI, `just check` pide los conteos en JSON para el resumen.
     ...(process.env.VITEST_JSON_OUT && {
       reporters: ['default', 'json'],
       outputFile: { json: process.env.VITEST_JSON_OUT },

@@ -72,8 +72,8 @@ export class ProductsByFlashSaleController {
 }
 
 /**
- * Ventas de un producto, para el cuadro de la ficha de edición del admin
- * (US-96). Pública como `/flash-sale`; `language`, `with` y `searchJoin`
+ * Ventas de un producto, para el cuadro de la ficha de edición del admin.
+ * Pública como `/flash-sale`; `language`, `with` y `searchJoin`
  * del cliente se ignoran.
  */
 @Public()

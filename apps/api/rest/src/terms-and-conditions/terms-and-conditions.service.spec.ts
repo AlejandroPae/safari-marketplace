@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `TermsAndConditionsService` (US-47). Mismo arnés que
+ * Tests unitarios de `TermsAndConditionsService`. Mismo arnés que
  * `tags.service.spec.ts`: solo se mockea el acceso a datos.
  */
 import 'reflect-metadata';
@@ -161,7 +161,7 @@ describe('TermsAndConditionsService', () => {
     });
   });
 
-  describe('approve / disapprove (V-7)', () => {
+  describe('approve / disapprove', () => {
     it('persisten y emiten is_approved entero', async () => {
       approvalMock.mockResolvedValueOnce(makeRecord({ isApproved: false }));
       const off = await service.disapproveTermsAndCondition('10');

@@ -42,7 +42,7 @@ export const getStaticProps: GetStaticProps = async ({ locale }) => {
     };
   } catch (error) {
     if (isNotFound(error)) return { notFound: true };
-    // D-7 (US-104): la página necesita `data` del servidor y no hay hook de
+    // La página necesita `data` del servidor y no hay hook de
     // cliente que la rescate. Lanzar mataría el build sin API, así que ante
     // un fallo de la API sale un 404 que se regenera a los 10 s, cuando la
     // API vuelve. Un error que no es de la API es un bug: se relanza.

@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests del cálculo de checkout (US-59): un caso por regla, R-a a R-f, sin
+ * Tests del cálculo de checkout: un caso por regla, R-a a R-f, sin
  * base ni Nest.
  */
 import { Decimal } from '@safari/db';

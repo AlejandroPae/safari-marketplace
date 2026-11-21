@@ -7,7 +7,7 @@
  * precedente de `upsertScrapedProduct` (`products.repository.ts:328-397`):
  * validación de dominio ANTES de escribir, `slug` intocable en update, y
  * traducción de la violación de Postgres a un error de dominio en el
- * `catch`. `deleteType` es R-1 del épico (design.md, Decisión 4): el
+ * `catch`. En `deleteType`, el
  * `CASCADE` de `categories.type_id`/`products.type_id` (`db/schema.sql:269,
  * :331`) queda como red de integridad, nunca como comportamiento de la API
  * — por eso se cuentan los dependientes ANTES de borrar.
@@ -50,11 +50,11 @@ export async function findTypeBySlug(slug: string): Promise<TypeRecord | null> {
 }
 
 // ---------------------------------------------------------------------------
-// Escritura (admin) — CA-1, CA-2, CA-3
+// Escritura (admin)
 // ---------------------------------------------------------------------------
 
 /**
- * Call site de `ExistingSlugLookup` (design.md, Decisión 2): la tabla nunca
+ * Call site de `ExistingSlugLookup`: la tabla nunca
  * llega al SQL compartido, `generateSlug` solo recibe esta función.
  */
 const typeSlugs: ExistingSlugLookup = async (prefix) =>
@@ -78,10 +78,10 @@ export interface CreateTypeInput {
   language?: string;
 }
 
-/** El `slug` es inmutable en update (decisión 4 del épico). */
+/** El `slug` es inmutable en update. */
 export type UpdateTypeInput = Omit<CreateTypeInput, 'slug'>;
 
-/** Crea una vertical. El slug lo calcula `generateSlug` (Decisión 1, design.md). */
+/** Crea una vertical. El slug lo calcula `generateSlug`. */
 export async function createType(input: CreateTypeInput): Promise<TypeRecord> {
   const slug = await generateSlug(
     { name: input.name, slug: input.slug },
@@ -113,8 +113,8 @@ export async function createType(input: CreateTypeInput): Promise<TypeRecord> {
  * Actualiza una vertical. El `slug` NUNCA se toca (precedente
  * `products.repository.ts:382`). Cuando `input.name` llega, se valida con
  * `normalizeSlug` (vía `generateSlug`'s hermano, `normalizeSlug` directo) y
- * se descarta el resultado — solo por su efecto lateral `EmptySlugError`
- * (design.md, Decisión 7, capa 2): `types.name` es `text NOT NULL` donde
+ * se descarta el resultado — solo por su efecto lateral `EmptySlugError`:
+ * `types.name` es `text NOT NULL` donde
  * `''` es legal para Postgres, así que sin esta guarda la fila quedaría
  * silenciosamente corrupta.
  */
@@ -149,13 +149,12 @@ export async function updateType(
 }
 
 /**
- * Borra una vertical. R-1 del épico: `categories.type_id`/`products.type_id`
+ * Borra una vertical. `categories.type_id`/`products.type_id`
  * son `ON DELETE CASCADE` (`db/schema.sql:269,331`), así que un borrado
  * ingenuo se llevaría por delante categorías Y productos de la vertical. Se
  * cuentan ambos dependientes ANTES de borrar; cualquiera > 0 ⇒
  * `DependentRowsError` (409) y NO se borra nada. Sin transacción — el TOCTOU
- * entre el conteo y el `DELETE` es un riesgo bajo declarado (design.md,
- * Decisión 4), no cerrado en esta US.
+ * entre el conteo y el `DELETE` es un riesgo bajo, asumido y sin cerrar.
  */
 export async function deleteType(id: number): Promise<TypeRecord> {
   const existing = await prisma.type.findUnique({ where: { id } });

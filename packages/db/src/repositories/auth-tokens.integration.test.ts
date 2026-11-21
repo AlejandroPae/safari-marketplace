@@ -2,7 +2,7 @@
  * Test de integración contra el Postgres real (docker-compose, puerto
  * 5433, sembrado por `just db-up`).
  *
- * Dos centinelas, ninguno toca filas sembradas (Decisión H, design.md):
+ * Dos centinelas, ninguno toca filas sembradas:
  *   · Un usuario `createUser` en dominio `@auth-tokens-integration.test`
  *     (RFC 2606). Sus `password_reset_tokens` caen por `ON DELETE
  *     CASCADE` (`db/schema.sql:189`) — limpiarlo alcanza con
@@ -96,10 +96,10 @@ describe('createPasswordResetToken / findLivePasswordResetTokens', () => {
     expect(firstRow?.consumedAt).not.toBeNull();
   });
 
-  it('con dos filas vivas para el mismo usuario, devuelve las 2, la de id mayor primero (V-6)', async () => {
+  it('con dos filas vivas para el mismo usuario, devuelve las 2, la de id mayor primero', async () => {
     const user = await createSentinelUser('tie');
     // Insertadas a mano (no vía createPasswordResetToken) para simular el
-    // empate de V-6: dos forget-password concurrentes que ninguno ve la
+    // empate de dos forget-password concurrentes que ninguno ve la
     // fila del otro antes de comprometer su updateMany.
     const rowA = await prisma.passwordResetToken.create({
       data: {

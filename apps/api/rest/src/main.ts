@@ -15,19 +15,19 @@ import { servedBy } from './common/served-by.js';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     cors: true,
-    // US-17: timestamp ISO 8601 y nivel en cada línea de log.
+    // Timestamp ISO 8601 y nivel en cada línea de log.
     logger: new IsoConsoleLogger(),
   });
-  // US-107: cada respuesta dice qué réplica la atendió (X-Served-By).
+  // Cada respuesta dice qué réplica la atendió (X-Served-By).
   app.use(servedBy);
   app.use(requestLogger);
   setPrismaLogSink(logPrisma);
-  // US-78: Express 5 cambió el parser de query strings por defecto de `qs`
+  // Express 5 cambió el parser de query strings por defecto de `qs`
   // ('extended') a `node:querystring` ('simple'), que no entiende corchetes:
   // `?limit[]=2` o `?search[name]=x` dejaban de llegar como array/objeto y
   // cambiaban la respuesta. 'extended' devuelve el comportamiento de Express 4.
   app.set('query parser', 'extended');
-  // US-64: el admin manda el id desnudo (`1`) a POST /messages/seen/:id y el
+  // El admin manda el id desnudo (`1`) a POST /messages/seen/:id y el
   // parser JSON estricto de Nest lo rechaza con 400. Este parser no estricto
   // va antes y solo en esa ruta; el estricto ve el cuerpo ya leído y no hace
   // nada. Envuelto en una función anónima a propósito: Nest omite su propio

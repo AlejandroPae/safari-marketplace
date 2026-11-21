@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `AuthorsService` (US-93). Mismo arnés que
+ * Tests unitarios de `AuthorsService`. Mismo arnés que
  * `faqs.service.spec.ts`: se mockea solo el acceso a datos de `@safari/db` y
  * se dejan REALES las clases de error de dominio y `toWriteHttpException`.
  */
@@ -146,7 +146,7 @@ describe('AuthorsService', () => {
       });
     });
 
-    it('conserva per_page como string cuando llega limit (Decision A)', async () => {
+    it('conserva per_page como string cuando llega limit', async () => {
       listAuthorsMock.mockResolvedValue({ items: [], total: 11 });
 
       const result = await service.getAuthors(query({ limit: '5', page: '2' }));
@@ -178,7 +178,7 @@ describe('AuthorsService', () => {
       );
     });
 
-    it('inexistente ⇒ 404 (V-2)', async () => {
+    it('inexistente ⇒ 404', async () => {
       findAuthorBySlugMock.mockResolvedValue(null);
       await expect(service.getAuthorBySlug('no-existe')).rejects.toBeInstanceOf(
         NotFoundException,
@@ -252,7 +252,7 @@ describe('AuthorsService', () => {
       expect(result.is_approved).toBe(0);
     });
 
-    it('id fuera de rango ⇒ 404 sin tocar la base (US-31)', async () => {
+    it('id fuera de rango ⇒ 404 sin tocar la base', async () => {
       await expect(service.update(1e21, body({}))).rejects.toBeInstanceOf(
         NotFoundException,
       );
@@ -270,7 +270,7 @@ describe('AuthorsService', () => {
   });
 
   describe('remove', () => {
-    it('devuelve el autor borrado (V-3)', async () => {
+    it('devuelve el autor borrado', async () => {
       deleteAuthorMock.mockResolvedValue(makeAuthorRecord());
       expect((await service.remove(12)).id).toBe(12);
     });

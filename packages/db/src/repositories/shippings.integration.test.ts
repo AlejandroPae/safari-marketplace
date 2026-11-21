@@ -1,7 +1,7 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
  * 1 clase "Global", id 1, amount 50, type fixed, con las fechas del mock).
- * US-49. Centinela `zz-ship-` en `name`. Lecturas del seed ANTES que
+ * Centinela `zz-ship-` en `name`. Lecturas del seed ANTES que
  * escrituras.
  */
 

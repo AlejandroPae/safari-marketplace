@@ -1,4 +1,4 @@
-"""Prueba del PostgresPipeline sin salir a internet (US-8).
+"""Prueba del PostgresPipeline sin salir a internet.
 
 Alimenta el pipeline con items sinteticos y comprueba contra la tabla
 `products` real (la misma que consulta la tienda, sin mocks de la base) que:
@@ -9,17 +9,17 @@ Alimenta el pipeline con items sinteticos y comprueba contra la tabla
      duplicarse (upsert por (source_store, source_product_id) sobre el indice
      parcial products_procedencia_key).
   3. Un producto que cambia de categoria sigue siendo UNA sola fila, y queda
-     en UNA sola categoria de category_product (US-7).
+     en UNA sola categoria de category_product.
   4. Dos tiendas distintas pueden usar el mismo source_product_id sin
      pisarse.
 
-Y las propiedades que trajo US-6:
+Y ademas, sobre las filas relacionadas y las reglas de saneo:
 
   5. La tienda y la marca se crean como filas reales de `shops` y
-     `manufacturers` la primera vez y se reutilizan despues (CA-2 de US-6).
+     `manufacturers` la primera vez y se reutilizan despues.
   6. Un item que viola una regla (promocion >= precio, sin precio, sin enlace,
      precio que desborda numeric(12,2)) se descarta o se sanea con log,
-     cuenta en `stats` y la corrida sigue (CA-4 de US-6).
+     cuenta en `stats` y la corrida sigue.
 
 Aislamiento: todos los items usan tiendas y marca centinela con el prefijo
 "ZZ Prueba". La limpieza borra esas tiendas (la cascada se lleva sus
@@ -218,7 +218,7 @@ def probar_pipeline(dsn, spider, pipe):
     check("4. dos tiendas pueden compartir source_product_id", n == 2, f"hay {n} filas")
     check("4. la otra tienda no piso la primera", a and a[0][2] == "Portatil rebajado")
 
-    # 5. Tienda y marca como filas reales, reutilizadas (CA-2 de US-6)
+    # 5. Tienda y marca como filas reales, reutilizadas
     pipe.process_item(
         item(nombre="Portatil economico", precio="$ 899.900", promocion="799.900 COP",
              enlace="https://tienda.com/product/99999/economico"),
@@ -240,7 +240,7 @@ def probar_pipeline(dsn, spider, pipe):
           f"dio {refs}")
 
     # 6. Reglas: cada item malo se descarta o se sanea y la corrida sigue
-    #    (CA-4 de US-6). El ultimo item es sano: prueba que nada la corto.
+    #    (el ultimo item es sano: prueba que nada la corto).
     antes = dict(pipe.stats)
     malos = [
         item(nombre="Promo incoherente", precio="100.000 COP", promocion="120.000 COP",

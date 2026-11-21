@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `MyWishlistService` (US-53): delega en
+ * Tests unitarios de `MyWishlistService`: delega en
  * `WishlistsService` y solo cambia la url fija del paginador.
  */
 import 'reflect-metadata';

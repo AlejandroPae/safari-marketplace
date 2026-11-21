@@ -1,5 +1,5 @@
 /**
- * conversations.repository.ts — mensajería usuario ↔ tienda (US-56).
+ * conversations.repository.ts — mensajería usuario ↔ tienda.
  *
  * Un solo agregado: la conversación y sus mensajes. Las lecturas devuelven
  * `ConversationDetailRecord`, con el usuario, la tienda y el último mensaje.
@@ -14,7 +14,7 @@
  *
  * `unseen` no vive aquí: depende de quién consulta y lo calcula la API. Lo
  * que sí sale de aquí es `lastSeenAt`, la última lectura de ese lector
- * (`conversation_reads`, US-64), también en una sola consulta por página.
+ * (`conversation_reads`), también en una sola consulta por página.
  */
 
 import { Prisma } from '../../generated/prisma/client/client';
@@ -48,7 +48,7 @@ export interface ConversationDetailRecord extends ConversationRecord {
   /** `null` si la conversación no tiene mensajes. */
   latestMessage: MessageRecord | null;
   /**
-   * Última lectura de quien consulta (US-64). `null` si nunca la marcó o si
+   * Última lectura de quien consulta. `null` si nunca la marcó o si
    * la consulta no tiene lector.
    */
   lastSeenAt: Date | null;
@@ -226,7 +226,7 @@ export async function findConversationById(
 }
 
 /**
- * Marca la conversación como leída por `viewer` (US-64): upsert de
+ * Marca la conversación como leída por `viewer`: upsert de
  * `last_seen_at = now()`, así que repetirla solo mueve la marca. Devuelve la
  * conversación con esa lectura, o `null` si no existe o no es visible para
  * él, sin escribir nada.

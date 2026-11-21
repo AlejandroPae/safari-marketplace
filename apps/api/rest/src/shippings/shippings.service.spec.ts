@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `ShippingsService` (US-49). Mismo arnés que
+ * Tests unitarios de `ShippingsService`. Mismo arnés que
  * `tags.service.spec.ts`.
  */
 import 'reflect-metadata';

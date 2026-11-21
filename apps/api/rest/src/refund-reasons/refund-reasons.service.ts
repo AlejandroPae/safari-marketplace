@@ -27,10 +27,11 @@ import { CreateRefundReasonDto } from './dto/create-refund-reasons.dto.js';
 
 /**
  * `RefundReasonRecord` → las 8 claves de `refund-reasons.json`, en su orden.
- * Es el primer módulo del épico que EMITE timestamps: salen del seed (las
- * fechas del mock) y `Date.toJSON()` da los mismos 3 decimales que el mock ya
- * emitía vía `@Type(() => Date)`. `deleted_at` es constante `null` entre
- * `updated_at` y `translated_languages` (D-6: no hay soft delete).
+ * A diferencia de los otros módulos de contenido, este EMITE timestamps:
+ * salen del seed (las fechas del mock) y `Date.toJSON()` da los mismos 3
+ * decimales que el mock ya emitía vía `@Type(() => Date)`. `deleted_at` es
+ * constante `null` entre `updated_at` y `translated_languages` (no hay
+ * soft delete).
  */
 function toRefundReasonDto(record: RefundReasonRecord): RefundReason {
   return {
@@ -64,7 +65,7 @@ function assertId(id: number): void {
 export class RefundReasonsService {
   /**
    * Filtro por `name`. El token `type.slug` que manda el shop se ignora: no
-   * hay columna `type` y el mock tampoco filtraba por él (US-48).
+   * hay columna `type` y el mock tampoco filtraba por él.
    */
   async findAll({
     search,
@@ -91,7 +92,7 @@ export class RefundReasonsService {
     return { data, ...paginate(result.total, page, limit, data.length, url) };
   }
 
-  /** Por slug, como el mock; inexistente ⇒ 404 (V-3). */
+  /** Por slug, como el mock; inexistente ⇒ 404. */
   async getRefundReason(
     param: string,
     _language?: string,
@@ -125,7 +126,7 @@ export class RefundReasonsService {
     }
   }
 
-  /** `updated_at` pasa a `now()` de `clock.ts` (V-5); el `slug` es inmutable. */
+  /** `updated_at` pasa a `now()` de `clock.ts`; el `slug` es inmutable. */
   async update(id: number, dto: UpdateRefundReasonDto): Promise<RefundReason> {
     assertId(id);
     try {

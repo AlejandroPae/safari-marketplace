@@ -1,6 +1,6 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
- * 11 autores, ids 12..2, todos aprobados). Lectura y escritura (US-93).
+ * 11 autores, ids 12..2, todos aprobados). Lectura y escritura.
  *
  * Las escrituras usan el centinela `zz-authors-` en el nombre, que
  * `generateSlug` lleva al slug. Las lecturas van ANTES que las escrituras:

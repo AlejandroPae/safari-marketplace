@@ -1,9 +1,8 @@
 /**
  * Test de integración contra el Postgres real (docker-compose, puerto 5433).
- * `become_seller` es la fila única de la página "vender con nosotros"
- * (US-41): US-44 agrega el repositorio de funciones planas
- * (`getBecomeSeller`/`updateBecomeSeller`) que faltaba; el resto de la
- * suite sigue consultando Prisma directo, mismo patrón que `settings`
+ * `become_seller` es la fila única de la página "vender con nosotros".
+ * Su repositorio de funciones planas es `getBecomeSeller`/
+ * `updateBecomeSeller`; el resto de la suite consulta Prisma directo, mismo patrón que `settings`
  * (singleton hermano) en el resto del paquete.
  *
  * Los `describe` de escritura (`updateBecomeSeller`) restauran
@@ -82,7 +81,7 @@ describe('CHECK become_seller_fila_unica', () => {
   });
 });
 
-describe('las dos columnas jsonb conservan ambas colecciones sin fusionarlas (CA-2)', () => {
+describe('las dos columnas jsonb conservan ambas colecciones sin fusionarlas', () => {
   it('pageOptions tiene 24 claves (incl. defaultCommissionRate) y commissions un array de 2, sin anidarse', async () => {
     const row = await prisma.becomeSeller.findUniqueOrThrow({
       where: { id: 1 },
@@ -104,7 +103,7 @@ describe('las dos columnas jsonb conservan ambas colecciones sin fusionarlas (CA
   });
 });
 
-describe('getBecomeSeller devuelve la fila (US-44, D-1)', () => {
+describe('getBecomeSeller devuelve la fila', () => {
   it('id === 1, pageOptions con 24 claves, commissions de longitud 2, language === "en"', async () => {
     const record = await getBecomeSeller();
     if (!record)
@@ -119,7 +118,7 @@ describe('getBecomeSeller devuelve la fila (US-44, D-1)', () => {
   });
 });
 
-describe('updateBecomeSeller persiste y fija el reloj (US-44, D-1)', () => {
+describe('updateBecomeSeller persiste y fija el reloj', () => {
   afterEach(async () => {
     _setNowProvider(() => new Date());
     await _restoreSeedRow();
@@ -147,7 +146,7 @@ describe('updateBecomeSeller persiste y fija el reloj (US-44, D-1)', () => {
   });
 });
 
-describe('updateBecomeSeller no crea una segunda fila (CA-3, US-44)', () => {
+describe('updateBecomeSeller no crea una segunda fila', () => {
   afterEach(async () => {
     _setNowProvider(() => new Date());
     await _restoreSeedRow();
@@ -163,10 +162,9 @@ describe('updateBecomeSeller no crea una segunda fila (CA-3, US-44)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tripwire de estado de reposo (D-5, data-layer-clock-policy). US-44 crea la
-// PRIMERA ruta de update de esta tabla; antes de esta US, este describe
-// afirmaba "no existe ruta de update" — hoy sí existe, y este describe deja
-// de significar eso. Pasa a ser un CENTINELA: el seed y el `afterEach` de
+// Tripwire de estado de reposo (data-layer-clock-policy). La tabla tiene
+// ruta de update (`updateBecomeSeller`), así que este describe es un
+// CENTINELA: el seed y el `afterEach` de
 // cada `describe` de escritura (arriba) dejan la fila en reposo
 // (`updatedAt === createdAt`) para cuando este describe corre — el `afterAll`
 // NO sirve para eso, porque dispara al final del archivo, ya pasado este
@@ -188,7 +186,7 @@ describe('reloj en reposo: updatedAt === createdAt (data-layer-clock-policy, tri
   });
 });
 
-describe('sin trigger BEFORE UPDATE (CA-3)', () => {
+describe('sin trigger BEFORE UPDATE', () => {
   it('pg_trigger no tiene ningún trigger propio sobre become_seller', async () => {
     const triggers = await prisma.$queryRaw<Array<{ count: bigint }>>`
       SELECT count(*) AS count FROM pg_trigger

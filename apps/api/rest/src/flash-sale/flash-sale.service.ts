@@ -36,9 +36,9 @@ function toSaleDate(date: Date): string {
 }
 
 /**
- * Producto de una venta: la proyección de `/products` (DA-7, V-1) con
+ * Producto de una venta: la proyección de `/products` con
  * `in_flash_sale: 1`. Los embebidos en la venta llevan además `pivot`, al
- * final como en el mock, con el id de la venta real (V-2).
+ * final como en el mock, con el id de la venta real.
  */
 function toFlashSaleProductDto(
   record: ProductRecord,
@@ -54,8 +54,8 @@ function toFlashSaleProductDto(
 }
 
 /**
- * `FlashSaleRecord` → las 18 claves de `flash-sale.json`, en su orden
- * (US-94, D-1). `deleted_at` y `translated_languages` son constantes (D-6).
+ * `FlashSaleRecord` → las 18 claves de `flash-sale.json`, en su orden.
+ * `deleted_at` y `translated_languages` son constantes.
  */
 export function toFlashSaleDto(record: FlashSaleRecord): FlashSale {
   return {
@@ -183,9 +183,9 @@ export class FlashSaleService {
   }
 
   /**
-   * Filtro real (US-94, V-4): `title` aplica ILIKE; el `shop_id` que envía
-   * el admin se ignora porque la venta es global. Sin filtro por vigencia
-   * (R-3). `page`/`limit` crudos a `paginate()` (Decision A).
+   * Filtro real: `title` aplica ILIKE; el `shop_id` que envía el admin se
+   * ignora porque la venta es global. Sin filtro por vigencia. `page`/`limit`
+   * crudos a `paginate()`.
    */
   async findAllFlashSale({ search, limit, page }: GetFlashSaleDto) {
     if (!page) page = 1;
@@ -208,7 +208,7 @@ export class FlashSaleService {
     return { data, ...paginate(result.total, page, limit, data.length, url) };
   }
 
-  /** Por slug, con sus productos (DA-7); inexistente ⇒ 404 (V-5). */
+  /** Por slug, con sus productos; inexistente ⇒ 404. */
   async getFlashSale(param: string, _language: string): Promise<FlashSale> {
     let record: FlashSaleRecord | null;
     try {
@@ -225,7 +225,10 @@ export class FlashSaleService {
     return toFlashSaleDto(record);
   }
 
-  /** Guarda de id de US-31 antes de tocar el driver. */
+  /**
+   * Guarda de id antes de tocar el driver: `1e21` o un id fuera de `bigint`
+   * serían un 500.
+   */
   async update(
     id: number,
     updateFlashSaleDto: UpdateFlashSaleDto,
@@ -242,7 +245,7 @@ export class FlashSaleService {
     }
   }
 
-  /** Devuelve la venta borrada (V-6: el mock devolvía un string). */
+  /** Devuelve la venta borrada (el mock devolvía un string). */
   async remove(id: number): Promise<FlashSale> {
     if (!Number.isSafeInteger(id) || id <= 0) {
       throw new NotFoundException(`No existe una venta flash con id ${id}.`);
@@ -256,7 +259,7 @@ export class FlashSaleService {
   }
 
   /**
-   * Productos de la venta del `slug` (V-3), en orden de `product_id`. Sin
+   * Productos de la venta del `slug`, en orden de `product_id`. Sin
    * `slug`, los de todas las ventas sin repetir. Slug inexistente ⇒ 404.
    */
   async findAllProductsByFlashSale({
@@ -290,9 +293,9 @@ export class FlashSaleService {
   }
 
   /**
-   * Ventas en las que está el producto `id` (US-96), con la proyección de
+   * Ventas en las que está el producto `id`, con la proyección de
    * `/flash-sale/:slug`, en `id DESC`. `[]` si no está en ninguna. Producto
-   * inexistente o `id` que no es un entero positivo ⇒ 404 (guarda de US-31).
+   * inexistente o `id` que no es un entero positivo ⇒ 404 (guarda de id).
    */
   async getFlashSaleInfoByProductId(id: string): Promise<FlashSale[]> {
     const productId = /^[1-9]\d*$/.test(id ?? '') ? Number(id) : NaN;

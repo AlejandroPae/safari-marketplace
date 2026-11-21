@@ -14,7 +14,7 @@ export interface ReadinessReport {
 }
 
 /**
- * Liveness y readiness de la API (US-17).
+ * Liveness y readiness de la API.
  *
  * - Liveness no toca ninguna dependencia: si el proceso responde, está vivo.
  *   Así una base caída no hace reiniciar un proceso sano.
@@ -29,8 +29,8 @@ export class HealthService {
   private readonly logger = new Logger(HealthService.name);
 
   /**
-   * `instance` dice qué réplica respondió (US-107), como `X-Served-By`.
-   * `revision` dice de qué commit salió la imagen (US-110): el CI la construye
+   * `instance` dice qué réplica respondió, como `X-Served-By`.
+   * `revision` dice de qué commit salió la imagen: el CI la construye
    * con `GIT_SHA`. Sin la variable (`api-dev`, una imagen local) es `unknown`.
    */
   liveness() {

@@ -3,14 +3,14 @@ import { OmitType } from '@nestjs/swagger';
 import { Manufacturer } from '../entities/manufacturer.entity.js';
 
 /**
- * `OmitType` sobre la entidad (design.md, DD-9): a diferencia de
- * `create-tag.dto.ts` (que usa `PickType`), aquí se parte de la lista
- * negativa porque la US deja de omitir `name`, `description`, `website`,
+ * `OmitType` sobre la entidad: a diferencia de `create-tag.dto.ts` (que
+ * usa `PickType`), aquí se parte de la lista negativa porque NO se omiten
+ * `name`, `description`, `website`,
  * `image`, `type_id`, `socials`, `cover_image` y `slug` — todos campos
  * reales que el admin envía (`manufacturer-form.tsx:184-218`). Sigue
  * omitiendo `id`, `products_count`, `type` y `translated_languages` (sin
  * columna o resueltos por el servicio) y AÑADE `created_at`/`updated_at`
- * a la lista (N-9): `Manufacturer extends CoreEntity` y sin este añadido
+ * a la lista: `Manufacturer extends CoreEntity` y sin este añadido
  * el schema Swagger del body documentaría dos timestamps que fija el
  * servidor.
  *
@@ -20,14 +20,14 @@ import { Manufacturer } from '../entities/manufacturer.entity.js';
  * validadores de los campos declarados, así que `POST {}` y
  * `POST {"name":""}` responden 400 antes de tocar el servicio.
  *
- * `is_approved` añade `@IsOptional() @IsBoolean()` (DD-6/N-2): sin
+ * `is_approved` añade `@IsOptional() @IsBoolean()`: sin
  * `transform` en `ValidationPipe`, `Boolean("false") === true` — una
  * cadena colaría un `true` en silencio. `@IsOptional()` es obligatorio:
  * el campo es legítimamente omitible (`DEFAULT true`); sin él,
- * `POST {"name":"X"}` fallaría y rompería CA-1.
+ * `POST {"name":"X"}` fallaría.
  *
- * `shop_id` se conserva standalone: sin columna, se acepta y se ignora
- * (V-3) — `manufacturer-form.tsx` solo lo envía en create.
+ * `shop_id` se conserva standalone: sin columna, se acepta y se ignora —
+ * `manufacturer-form.tsx` solo lo envía en create.
  */
 export class CreateManufacturerDto extends OmitType(Manufacturer, [
   'id',

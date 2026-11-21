@@ -1,5 +1,5 @@
 /**
- * faqs.repository.ts — preguntas frecuentes, globales o de una tienda (US-47).
+ * faqs.repository.ts — preguntas frecuentes, globales o de una tienda.
  *
  * Calco de `tags.repository.ts` con una regla propia: `faqType` e `issuedBy`
  * NO los elige quien escribe, se derivan de `shopId`. El admin solo envía
@@ -162,7 +162,7 @@ export async function createFaq(input: CreateFaqInput): Promise<FaqRecord> {
 /**
  * Actualiza una FAQ. El `slug` es inmutable (precedente `updateTag`); un
  * `faqTitle` que normaliza a slug vacío da `EmptySlugError`, igual que allí.
- * `updatedAt: now()` explícito: ninguna tabla tiene trigger (US-32).
+ * `updatedAt: now()` explícito: ninguna tabla tiene trigger.
  */
 export async function updateFaq(
   id: number,

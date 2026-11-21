@@ -26,8 +26,8 @@ import { GetTypesDto } from './dto/get-types.dto.js';
 /**
  * `TypeRecord` (camelCase, `@safari/db`) → proyección de 9 claves
  * snake_case que ya publicaba `types.json`. `promotional_sliders` y
- * `translated_languages` son constantes: no hay columna que los respalde
- * (V-8/V-9, documentadas en design.md). Se castea a `Type`, igual que
+ * `translated_languages` son constantes: no hay columna que los respalde.
+ * Se castea a `Type`, igual que
  * `toProductDto` (`products.service.ts:167`) — la entidad declara campos
  * que este listado no emite (`image`).
  */
@@ -83,15 +83,15 @@ export class TypesService {
   }
 
   /**
-   * Proyecta el DTO campo a campo en `CreateTypeInput` (R-5: nunca spread
-   * del body). `settings`/`banners` se castean en la frontera
-   * (`as unknown as Prisma.InputJsonValue`, nunca `as any` — design.md,
-   * Decisión 5): `TypeSettings`/`Banner[]` son clases sin index signature
-   * implícita. El spread condicional evita mandar `undefined` como `null`:
-   * el repositorio ya distingue "ausente" (aplica el `DEFAULT` jsonb) de
-   * "presente" — mandar la clave con valor `undefined` de todos modos deja
-   * que `createType` la vea como ausente, pero se omite aquí también para
-   * que el input que le llega al repositorio no incluya claves fantasma.
+   * Proyecta el DTO campo a campo en `CreateTypeInput` (nunca spread del
+   * body). `settings`/`banners` se castean en la frontera
+   * (`as unknown as Prisma.InputJsonValue`, nunca `as any`):
+   * `TypeSettings`/`Banner[]` son clases sin index signature implícita. El
+   * spread condicional evita mandar `undefined` como `null`: el repositorio
+   * ya distingue "ausente" (aplica el `DEFAULT` jsonb) de "presente" —
+   * mandar la clave con valor `undefined` de todos modos deja que
+   * `createType` la vea como ausente, pero se omite aquí también para que
+   * el input que le llega al repositorio no incluya claves fantasma.
    */
   async create(createTypeDto: CreateTypeDto): Promise<Type> {
     try {
@@ -118,11 +118,11 @@ export class TypesService {
   /**
    * `+id` llega como `NaN` desde el controlador si `PUT /api/types/abc`
    * (`types.controller.ts:43`); sin esta guarda, `BigInt(NaN)` revienta en
-   * 500 dentro del repositorio (design.md, Decisión 6 — precedente exacto
+   * 500 dentro del repositorio (precedente exacto
    * `categories.service.ts:275-293`). El slug del DTO se ignora siempre: es
    * inmutable (`UpdateTypeInput` ni siquiera lo declara).
    *
-   * `Number.isSafeInteger` (no `Number.isInteger`, US-31): `Number.isInteger`
+   * `Number.isSafeInteger` (no `Number.isInteger`): `Number.isInteger`
    * deja pasar `1e21` hasta el driver, que revienta en `invalid input syntax
    * for type bigint` (500). `id <= 0` porque ningún id real es no positivo
    * (`bigserial` arrancando en 1).
@@ -152,7 +152,7 @@ export class TypesService {
     }
   }
 
-  /** Misma guarda de id que `update` (US-31). */
+  /** Misma guarda de id que `update`. */
   async remove(id: number): Promise<Type> {
     if (!Number.isSafeInteger(id) || id <= 0) {
       throw new NotFoundException(`No existe un type con id ${id}.`);

@@ -1,5 +1,5 @@
 /* La v4 compila cada CSS module por separado: @reference le da el tema sin
-   volver a emitir el CSS global (US-86). */
+   volver a emitir el CSS global. */
 @reference '../../../assets/css/main.css';
 
 .progress_container {

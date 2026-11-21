@@ -1,10 +1,9 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
- * 3 reportes de customer@demo.com, id 2, sobre las reseñas 1, 21 y 78). US-54;
- * los reportes de preguntas, US-55.
+ * 3 reportes de customer@demo.com, id 2, sobre las reseñas 1, 21 y 78).
  *
  * Las escrituras son del admin (3), sin reportes en el seed; se borran en
- * `beforeAll`/`afterAll`. Los rechazos (US-65) trabajan sobre reportes
+ * `beforeAll`/`afterAll`. Los rechazos trabajan sobre reportes
  * centinela del admin en objetos sin reportes sembrados, así que los 3 del
  * seed no se tocan.
  */
@@ -117,7 +116,7 @@ describe('createAbusiveReport', () => {
     ).rejects.toBeInstanceOf(InvalidFieldValueError);
   });
 
-  it('reporta una pregunta existente (US-55)', async () => {
+  it('reporta una pregunta existente', async () => {
     const created = await createAbusiveReport({
       userId: ADMIN,
       modelType: 'Question',
@@ -163,7 +162,7 @@ describe('updateAbusiveReport / deleteAbusiveReport', () => {
   });
 });
 
-describe('rejectAbusiveReports — US-65', () => {
+describe('rejectAbusiveReports', () => {
   const seeded = () =>
     prisma.abusiveReport.findMany({
       where: { userId: CUSTOMER },
@@ -189,7 +188,7 @@ describe('rejectAbusiveReports — US-65', () => {
     expect(await rejectAbusiveReports('Review', 2)).toBe(0);
     expect(await seeded()).toEqual(before);
 
-    // DD-2: rechazado, el mismo usuario puede volver a reportarlo.
+    // Rechazado, el mismo usuario puede volver a reportarlo.
     await expect(
       createAbusiveReport({
         userId: ADMIN,

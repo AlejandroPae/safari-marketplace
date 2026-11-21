@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `OrderStatusesService` (US-57). Mismo arnés que
+ * Tests unitarios de `OrderStatusesService`. Mismo arnés que
  * `coupons.service.spec.ts`: solo se mockea el acceso a datos.
  */
 import 'reflect-metadata';
@@ -163,7 +163,7 @@ describe('OrderStatusesService', () => {
   });
 
   describe('findOne', () => {
-    it('por slug; inexistente ⇒ 404 (V-3)', async () => {
+    it('por slug; inexistente ⇒ 404', async () => {
       findMock.mockResolvedValueOnce(makeRecord()).mockResolvedValueOnce(null);
       expect((await service.findOne('delivered')).serial).toBe(11);
       await expect(service.findOne('no-existe')).rejects.toBeInstanceOf(
@@ -175,10 +175,10 @@ describe('OrderStatusesService', () => {
   describe('escrituras', () => {
     it('create proyecta el DTO y coerciona serial a número', async () => {
       createMock.mockResolvedValue(
-        makeRecord({ id: 11, slug: 'ca-3-estado', serial: 12 }),
+        makeRecord({ id: 11, slug: 'estado-de-prueba', serial: 12 }),
       );
       const dto = {
-        name: 'CA-3 Estado',
+        name: 'Estado de prueba',
         color: '#112233',
         serial: '12',
         language: 'en',
@@ -187,12 +187,12 @@ describe('OrderStatusesService', () => {
         dto as unknown as CreateOrderStatusDto,
       );
       expect(createMock).toHaveBeenCalledWith({
-        name: 'CA-3 Estado',
+        name: 'Estado de prueba',
         color: '#112233',
         serial: 12,
         language: 'en',
       });
-      expect(created.slug).toBe('ca-3-estado');
+      expect(created.slug).toBe('estado-de-prueba');
     });
 
     it('serial repetido ⇒ 409; CHECK ⇒ 400', async () => {
@@ -220,14 +220,14 @@ describe('OrderStatusesService', () => {
       );
     });
 
-    it('update pasa solo las claves presentes y devuelve un estado (V-1)', async () => {
+    it('update pasa solo las claves presentes y devuelve un estado', async () => {
       updateMock.mockResolvedValue(
-        makeRecord({ id: 1, name: 'CA-3 Editado', slug: 'ca-3-editado' }),
+        makeRecord({ id: 1, name: 'Estado editado', slug: 'estado-editado' }),
       );
       const updated = await service.update(1, {
-        name: 'CA-3 Editado',
+        name: 'Estado editado',
       } as UpdateOrderStatusDto);
-      expect(updateMock).toHaveBeenCalledWith(1, { name: 'CA-3 Editado' });
+      expect(updateMock).toHaveBeenCalledWith(1, { name: 'Estado editado' });
       expect(updated).toHaveProperty('serial');
       expect(updated).not.toHaveProperty('tracking_number');
     });
@@ -257,7 +257,7 @@ describe('OrderStatusesService', () => {
       expect(deleteMock).toHaveBeenCalledTimes(1);
     });
 
-    it('remove devuelve el snapshot borrado (V-2)', async () => {
+    it('remove devuelve el snapshot borrado', async () => {
       deleteMock.mockResolvedValue(makeRecord());
       expect(await service.remove(7)).toMatchObject({
         id: 7,

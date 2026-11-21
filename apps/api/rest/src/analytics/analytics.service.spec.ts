@@ -5,7 +5,7 @@
  * se limita a este archivo para no tocar la config del build.
  */
 /**
- * Tests unitarios de `AnalyticsService` (US-61): la forma de los 4 JSON del
+ * Tests unitarios de `AnalyticsService`: la forma de los 4 JSON del
  * mock, el mapeo de estados, el parseo de `limit`/`search` y los errores
  * (503/500). Se mockea solo el acceso a datos de `@safari/db`; los valores
  * con reloj fijo los prueba `analytics.integration.test.ts`.

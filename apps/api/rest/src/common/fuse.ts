@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 
 /**
- * Interop de `fuse.js` 6 desde ESM (US-90).
+ * Interop de `fuse.js` 6 desde ESM.
  *
  * El paquete es CommonJS (`module.exports = Fuse`), pero sus tipos declaran
  * `export default Fuse`. Desde ESM, `import Fuse from 'fuse.js'` da en runtime

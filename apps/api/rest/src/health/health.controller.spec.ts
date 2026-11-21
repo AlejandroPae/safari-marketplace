@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios del health de la API (US-17). Se mockea solo `pingDatabase`
+ * Tests unitarios del health de la API. Se mockea solo `pingDatabase`
  * de `@safari/db`; el controller y el service son reales.
  */
 import 'reflect-metadata';
@@ -45,7 +45,7 @@ describe('HealthController', () => {
     vi.unstubAllEnvs();
   });
 
-  it('liveness devuelve el commit de la imagen en revision (US-110)', () => {
+  it('liveness devuelve el commit de la imagen en revision', () => {
     vi.stubEnv('GIT_SHA', 'f1067fe0123456789abcdef0123456789abcdef0');
     expect(controller.liveness().revision).toBe(
       'f1067fe0123456789abcdef0123456789abcdef0',

@@ -4,7 +4,7 @@ import { BecomeSellerService } from './become-seller.service.js';
 import { Public } from '#src/auth/decorators/public.decorator.js';
 
 // Solicitud de quien AÚN NO es vendedor; become-seller.ts ya prefetchea el
-// GET sin token (cierre del usuario, proposal.md).
+// GET sin token.
 @Public()
 @Controller('became-seller')
 export class BecomeSellerController {

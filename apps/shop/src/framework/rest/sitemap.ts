@@ -4,21 +4,20 @@ import client from './client';
 import { HttpError } from './client/http-client';
 
 /**
- * Sitemap y robots.txt generados en ejecución (US-108).
+ * Sitemap y robots.txt generados en ejecución.
  *
  * Antes los escribía `next-sitemap` al terminar el build, con la URL del
  * build y sin contenido dinámico. Ahora cada petición los arma con el
- * dominio con que corre el contenedor (`NEXTAUTH_URL`, D-2) y con los
- * listados de la API (D-3). Sin caché en servidor: solo `Cache-Control`
- * (D-6).
+ * dominio con que corre el contenedor (`NEXTAUTH_URL`) y con los
+ * listados de la API. Sin caché en servidor: solo `Cache-Control`.
  */
 
 const CACHE_CONTROL = 'public, max-age=3600';
 // Páginas grandes para pocas llamadas, sin depender de que la API no tenga
-// tope: se pagina hasta `last_page` (D-6).
+// tope: se pagina hasta `last_page`.
 const PAGE_SIZE = 500;
 
-// Páginas públicas sin datos por slug (D-3). El inicio es `/`: el type que
+// Páginas públicas sin datos por slug. El inicio es `/`: el type que
 // muestra no se repite como `/<slug>`.
 const STATIC_PATHS = [
   Routes.home,
@@ -37,7 +36,7 @@ const STATIC_PATHS = [
 ];
 
 // Los 4 de next-sitemap, más las páginas privadas o de usuario que salen
-// del sitemap (D-4).
+// del sitemap.
 const DISALLOW = [
   '*/logout',
   '*/checkout*',
@@ -77,7 +76,7 @@ function send(
 
 /**
  * Sin `NEXTAUTH_URL` no hay dominio: 500 con un cuerpo que la nombra.
- * Lanzar un error daría la página 500 genérica, sin el mensaje (D-2).
+ * Lanzar un error daría la página 500 genérica, sin el mensaje.
  */
 function missingSiteUrl(res: GetServerSidePropsContext['res']) {
   const message =
@@ -146,7 +145,7 @@ export async function serveSitemap({ res, locale }: GetServerSidePropsContext) {
     paths = await sitemapPaths(locale ?? 'en');
   } catch (error) {
     // Ni un 200 vacío ni uno parcial: un buscador reintenta un 503, pero un
-    // sitemap vacío lo lee como «el sitio ya no tiene páginas» (D-5).
+    // sitemap vacío lo lee como «el sitio ya no tiene páginas».
     if (!(error instanceof HttpError)) throw error;
     console.warn(`[sitemap] API no disponible: ${error.message}`);
     return send(
@@ -168,7 +167,7 @@ export async function serveSitemap({ res, locale }: GetServerSidePropsContext) {
   );
 }
 
-/** robots.txt no depende de la API: responde aunque esté caída (D-5). */
+/** robots.txt no depende de la API: responde aunque esté caída. */
 export function serveRobots({ res }: GetServerSidePropsContext) {
   const base = siteUrl();
   if (!base) return missingSiteUrl(res);

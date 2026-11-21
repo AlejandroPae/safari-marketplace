@@ -94,8 +94,8 @@ def extraer_product_id(url, fallback):
 # db/seed.sql. Se busca por slug, no por el id crudo del seed.
 SQL_TYPE_ID = "SELECT id FROM types WHERE slug = 'gadget'"
 
-# Mapa cerrado etiqueta cruda -> slug del catalogo (Decision A). `audio` NO es
-# entrada de este dict: se resuelve aparte por palabras clave (Decision B).
+# Mapa cerrado etiqueta cruda -> slug del catalogo. `audio` NO es entrada de
+# este dict: se resuelve aparte por palabras clave.
 # Las 4 que caen al resto (tablets, impresoras, perifericos, otros) se
 # declaran explicitas porque db/README.md no les da renglon propio.
 RAW_A_SLUG = {
@@ -111,7 +111,7 @@ RAW_A_SLUG = {
 
 SLUG_RESTO = "accessories-gfa"
 
-# Los 7 slugs destino que el pipeline efectivamente escribe (Decision D):
+# Los 7 slugs destino que el pipeline efectivamente escribe:
 # list, no set/tuple -- psycopg 3 adapta una list a array de Postgres, que es
 # lo que exige `= ANY(%s)`; un set no se adapta y una tuple iria como record.
 SLUGS_CATEGORIA = [
@@ -127,7 +127,7 @@ SLUGS_CATEGORIA = [
 # Subconjunto elegido (no la union) del vocabulario de audifono de los 6
 # spiders, en raices singulares sin acento -- la raiz cubre plural y tilde
 # por subcadena una vez que `nombre` pasa por normalizar_texto(). Exclusiones
-# deliberadas (Decision B): marcas que fabrican tanto audifono como parlante
+# deliberadas: marcas que fabrican tanto audifono como parlante
 # ("beats " generico, "marshall ", "soundcore", "sony xb", "jbl grip") se
 # dejan fuera a proposito -- incluirlas mandaria parlantes a `headphone`, un
 # falso positivo peor que el residual hacia `sound-box`.
@@ -167,7 +167,7 @@ KEYWORDS_AUDIFONO = [
 
 def slug_de_etiqueta(categoria, nombre):
     """Traduce la etiqueta cruda del spider a un slug del catalogo. `audio`
-    se desambigua por palabras clave del nombre (Decision B); el resto sale
+    se desambigua por palabras clave del nombre; el resto sale
     de RAW_A_SLUG. `None` si la etiqueta no mapea -- el caller hace el
     fallback a SLUG_RESTO y lo loguea."""
     categoria_normalizada = normalizar_texto(categoria)
@@ -224,14 +224,14 @@ DO UPDATE SET
 RETURNING id, (xmax = 0) AS fue_insercion
 """
 
-# category_id de los 7 slugs destino (Decision D): una unica query, read-only,
+# category_id de los 7 slugs destino: una unica query, read-only,
 # resuelta en open_spider una vez por corrida. NO crea categorias -- si falta
 # un slug, open_spider aborta antes del primer item nombrando los faltantes.
 # Se filtra tambien por type_id (aunque categories.slug es UNIQUE global) para
 # documentar el contrato y evitar colar un homonimo de otra vertical.
 SQL_CATEGORIA_IDS = "SELECT slug, id FROM categories WHERE type_id = %s AND slug = ANY(%s)"
 
-# Saneo (D-9): quita la categoria anterior del producto si cambio de etiqueta
+# Saneo: quita la categoria anterior del producto si cambio de etiqueta
 # entre corridas. Va ANTES del insert y dentro de la MISMA frontera del try
 # que el upsert de products -- si el producto se re-etiqueta, DO NOTHING no
 # borraria la fila vieja y el producto quedaria en dos categorias a la vez.
@@ -240,7 +240,7 @@ DELETE_CATEGORY_PRODUCT = (
     "WHERE product_id = %(producto_id)s AND category_id <> %(category_id)s"
 )
 
-# Fila puente, idempotente (CA-2). A diferencia del ON CONFLICT de products,
+# Fila puente, idempotente. A diferencia del ON CONFLICT de products,
 # este NO lleva WHERE: la PK compuesta (product_id, category_id) es un indice
 # unico total, no parcial -- anadirle un WHERE seria un error.
 INSERT_CATEGORY_PRODUCT = (
@@ -252,7 +252,8 @@ INSERT_CATEGORY_PRODUCT = (
 # Mensajes para las violaciones de constraint que la validacion previa en
 # Python no deberia dejar pasar nunca: si aparecen, es un bug del pipeline,
 # no un dato malo del spider. `products_slug_key` es la excepcion: es un
-# residual declarado de la Decision D (dos homonimos en la MISMA tienda).
+# residual aceptado del slug `slugify(nombre || ' ' || tienda)`: dos
+# homonimos en la MISMA tienda generan el mismo slug.
 MENSAJES_CONSTRAINT = {
     "products_rebaja_valida": "promocion >= precio pese al saneo previo",
     "products_simple_con_precio": "producto 'simple' sin precio",
@@ -416,8 +417,7 @@ class PostgresPipeline:
 
         # Resolucion del slug (Python puro, no puede lanzar psycopg.Error):
         # va FUERA del try, junto a los demas saneos. `None` significa que la
-        # etiqueta cruda no mapea -- cae al resto y queda logueado, como
-        # exige CA-1.
+        # etiqueta cruda no mapea -- cae al resto y queda logueado.
         slug = slug_de_etiqueta(datos.get("categoria"), nombre)
         if slug is None:
             spider.logger.warning(
@@ -437,7 +437,7 @@ class PostgresPipeline:
         # dieron id), que no es psycopg.Error y escapa de aqui abortando la
         # corrida sin sumar a ningun contador. Es inalcanzable en la
         # practica y falla ruidoso, no silencioso; queda declarado en vez de
-        # ampliar el except (ver W-3 del verify de US-6).
+        # ampliar el except.
         try:
             fila = {
                 "nombre": nombre,
@@ -462,14 +462,14 @@ class PostgresPipeline:
                 producto_id, fue_insercion = cur.fetchone()
 
                 # Puente hacia category_product: DENTRO del mismo try/cursor,
-                # justo tras el upsert (Decision F). El DELETE de saneo va
+                # justo tras el upsert. El DELETE de saneo va
                 # ANTES del INSERT para que un cambio de etiqueta entre
-                # corridas no deje al producto en dos categorias (D-9). Si
+                # corridas no deje al producto en dos categorias. Si
                 # cualquiera de las dos falla, la excepcion salta al except
                 # de abajo SIN pasar por el incremento de stats siguiente:
                 # el item cuenta solo en `fallidos`, preservando la
                 # invariante insertados + actualizados + fallidos == procesados
-                # (D-7 -- `products` ya quedo persistido por autocommit).
+                # (`products` ya quedo persistido por autocommit).
                 puente = {"producto_id": producto_id, "category_id": self.categorias[slug]}
                 cur.execute(DELETE_CATEGORY_PRODUCT, puente)
                 cur.execute(INSERT_CATEGORY_PRODUCT, puente)

@@ -23,14 +23,13 @@ export interface ListShopsInput {
 }
 
 /**
- * Mismos filtros que el listado público de la tienda (Decisión E,
- * design.md): `products_count` cuenta SOLO lo publicado y visible.
+ * Mismos filtros que el listado público de la tienda: `products_count` cuenta SOLO lo publicado y visible.
  */
 const PUBLISHED_PRODUCT: Prisma.ProductWhereInput = {
   status: 'publish',
   visibility: 'visibility_public',
 };
-/** Exportado para la tienda de las órdenes hijas (US-58); fuera del barrel. */
+/** Exportado para la tienda de las órdenes hijas; fuera del barrel. */
 export const COUNT_PRODUCTS = {
   _count: { select: { products: { where: PUBLISHED_PRODUCT } } },
 } satisfies Prisma.ShopInclude;
@@ -53,7 +52,7 @@ export async function listShops(input: ListShopsInput = {}): Promise<{
     prisma.shop.findMany({
       where,
       include: COUNT_PRODUCTS,
-      // Preserva el orden del mock (Decisión D, design.md): las tiendas
+      // Preserva el orden del mock: las tiendas
       // scrapeadas (ids altos) quedan al frente, no al final.
       orderBy: { id: 'desc' },
       skip: (page - 1) * limit,
@@ -75,7 +74,7 @@ export async function listShops(input: ListShopsInput = {}): Promise<{
  * Una tienda por slug. `null` si no existe. Trae el mismo `productsCount`
  * filtrado que `listShops` — sin esto, `/shops/:slug` emitiría
  * `products_count: undefined` y `JSON.stringify` borraría la clave (16 → 15
- * claves, rotura de contrato — ver Decisión E, design.md).
+ * claves, rotura de contrato).
  */
 export async function findShopBySlug(slug: string): Promise<ShopRecord | null> {
   const row = await prisma.shop.findUnique({
@@ -87,7 +86,7 @@ export async function findShopBySlug(slug: string): Promise<ShopRecord | null> {
 }
 
 export interface ShopNearRecord extends ShopRecord {
-  /** Distancia haversine en km, R = 6371 (US-5 Decision D). */
+  /** Distancia haversine en km, R = 6371. */
   distanceKm: number;
 }
 
@@ -95,7 +94,7 @@ export interface ShopNearRecord extends ShopRecord {
  * `lat`/`lng` numéricos y finitos de `settings.location`, o `null` si la
  * tienda no tiene coordenadas válidas (sin la clave, `location: []`, o
  * valores no numéricos). Se descarta sin lanzar — no todas las tiendas
- * traen `settings->'location'` poblado (US-5 Decision D).
+ * traen `settings->'location'` poblado.
  */
 function _parseLocation(
   settings: Prisma.JsonValue
@@ -137,11 +136,11 @@ function _haversineKm(
 
 /**
  * Tiendas activas con coordenadas válidas, ordenadas ascendente por
- * distancia real (haversine) al origen. Sin radio ni paginación (US-5
- * Decision D, decisión cerrada del dueño del repo): devuelve TODAS las que
+ * distancia real (haversine) al origen. Sin radio ni paginación (decisión
+ * de producto): devuelve TODAS las que
  * califiquen, máx. 6 de 12 hoy. `lat`/`lng` no finitos → `[]`, NUNCA lanza
  * (el guard vive AQUÍ, en el repositorio, para que sea testeable sin pasar
- * por el servicio de Nest — B-4).
+ * por el servicio de Nest).
  */
 export async function listShopsNear(
   lat: number,
@@ -168,11 +167,10 @@ export async function listShopsNear(
 
 /**
  * `ownerId` de una tienda por id, para la propiedad por tienda de
- * `products` (D29-1, US-29). `null` si no existe **o** si `id` no es
- * entero seguro positivo (DD29-3, nivel A'): sin esta guarda,
- * `{"shop_id":"abc"}` → `Number('abc')` → `NaN` → `BigInt(NaN)` en el
- * `findUnique` lanzaría un `RangeError` sin `.code`, invisible para los
- * traductores → 500. NUNCA lanza.
+ * `products`. `null` si no existe **o** si `id` no es entero seguro
+ * positivo: sin esta guarda, `{"shop_id":"abc"}` → `Number('abc')` →
+ * `NaN` → `BigInt(NaN)` en el `findUnique` lanzaría un `RangeError` sin
+ * `.code`, invisible para los traductores → 500. NUNCA lanza.
  */
 export async function findShopOwnerById(id: number): Promise<number | null> {
   if (!Number.isSafeInteger(id) || id <= 0) return null;
@@ -184,7 +182,7 @@ export async function findShopOwnerById(id: number): Promise<number | null> {
 }
 
 /**
- * Si `userId` tiene fila en `shop_staff` para `shopId` (US-66). Ser dueño
+ * Si `userId` tiene fila en `shop_staff` para `shopId`. Ser dueño
  * no cuenta: el dueño no tiene fila. Ids no válidos ⇒ `false`, con la
  * misma guarda que `findShopOwnerById`. NUNCA lanza por la entrada.
  */
@@ -215,14 +213,11 @@ export async function findOrCreateShopBySlug(input: {
       description: input.description ?? null,
     },
     // El upsert exige `update`; no se pisa nada si ya existe. VACÍO A
-    // PROPÓSITO (US-32): verificado con `log:['query']` (apply-progress.md,
-    // hallazgo D-4) que Prisma NO emite ningún `UPDATE` para un `update: {}`
-    // cuando la fila ya existe — solo relee la fila con `SELECT`s. La
-    // promesa ("no se pisa nada si ya existe") ya era cierta ANTES de este
-    // change, porque el trigger nunca llegaba a dispararse en esta ruta; el
-    // motivo de mantener el `update: {}` vacío ahora es no aplicar
-    // mecánicamente la regla "todo `update` fija `updatedAt`" a una llamada
-    // que de hecho no actualiza nada. NO añadir `updatedAt: now()` aquí; el
+    // PROPÓSITO: verificado con `log:['query']` que Prisma NO emite ningún
+    // `UPDATE` para un `update: {}` cuando la fila ya existe — solo relee la
+    // fila con `SELECT`s. Mantenerlo vacío evita aplicar mecánicamente la
+    // regla "todo `update` fija `updatedAt`" a una llamada que de hecho no
+    // actualiza nada. NO añadir `updatedAt: now()` aquí; el
     // resto de `update`s de este archivo sí lo llevan, y esa asimetría es la
     // decisión, no un olvido.
     update: {},
@@ -231,8 +226,8 @@ export async function findOrCreateShopBySlug(input: {
 }
 
 // ---------------------------------------------------------------------------
-// Escritura (admin) — CA-1, CA-2, CA-3 de `shop-write-api` (US-30). Cero
-// CHECK y cero `IN` en `shops` (db/schema.sql:231-244, DD30-10): el `catch`
+// Escritura (admin), spec `shop-write-api`. Cero CHECK y cero `IN` en
+// `shops` (db/schema.sql:231-244): el `catch`
 // de las tres funciones es una sola llamada a `translateCatalogWriteError`,
 // sin guarda de dominio propia.
 // ---------------------------------------------------------------------------
@@ -250,9 +245,9 @@ const shopSlugs: ExistingSlugLookup = async (prefix) =>
   ).map((r) => r.slug);
 
 /**
- * `slug` no existe en ningún input (DD30-2): la inmutabilidad de CA-2 es
- * estructural, no un `Omit`. `ownerId` sale siempre del token (D30-3) e
- * `isActive` se fija explícito por rol al crear (D30-6) — ninguno de los
+ * `slug` no existe en ningún input: la inmutabilidad del slug es
+ * estructural, no un `Omit`. `ownerId` sale siempre del token e
+ * `isActive` se fija explícito por rol al crear — ninguno de los
  * dos se apoya en el `DEFAULT` del DDL.
  */
 export interface CreateShopInput {
@@ -267,7 +262,7 @@ export interface CreateShopInput {
 }
 
 /**
- * `ownerId`/`isActive` excluidos del update por seguridad (DD30-2): si
+ * `ownerId`/`isActive` excluidos del update por seguridad: si
  * `isActive` fuera editable aquí, un `store_owner` se auto-aprobaría por
  * `PUT /shops/:propio`, esquivando `approve-shop` (`ADMIN_ONLY`).
  */
@@ -277,10 +272,10 @@ export type UpdateShopInput = Partial<
 
 /**
  * Crea una tienda del admin. `ownerId`/`isActive` llegan tal cual del
- * servicio (el rol se decide ahí, D30-6); `slug` se deriva de `name`
- * (`generateSlug` ya rechaza `''`/no-string vía `normalizeSlug`, DD30-9).
+ * servicio (el rol se decide ahí); `slug` se deriva de `name`
+ * (`generateSlug` ya rechaza `''`/no-string vía `normalizeSlug`).
  * Recalcula `productsCount` con el mismo `include: COUNT_PRODUCTS` que las
- * lecturas (DD30-5) — para una tienda nueva siempre da `0`, no por un
+ * lecturas — para una tienda nueva siempre da `0`, no por un
  * fallback.
  */
 export async function createShop(input: CreateShopInput): Promise<ShopRecord> {
@@ -310,17 +305,15 @@ export async function createShop(input: CreateShopInput): Promise<ShopRecord> {
 }
 
 /**
- * Edita una tienda. `slug` no existe en `UpdateShopInput`: nunca cambia
- * (CA-2). Si llega `name`, `normalizeSlug` corre solo por su efecto
- * lateral (`EmptySlugError` → 400 ante `''`/no-string, DD30-9) — el
- * resultado se descarta, el slug de la fila no se toca. `settings`/
- * `address` son REPLACE completo cuando vienen (D30-1/D30-4); `logo`/
- * `coverImage` con `!= null` (un `null` explícito es no-op, DD30-2).
- * `updatedAt` lo fija `updatedAt: now()` desde `clock.ts` (US-32,
- * histórico DD30-7: antes lo hacía el trigger `shops_updated_at`). Sin
- * guarda numérica propia: la precondición documentada es `id` entero
- * seguro positivo, garantizada por el llamador (mismo contrato que
- * `updateProduct`).
+ * Edita una tienda. `slug` no existe en `UpdateShopInput`: nunca cambia.
+ * Si llega `name`, `normalizeSlug` corre solo por su efecto lateral
+ * (`EmptySlugError` → 400 ante `''`/no-string) — el resultado se descarta,
+ * el slug de la fila no se toca. `settings`/`address` son REPLACE completo
+ * cuando vienen; `logo`/`coverImage` con `!= null` (un `null` explícito
+ * es no-op). `updatedAt` lo fija `updatedAt: now()` desde `clock.ts` (no
+ * hay trigger de `updated_at`). Sin guarda numérica propia: la precondición
+ * documentada es `id` entero seguro positivo, garantizada por el llamador
+ * (mismo contrato que `updateProduct`).
  */
 export async function updateShop(
   id: number,
@@ -354,9 +347,9 @@ export async function updateShop(
 
 /**
  * Aprueba (`true`) o desactiva (`false`) una tienda — **una** función para
- * las dos rutas de moderación (D30-1/DD30-1): la asimetría vive en el
+ * las dos rutas de moderación: la asimetría vive en el
  * servicio (`approveShop`/`disapproveShop` delegando en `_setActive`), no
- * aquí. Sin guarda numérica propia: la lleva el servicio (DD30-3).
+ * aquí. Sin guarda numérica propia: la lleva el servicio.
  */
 export async function setShopActive(
   id: number,

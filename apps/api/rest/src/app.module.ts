@@ -109,8 +109,7 @@ import { HealthModule } from './health/health.module.js';
     // El ORDEN importa: Nest ejecuta los guards globales secuencialmente y
     // corta en el primero que devuelve false (guards-consumer.js). JwtAuthGuard
     // debe poblar `request.user` ANTES de que PermissionsGuard lo lea.
-    // Invertirlos produce 403 (o 401) para todas las rutas (design.md,
-    // Decisión A).
+    // Invertirlos produce 403 (o 401) para todas las rutas.
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
   ],

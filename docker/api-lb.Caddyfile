@@ -1,4 +1,4 @@
-# Balanceador de la API (US-107): reparte entre las réplicas de `api`.
+# Balanceador de la API: reparte entre las réplicas de `api`.
 #
 #   docker compose up -d --scale api=3     # tres réplicas detrás de esto
 #

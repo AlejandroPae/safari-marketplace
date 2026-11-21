@@ -5,8 +5,8 @@
  * se limita a este archivo para no tocar la config del build.
  */
 /**
- * Tests unitarios de `OwnershipTransferService` (US-63): forma del mock,
- * visibilidad por participante, búsqueda, url del paginador (V-7),
+ * Tests unitarios de `OwnershipTransferService`: forma del mock,
+ * visibilidad por participante, búsqueda, url del paginador,
  * escrituras y `transfer-shop-ownership`. Se mockea solo el acceso a datos;
  * las clases de error de dominio y `toWriteHttpException` son reales.
  */

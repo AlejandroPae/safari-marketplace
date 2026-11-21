@@ -2,7 +2,7 @@ import { SetMetadata } from '@nestjs/common';
 
 /**
  * Clave de metadata que `PermissionsGuard` busca con `Reflector.
- * getAllAndOverride` (handler primero, clase después). design.md, Decisión B.
+ * getAllAndOverride` (handler primero, clase después).
  */
 export const PERMISSIONS_KEY = 'permissions';
 

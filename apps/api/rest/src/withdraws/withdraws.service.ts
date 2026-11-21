@@ -46,7 +46,7 @@ const SHOP_SNAPSHOT_KEYS = [
 
 /**
  * `WithdrawDetailRecord` → las 11 claves de `withdraws.json`, en su orden.
- * `deleted_at` es constante: se borra de verdad (D-6).
+ * `deleted_at` es constante: se borra de verdad.
  */
 function toWithdrawDto(record: WithdrawDetailRecord): Withdraw {
   const shop = toShopDto(record.shop) as unknown as Record<string, unknown>;
@@ -84,7 +84,7 @@ function toId(value: unknown): number {
   return id;
 }
 
-/** `shop_id` llega como string (sin `transform`): inválido ⇒ 400, no lista vacía (US-31). */
+/** `shop_id` llega como string (sin `transform`): inválido ⇒ 400, no lista vacía. */
 function toShopId(value: unknown): number {
   const id = Number(value);
   if (!Number.isSafeInteger(id) || id <= 0) {
@@ -96,7 +96,7 @@ function toShopId(value: unknown): number {
 @Injectable()
 export class WithdrawsService {
   /**
-   * Retiros de una tienda (US-62). El super admin ve todo; el dueño, solo
+   * Retiros de una tienda. El super admin ve todo; el dueño, solo
    * los de sus tiendas, así que un `shop_id` ajeno le da `data: []`. El
    * `shop_id` de la query gana al de `search`. La url y `paginate()`
    * conservan el `limit` crudo del mock.
@@ -172,8 +172,8 @@ export class WithdrawsService {
 
   /**
    * El dueño solo borra retiros `pending` de sus tiendas: ajeno o en otro
-   * estado ⇒ 403 (la US lo pide así, aunque `GET /:id` oculte el ajeno con
-   * 404). El super admin, cualquiera. Inexistente ⇒ 404.
+   * estado ⇒ 403 (contrato del borrado, aunque `GET /:id` oculte el ajeno
+   * con 404). El super admin, cualquiera. Inexistente ⇒ 404.
    */
   async remove(id: number, user: CurrentUserPayload): Promise<Withdraw> {
     const withdrawId = toId(id);

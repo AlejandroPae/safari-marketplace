@@ -1,9 +1,9 @@
 /**
- * Test de UNIDAD de `_toProductRecord` — sin base, sin carrera (hallazgo
- * RV-1 de `sdd-verify` en US-27b). Las guardas de null que fija son
- * invisibles para `tsc`: Prisma tipa `row.type`, `row.shop`, `link.tag` y
- * `link.category` como no nulos, así que sin este archivo un refactor podría
- * borrarlas como código muerto y el gate volvería a fallar al 8-20 % (C-1).
+ * Test de UNIDAD de `_toProductRecord` — sin base, sin carrera. Las guardas
+ * de null que fija son invisibles para `tsc`: Prisma tipa `row.type`,
+ * `row.shop`, `link.tag` y `link.category` como no nulos, así que sin este archivo un refactor podría
+ * borrarlas como código muerto y la lectura volvería a fallar al 8-20 % con
+ * un `TypeError` cuando un agregado se borra durante el include anidado.
  *
  * La fixture se construye a mano con la forma EXACTA del payload de Prisma
  * (`include: PRODUCT_INCLUDE`): `bigint` en los ids y `Prisma.Decimal` en
@@ -159,14 +159,14 @@ describe('_toProductRecord — fila sana', () => {
     expect(() => JSON.stringify(record)).not.toThrow();
   });
 
-  it('`_count.flashSales > 0` → `inFlashSale: true` (US-96)', () => {
+  it('`_count.flashSales > 0` → `inFlashSale: true`', () => {
     const record = _toProductRecord(makeRow({ _count: { flashSales: 2 } }));
 
     expect(record?.inFlashSale).toBe(true);
   });
 });
 
-describe('_toProductRecord — pivote sin destino (C-1, US-27b): se descarta el ENLACE, no el producto', () => {
+describe('_toProductRecord — pivote sin destino: se descarta el ENLACE, no el producto', () => {
   it('`link.tag === null` → `tags` sin ese enlace, el resto del producto intacto', () => {
     const tornLink = {
       ...TAG_LINK,
@@ -196,7 +196,7 @@ describe('_toProductRecord — pivote sin destino (C-1, US-27b): se descarta el 
   });
 });
 
-describe('_toProductRecord — FK NOT NULL sin destino (RV-2, US-27b): se descarta el PRODUCTO', () => {
+describe('_toProductRecord — FK NOT NULL sin destino: se descarta el PRODUCTO', () => {
   it('`row.type === null` → `null`, nunca `TypeError`', () => {
     const row = makeRow({ type: null as unknown as TypeRow });
 
@@ -204,7 +204,7 @@ describe('_toProductRecord — FK NOT NULL sin destino (RV-2, US-27b): se descar
     expect(_toProductRecord(row)).toBeNull();
   });
 
-  it('`row.shop === null` → `null`, nunca `TypeError` (la ventana que abre `deleteShop`, US-30)', () => {
+  it('`row.shop === null` → `null`, nunca `TypeError` (la ventana que abre `deleteShop`)', () => {
     const row = makeRow({ shop: null as unknown as ShopRow });
 
     expect(() => _toProductRecord(row)).not.toThrow();

@@ -11,7 +11,7 @@ import { API_ENDPOINTS } from '@/framework/client/api-endpoints';
 type ParsedQueryParams = {
   author: string;
 };
-// D-1 (US-104): sin prerender de rutas dinámicas. El build no llama a la API;
+// Sin prerender de rutas dinámicas. El build no llama a la API;
 // cada página se genera en su primera visita, con datos del entorno donde
 // corre.
 export const getStaticPaths: GetStaticPaths<ParsedQueryParams> = async () => ({
@@ -51,7 +51,7 @@ export const getStaticProps: GetStaticProps<
       revalidate: 60,
     };
   } catch (error) {
-    // D-4 (US-104): 404 solo si la API dice que no existe. Red caída, timeout
+    // 404 solo si la API dice que no existe. Red caída, timeout
     // o 5xx se lanzan: Next no cachea la respuesta y conserva la última
     // página buena.
     if (isNotFound(error)) return { notFound: true };

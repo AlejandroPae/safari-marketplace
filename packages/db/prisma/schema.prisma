@@ -30,31 +30,31 @@
 //     (length > 0), questions_question_check (length > 0),
 //     questions_positive_/negative_feedbacks_count_check (≥ 0),
 //     messages_body_check (length(btrim(body)) > 0), order_statuses_serial_
-//     check (serial > 0), order_statuses_color_check (#rrggbb), y desde
-//     US-58 orders_tracking_number_check (14 dígitos), los *_check de dinero
+//     check (serial > 0), order_statuses_color_check (#rrggbb),
+//     orders_tracking_number_check (14 dígitos), los *_check de dinero
 //     de orders (≥ 0), orders_payment_gateway_check, orders_order_status_
 //     check, orders_payment_status_check, orders_shipping_/billing_address_
 //     check (json object|array), orders_padre_o_hija (sin padre ⇔ sin
 //     tienda) y order_products_line_no_/order_quantity_/unit_price_/
-//     subtotal_check, y desde US-62 withdraws_amount_check (amount > 0) y
+//     subtotal_check, withdraws_amount_check (amount > 0) y
 //     withdraws_status_check (∈ pending|approved|on_hold|rejected|
-//     processing), y desde US-63 ownership_transfers_status_check (∈ pending|
+//     processing), ownership_transfers_status_check (∈ pending|
 //     processing|approved|rejected) y ownership_transfers_owners_distintos
-//     (previous_owner_id <> current_owner_id), y desde US-93
-//     authors_products_count_check (≥ 0), y desde US-94 flash_sales_type_check
+//     (previous_owner_id <> current_owner_id),
+//     authors_products_count_check (≥ 0), flash_sales_type_check
 //     (∈ percentage|fixed_rate), flash_sales_rate_check (≥ 0),
-//     flash_sales_dates_check (end_date ≥ start_date) y
-//     flash_sales_sale_status_check (∈ 0|1), y desde US-97
+//     flash_sales_dates_check (end_date ≥ start_date),
+//     flash_sales_sale_status_check (∈ 0|1) y
 //     flash_sale_requests_status_check (∈ pending|approved|rejected). Los repositorios los validan antes de escribir y
 //     traducen la violación a errores de dominio.
 //   · El índice único parcial de expresión users_email_lower_idx
-//     (unique btree (lower(email))): garantiza el email case-insensitive
-//     (US-20). `User.email` por eso NO lleva `@unique` aquí — el
+//     (unique btree (lower(email))): garantiza el email case-insensitive.
+//     `User.email` por eso NO lleva `@unique` aquí — el
 //     `$queryRaw` de `findUserCredentialsByEmail` es lo único que lo
 //     ejercita (ver users.repository.ts).
 //   · El índice único de expresión reviews_autor_producto_orden_key
 //     (unique (user_id, product_id, COALESCE(order_id, 0))): una reseña
-//     por compra y una sin orden por producto (US-54). Su P2002 lo traduce
+//     por compra y una sin orden por producto. Su P2002 lo traduce
 //     reviews.repository.ts; como users_email_lower_idx, migrate diff no
 //     lo acusa como drift.
 //   · El índice único PARCIAL products_procedencia_key sí aparece abajo,
@@ -279,11 +279,9 @@ model ProductTag {
 }
 
 // =====================================================================
-// Identidad (US-20/US-21). Sembrada por db/seed.sql; sirve las 6 tablas
-// del Épico 19. `PasswordResetToken` y `OtpCode` entran como MODELOS
-// para que el gate de drift (`prisma migrate diff --exit-code`) cierre
-// en 0 — sus REPOSITORIOS llegan en US-24, no en esta US: no son un
-// olvido.
+// Identidad. Sembrada por db/seed.sql; sirve las 6 tablas de identidad.
+// `PasswordResetToken` y `OtpCode` entran como MODELOS para que el gate
+// de drift (`prisma migrate diff --exit-code`) cierre en 0.
 // =====================================================================
 
 model User {
@@ -365,8 +363,7 @@ model PermissionUser {
   @@map("permission_user")
 }
 
-/// Modelo presente para que el gate de drift cierre; su repositorio
-/// llega en US-24 (no consumido por esta US).
+/// Modelo presente para que el gate de drift cierre.
 model PasswordResetToken {
   id         BigInt    @id @default(autoincrement())
   userId     BigInt    @map("user_id")
@@ -381,8 +378,7 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
-/// Modelo presente para que el gate de drift cierre; su repositorio
-/// llega en US-24 (no consumido por esta US).
+/// Modelo presente para que el gate de drift cierre.
 model OtpCode {
   id         BigInt    @id @default(autoincrement())
   phone      String
@@ -396,7 +392,7 @@ model OtpCode {
 }
 
 // =====================================================================
-// Identidad extendida (US-41)
+// Identidad extendida
 // =====================================================================
 
 model ShopStaff {
@@ -424,7 +420,7 @@ model BecomeSeller {
 }
 
 // =====================================================================
-// Contenido (US-47, Épico 46)
+// Contenido
 // =====================================================================
 
 model Faq {
@@ -471,7 +467,7 @@ model TermsAndConditions {
 }
 
 // =====================================================================
-// Reembolsos (US-48, Épico 46)
+// Reembolsos
 // =====================================================================
 
 model RefundPolicy {
@@ -504,7 +500,7 @@ model RefundReason {
 }
 
 // =====================================================================
-// Configuración fiscal y de envío (US-49, Épico 46)
+// Configuración fiscal y de envío
 // =====================================================================
 
 model Tax {
@@ -537,7 +533,7 @@ model Shipping {
 }
 
 // =====================================================================
-// Atributos de producto (US-50, Épico 46)
+// Atributos de producto
 // =====================================================================
 
 model Attribute {
@@ -573,7 +569,7 @@ model AttributeValue {
 }
 
 // =====================================================================
-// Avisos de tienda (US-51, Épico 46)
+// Avisos de tienda
 // =====================================================================
 
 model StoreNotice {
@@ -641,7 +637,7 @@ model StoreNoticeRead {
 }
 
 // =====================================================================
-// Cupones (US-52, Épico 46)
+// Cupones
 // =====================================================================
 
 model Coupon {
@@ -672,7 +668,7 @@ model Coupon {
 }
 
 // =====================================================================
-// Lista de deseos (US-53, Épico 46) — pivote usuario ↔ producto
+// Lista de deseos — pivote usuario ↔ producto
 // =====================================================================
 
 model Wishlist {
@@ -689,7 +685,7 @@ model Wishlist {
 }
 
 // =====================================================================
-// Reseñas y reportes de abuso (US-54, Épico 46)
+// Reseñas y reportes de abuso
 // =====================================================================
 
 model Review {
@@ -717,8 +713,8 @@ model Review {
   @@map("reviews")
 }
 
-/// Polimórfica: (modelType, modelId) apunta a una reseña (o, desde US-55, a
-/// una pregunta) sin FK. El repositorio valida que el objeto exista.
+/// Polimórfica: (modelType, modelId) apunta a una reseña o a una pregunta,
+/// sin FK. El repositorio valida que el objeto exista.
 model AbusiveReport {
   id        BigInt   @id @default(autoincrement())
   userId    BigInt   @map("user_id")
@@ -736,7 +732,7 @@ model AbusiveReport {
 }
 
 // =====================================================================
-// Preguntas sobre productos (US-55, Épico 46)
+// Preguntas sobre productos
 // =====================================================================
 
 model Question {
@@ -763,7 +759,7 @@ model Question {
 }
 
 // =====================================================================
-// Mensajería cliente ↔ tienda (US-56, Épico 46)
+// Mensajería cliente ↔ tienda
 // =====================================================================
 
 model Conversation {
@@ -800,7 +796,7 @@ model Message {
 }
 
 // =====================================================================
-// Catálogo de estados de pedido (US-57, Épico 46)
+// Catálogo de estados de pedido
 // =====================================================================
 
 model OrderStatus {
@@ -817,7 +813,7 @@ model OrderStatus {
 }
 
 // =====================================================================
-// Órdenes (US-58, Épico 46) — padre/hija en la misma tabla + líneas
+// Órdenes — padre/hija en la misma tabla + líneas
 // =====================================================================
 
 model Order {
@@ -890,7 +886,7 @@ model OrderProduct {
 }
 
 // =====================================================================
-// Descargas digitales (US-60, Épico 46)
+// Descargas digitales
 // =====================================================================
 
 model OrderFile {
@@ -991,7 +987,7 @@ model Author {
   @@map("authors")
 }
 
-/// Ventas flash (US-94). start/end sin zona (`timestamp`): Prisma los lee como
+/// Ventas flash. start/end sin zona (`timestamp`): Prisma los lee como
 /// UTC y el servicio los emite como `YYYY-MM-DD HH:MM:SS`, igual que el mock.
 model FlashSale {
   id          BigInt   @id @default(autoincrement())

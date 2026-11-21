@@ -1,10 +1,10 @@
 /**
- * users.repository.ts — identidad (Épico 19, US-21). Sirve login (US-22),
- * `/me` (US-22) y las listas de administración (US-25) desde la misma
+ * users.repository.ts — identidad. Sirve login,
+ * `/me` y las listas de administración desde la misma
  * forma que ya usan products/shops/settings: funciones planas + records
  * JSON-safe.
  *
- * Frontera D-2 del épico: `passwordHash` es entrada de dos escrituras
+ * Frontera del hash: `passwordHash` es entrada de dos escrituras
  * (`createUser`, `updateUserPasswordHash`) y salida de UNA sola lectura
  * (`findUserCredentialsByEmail`). `UserCredentials` vive aquí, NO en
  * `records.ts`, para que la frontera de serialización del paquete ni
@@ -54,7 +54,7 @@ export interface ListUsersInput {
   /** Filtra por el nombre del permiso asignado (p. ej. 'super_admin'). */
   permissionName?: string;
   /**
-   * Solo usuarios con fila en `shop_staff` (US-42). `{}` = staff de
+   * Solo usuarios con fila en `shop_staff`. `{}` = staff de
    * cualquier tienda; `shopId` acota a una tienda y `ownerId` a las tiendas
    * de ese dueño. Combinables.
    */
@@ -64,7 +64,7 @@ export interface ListUsersInput {
 export interface CreateUserInput {
   name: string;
   email: string;
-  /** Ya hasheado — hashear es responsabilidad de la API (US-22). */
+  /** Ya hasheado — hashear es responsabilidad de la API. */
   passwordHash: string;
   isActive?: boolean;
   emailVerifiedAt?: Date | null;
@@ -88,7 +88,7 @@ export class DuplicateEmailError extends Error {
 }
 
 /**
- * Permiso fuera del catálogo `permissions` (US-25, D-D). NO exportada — ni
+ * Permiso fuera del catálogo `permissions`. NO exportada — ni
  * de este archivo ni del barrel: sin requirement de spec que pida
  * superficie pública, e inalcanzable por HTTP porque el único caller fija
  * `'super_admin'`. `grantPermission` la lanza en vez de dejar propagar el
@@ -102,7 +102,7 @@ class UnknownPermissionError extends Error {
 }
 
 // ---------------------------------------------------------------------------
-// Lectura de credenciales — el único SQL crudo de dominio (D-1)
+// Lectura de credenciales — el único SQL crudo de dominio
 // ---------------------------------------------------------------------------
 
 /** Fila cruda del `$queryRaw`, snake_case, NO exportada. */
@@ -154,8 +154,8 @@ export async function findUserById(id: number): Promise<UserRecord | null> {
 
 /**
  * `include` compartido: perfil, permisos (vía el pivote explícito) y
- * tiendas de las que el usuario es dueño — el shape que `/me` (US-22) y
- * el detalle de usuario (US-25) publican.
+ * tiendas de las que el usuario es dueño — el shape que `/me` y
+ * el detalle de usuario publican.
  */
 const USER_RELATIONS = {
   profile: true,
@@ -187,7 +187,7 @@ function _toUserWithRelations(
     profile: row.profile ? _toProfileRecord(row.profile) : null,
     // `link.permission` puede llegar NULL aunque la fila pivote exista: Prisma
     // resuelve el include anidado en dos consultas (misma forma que
-    // `categories`/`tags` en `products.repository.ts`, C-1 de US-27b). Hoy es
+    // `categories`/`tags` en `products.repository.ts`). Hoy es
     // inalcanzable —ninguna ruta borra permisos, es una tabla de referencia
     // estática— pero el pivote es `ON DELETE CASCADE` (`db/schema.sql:175`) y
     // la guarda cuesta cero. Invisible para `tsc`: Prisma tipa la relación
@@ -200,15 +200,15 @@ function _toUserWithRelations(
 }
 
 // ---------------------------------------------------------------------------
-// Listado paginado (D-2 del proposal: `{ items, total }`, no el wrapper)
+// Listado paginado (`{ items, total }`, no el wrapper)
 // ---------------------------------------------------------------------------
 
 /**
- * `where` compartido por `listUsers` y `listUsersWithRelations` (US-25,
- * D-C) — evita que las dos listas diverjan en el filtro. Filtra por
+ * `where` compartido por `listUsers` y `listUsersWithRelations` — evita que las dos listas diverjan en el filtro. Filtra por
  * nombre de permiso (`permissionName`, vía el índice inverso del pivote)
  * y busca por nombre o email (`text`, `contains`/`insensitive` — NO usa
- * `users_email_lower_idx`, que sirve a la igualdad exacta de D-1).
+ * `users_email_lower_idx`, que sirve a la igualdad exacta de
+ * `findUserCredentialsByEmail`).
  */
 function _usersWhere(input: ListUsersInput): Prisma.UserWhereInput {
   return {
@@ -237,8 +237,8 @@ function _usersWhere(input: ListUsersInput): Prisma.UserWhereInput {
 }
 
 /**
- * Listado paginado. `{ items, total }`; el caller (servicio de Nest de
- * US-25) arma el envoltorio con `buildPaginator`.
+ * Listado paginado. `{ items, total }`; el caller (servicio de Nest) arma
+ * el envoltorio con `buildPaginator`.
  */
 export async function listUsers(input: ListUsersInput = {}): Promise<{
   items: UserRecord[];
@@ -262,7 +262,7 @@ export async function listUsers(input: ListUsersInput = {}): Promise<{
 }
 
 /**
- * Listado paginado con relaciones (US-25, D-C): mismo filtro que
+ * Listado paginado con relaciones: mismo filtro que
  * `listUsers` vía `_usersWhere`, un solo `include` (`USER_RELATIONS`) y
  * un solo `findMany` + `count` — cero N+1. Alimenta los seis listados de
  * administración que renderizan avatar y chips de permiso por fila.
@@ -289,7 +289,7 @@ export async function listUsersWithRelations(
 }
 
 // ---------------------------------------------------------------------------
-// Escrituras (CA-4) — exactamente cuatro; `grantPermission` la sumó US-25
+// Escrituras — exactamente cuatro, `grantPermission` incluida
 // ---------------------------------------------------------------------------
 
 /**
@@ -298,7 +298,8 @@ export async function listUsersWithRelations(
  * construcción — el paquete mantiene sus 0 usos de `$transaction`.
  * Traduce P2002 (email duplicado, el índice único de expresión que
  * Prisma no modela) a `DuplicateEmailError`; el email se persiste
- * verbatim, sin `toLowerCase()` (Decisión H, design.md).
+ * verbatim, sin `toLowerCase()`: la unicidad sin distinguir mayúsculas
+ * ya la garantiza el índice `lower(email)`.
  */
 export async function createUser(input: CreateUserInput): Promise<UserRecord> {
   try {
@@ -336,7 +337,7 @@ export async function createUser(input: CreateUserInput): Promise<UserRecord> {
 }
 
 /**
- * Cambia el hash de contraseña (US-22 login/registro, US-24 reset).
+ * Cambia el hash de contraseña (login/registro y reset).
  * `null` si el id no existe (traduce P2025).
  */
 export async function updateUserPasswordHash(
@@ -373,7 +374,7 @@ export async function setUserActive(
 }
 
 /**
- * Concede un permiso a un usuario existente (US-25, D-D — p. ej.
+ * Concede un permiso a un usuario existente (p. ej.
  * `make-admin`). Idempotente: repetirla no crea una fila duplicada en el
  * pivote `permission_user` (PK compuesta `[userId, permissionId]`,
  * `schema.prisma:286`) — se resuelve con `upsert({ update: {} })` sobre esa
@@ -381,7 +382,7 @@ export async function setUserActive(
  * el usuario no existe (misma convención que `setUserActive`). Lanza
  * `UnknownPermissionError` (no exportado) si `permissionName` no está en el
  * catálogo — nunca el error crudo de Prisma. Sin reglas de autorización
- * (D-1): el caller decide quién puede conceder qué a quién.
+ * el caller decide quién puede conceder qué a quién.
  */
 export async function grantPermission(
   userId: number,

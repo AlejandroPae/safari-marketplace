@@ -5,26 +5,25 @@
  * se limita a este archivo para no tocar la config del build.
  */
 /**
- * Tests unitarios de las escrituras de `CategoriesService` (US-28):
+ * Tests unitarios de las escrituras de `CategoriesService`:
  * `create`/`update`/`remove`.
  *
  * Mismo arnés que `types.service.spec.ts:1-88` / `tags.service.spec.ts:1-56`:
  * se mockea SOLO el acceso a datos (`createCategory`/`updateCategory`/
  * `deleteCategory`, y también `findCategoryByIdOrSlug`/`listCategories` —
  * necesarios para comparar el `Object.keys()` de las 3 escrituras contra el
- * de la lectura, CA-1) y se dejan REALES las 5 clases de error de dominio y
+ * de la lectura) y se dejan REALES las 5 clases de error de dominio y
  * `toWriteHttpException` (vía `domain-error.mapper.ts`, tampoco mockeado),
  * para que la traducción a HTTP se pruebe de verdad.
  *
  * `categories` es el único agregado del catálogo con una referencia numérica
- * DOBLE en el body de escritura (`type_id` y `parent`, DD28-10) y con
+ * DOBLE en el body de escritura (`type_id` y `parent`) y con
  * semántica `Partial` real en `update` (un `parent` ausente no debe tocar el
  * padre actual; un `parent: null` explícito sí debe re-enraizar a la
  * categoría). Esa distinción `undefined` vs. `null` es el foco central de
- * este archivo — fue el hallazgo de mayor riesgo señalado para esta PR.
+ * este archivo: es el punto de mayor riesgo de estas escrituras.
  *
- * **`DependentRowsError` NO se ejercita aquí, a propósito** (hallazgo W-1 del
- * gate adversarial posterior a esta PR): a diferencia de `types`/`tags`/
+ * **`DependentRowsError` NO se ejercita aquí, a propósito**: a diferencia de `types`/`tags`/
  * `manufacturers`, ninguna FK apunta a `categories` con `RESTRICT` —
  * `categories_parent_id_fkey` es `ON DELETE SET NULL` y
  * `category_product_category_id_fkey` es `ON DELETE CASCADE` (confirmado
@@ -98,7 +97,7 @@ function makeTypeRecord(overrides: Partial<TypeRecord> = {}): TypeRecord {
   };
 }
 
-/** Madre embebida a UN nivel (design.md: "un `parent` de un nivel"). */
+/** Madre embebida a UN nivel: un `parent` de un nivel. */
 function makeAncestor(
   overrides: Partial<CategoryAncestor> = {},
 ): CategoryAncestor {
@@ -119,7 +118,7 @@ function makeAncestor(
   };
 }
 
-/** Hija embebida a UN nivel (design.md: "una `children` de un nivel"). */
+/** Hija embebida a UN nivel: una `children` de un nivel. */
 function makeDescendant(
   overrides: Partial<CategoryDescendant> = {},
 ): CategoryDescendant {
@@ -142,7 +141,7 @@ function makeDescendant(
 }
 
 /**
- * Factory pedida por design.md: un `CategoryTreeNode` con `type` embebido,
+ * Factory de un `CategoryTreeNode` con `type` embebido,
  * un `parent` de un nivel y una `children` de un nivel — ejercita
  * `toCategoryDto`/`toAncestorDto`/`toDescendantDto`/`toParentEDto` completos
  * en cada escenario, no solo un nodo plano.
@@ -187,7 +186,7 @@ function updateDto(
   return input as unknown as UpdateCategoryDto;
 }
 
-describe('CategoriesService.create (US-28)', () => {
+describe('CategoriesService.create', () => {
   let service: CategoriesService;
 
   beforeEach(() => {
@@ -240,7 +239,7 @@ describe('CategoriesService.create (US-28)', () => {
     });
   });
 
-  it('`type_id` STRING (`"7"`, `ValidationPipe` sin `transform`) se coerciona a `typeId: 7` (DD28-10, réplica de W-2 de US-27b)', async () => {
+  it('`type_id` STRING (`"7"`, `ValidationPipe` sin `transform`) se coerciona a `typeId: 7`, igual que en tags', async () => {
     createCategoryMock.mockResolvedValue(makeCategoryNode());
 
     await service.create(createDto({ name: 'Dairy', type_id: '7' as never }));
@@ -251,7 +250,7 @@ describe('CategoriesService.create (US-28)', () => {
     });
   });
 
-  it('`parent: null` se proyecta como `parentId: null` (raíz explícita), nunca `Number(null)` === 0 (DD28-10, la trampa de re-enraizado)', async () => {
+  it('`parent: null` se proyecta como `parentId: null` (raíz explícita), nunca `Number(null)` === 0 (la trampa de re-enraizado)', async () => {
     createCategoryMock.mockResolvedValue(makeCategoryNode());
 
     await service.create(
@@ -279,7 +278,7 @@ describe('CategoriesService.create (US-28)', () => {
     });
   });
 
-  it('`type_id`/`parent` no numéricos (`"abc"`) se coercionan a `NaN` en el input — la guarda real (regla 1) vive en el repositorio, no aquí (Data Flow, design.md)', async () => {
+  it('`type_id`/`parent` no numéricos (`"abc"`) se coercionan a `NaN` en el input — la guarda real (regla 1) vive en el repositorio, no aquí', async () => {
     createCategoryMock.mockResolvedValue(makeCategoryNode());
 
     await service.create(
@@ -309,7 +308,7 @@ describe('CategoriesService.create (US-28)', () => {
     }
   });
 
-  it('InvalidReferenceError del repositorio (cualquiera de las 7 reglas de DD28-3) → 400', async () => {
+  it('InvalidReferenceError del repositorio (cualquiera de las 7 reglas de referencia) → 400', async () => {
     createCategoryMock.mockRejectedValue(
       new InvalidReferenceError('categories', 'parent_id', 99999),
     );
@@ -372,7 +371,7 @@ describe('CategoriesService.create (US-28)', () => {
   });
 });
 
-describe('CategoriesService.update (US-28)', () => {
+describe('CategoriesService.update', () => {
   let service: CategoriesService;
 
   beforeEach(() => {
@@ -399,7 +398,7 @@ describe('CategoriesService.update (US-28)', () => {
     },
   );
 
-  it('`PUT {}` no envía `parent`/`type_id` al repositorio: un campo ausente NUNCA sobrescribe el valor actual (semántica `Partial`, DD28-10)', async () => {
+  it('`PUT {}` no envía `parent`/`type_id` al repositorio: un campo ausente NUNCA sobrescribe el valor actual (semántica `Partial`)', async () => {
     updateCategoryMock.mockResolvedValue(makeCategoryNode());
 
     await service.update(124, updateDto({}));
@@ -439,7 +438,7 @@ describe('CategoriesService.update (US-28)', () => {
     });
   });
 
-  it('`type_id` ausente no se envía; presente (STRING) se coerciona a `typeId`, cada spread es condicional POR SEPARADO de `parent` (DD28-10)', async () => {
+  it('`type_id` ausente no se envía; presente (STRING) se coerciona a `typeId`, cada spread es condicional POR SEPARADO de `parent`', async () => {
     updateCategoryMock.mockResolvedValue(makeCategoryNode());
 
     await service.update(124, updateDto({ type_id: '9' as never }));
@@ -554,7 +553,7 @@ describe('CategoriesService.update (US-28)', () => {
   });
 });
 
-describe('CategoriesService.remove (US-28)', () => {
+describe('CategoriesService.remove', () => {
   let service: CategoriesService;
 
   beforeEach(() => {
@@ -610,10 +609,10 @@ describe('CategoriesService.remove (US-28)', () => {
     }
   });
 
-  it('borrado exitoso devuelve la proyección de `toCategoryDto` del snapshot PRE-borrado tal cual, sin volver a consultar el árbol (DD28-2)', async () => {
+  it('borrado exitoso devuelve la proyección de `toCategoryDto` del snapshot PRE-borrado tal cual, sin volver a consultar el árbol', async () => {
     // `children[0]` conserva a propósito el `parent_id` de ANTES del borrado
     // (824, la propia madre que se está borrando) — es lo que el repositorio
-    // (PR#1) ya prueba en vivo. Este test unitario prueba una cosa distinta:
+    // ya prueba en vivo. Este test unitario prueba una cosa distinta:
     // que el servicio NO vuelve a llamar a `findCategoryByIdOrSlug`/
     // `listCategories` después del `deleteCategory`, y por lo tanto NUNCA
     // podría diluir o refrescar ese snapshot con el estado post-borrado.
@@ -634,7 +633,7 @@ describe('CategoriesService.remove (US-28)', () => {
   });
 });
 
-describe('Contrato de 16 claves — create/update/remove igual a getCategory, EN ORDEN (CA-1, CA-2, CA-3)', () => {
+describe('Contrato de 16 claves — create/update/remove igual a getCategory, EN ORDEN', () => {
   let service: CategoriesService;
 
   beforeEach(() => {
@@ -664,9 +663,8 @@ describe('Contrato de 16 claves — create/update/remove igual a getCategory, EN
 
     const expectedKeys = Object.keys(readResult);
     expect(expectedKeys).toHaveLength(16);
-    // Comparación de ORDEN exacto — nunca `.sort()` (jq no está instalado;
-    // `node -e` fue el idiom usado en la evidencia manual de PR#2, esto es
-    // el equivalente en Vitest con `toEqual` sobre el array de claves).
+    // Comparación de ORDEN exacto con `toEqual` sobre el array de claves —
+    // nunca `.sort()`.
     expect(Object.keys(createResult)).toEqual(expectedKeys);
     expect(Object.keys(updateResult)).toEqual(expectedKeys);
     expect(Object.keys(removeResult)).toEqual(expectedKeys);

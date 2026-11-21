@@ -7,7 +7,7 @@ import { Public } from '#src/auth/decorators/public.decorator.js';
 export class NotifyLogsController {
   constructor(private notifyLogsService: NotifyLogsService) {}
 
-  // Prefetch anónimo en notify-logs.ssr.ts (hallazgo de la exploración, proposal.md).
+  // Prefetch anónimo en notify-logs.ssr.ts.
   @Public()
   @Get()
   findAll(@Query() query: GetNotifyLogsDto) {

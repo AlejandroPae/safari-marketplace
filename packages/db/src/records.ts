@@ -113,8 +113,7 @@ export interface ShopRecord {
   createdAt: Date;
   updatedAt: Date;
   /**
-   * Conteo de productos `publish`/`visibility_public` del shop (Decisión E,
-   * design.md). Opcional: `findOrCreateShopBySlug` (scraper) sigue
+   * Conteo de productos `publish`/`visibility_public` del shop. Opcional: `findOrCreateShopBySlug` (scraper) sigue
    * compilando sin calcularlo — el mapper del servicio usa `?? 0`.
    */
   productsCount?: number;
@@ -135,9 +134,9 @@ export interface CategoryRecord {
 }
 
 /**
- * Autor del catálogo (US-93). Global, sin tienda. `productsCount` es el dato
- * sembrado del mock, no un conteo: `products` no tiene `author_id` (DA-3/
- * DA-4 del Épico 92). `socials`, `image` y `coverImage` son columnas
+ * Autor del catálogo. Global, sin tienda. `productsCount` es el dato
+ * sembrado del mock, no un conteo: `products` no tiene `author_id`.
+ * `socials`, `image` y `coverImage` son columnas
  * `json`: conservan el orden de claves.
  */
 export interface AuthorRecord {
@@ -160,7 +159,7 @@ export interface AuthorRecord {
 }
 
 /**
- * Venta flash (US-94). `startDate`/`endDate` vienen de columnas `timestamp`
+ * Venta flash. `startDate`/`endDate` vienen de columnas `timestamp`
  * sin zona, que Prisma lee como UTC: el consumidor los formatea con
  * `toISOString()` sin reinterpretar la zona. `rate` es Decimal → number.
  * `saleBuilder`, `image` y `coverImage` son columnas `json`: conservan el
@@ -186,11 +185,11 @@ export interface FlashSaleRecord {
   products: ProductRecord[];
 }
 
-/** Estado de una solicitud de venta flash (US-97, DA-5): texto, no booleano. */
+/** Estado de una solicitud de venta flash: texto, no booleano. */
 export type FlashSaleRequestStatus = 'pending' | 'approved' | 'rejected';
 
 /**
- * Solicitud de un vendedor para meter productos en una venta flash (US-97).
+ * Solicitud de un vendedor para meter productos en una venta flash.
  * `products` son los productos pedidos, en orden de `product_id`;
  * `flashSale`, la venta con sus propios productos.
  */
@@ -236,7 +235,7 @@ export interface TagRecord {
 }
 
 /**
- * Usuario, SIN `passwordHash` (frontera D-2 del Épico 19: el hash solo
+ * Usuario, SIN `passwordHash` (frontera del hash: solo
  * cruza en `UserCredentials`, declarado en `users.repository.ts`, nunca
  * aquí).
  */
@@ -251,8 +250,7 @@ export interface UserRecord {
 }
 
 /**
- * 1:1 con `users`, clavado por `userId` (la tabla no tiene `id` propio —
- * US-20 Decisión D-4).
+ * 1:1 con `users`, clavado por `userId` (la tabla no tiene `id` propio).
  */
 export interface ProfileRecord {
   userId: number;
@@ -273,7 +271,7 @@ export interface PermissionRecord {
   updatedAt: Date;
 }
 
-/** Pivote puro: la tabla no tiene `updated_at` (US-41 CA-1). */
+/** Pivote puro: la tabla no tiene `updated_at`. */
 export interface ShopStaffRecord {
   userId: number;
   shopId: number;
@@ -282,7 +280,7 @@ export interface ShopStaffRecord {
 
 /**
  * Singleton de "vender con nosotros". `pageOptions` es el objeto INTERNO del
- * mock (24 claves) y `commissions` la lista de tiers: hermanas (US-41 CA-2).
+ * mock (24 claves) y `commissions` la lista de tiers: hermanas.
  */
 export interface BecomeSellerRecord {
   id: number;
@@ -372,7 +370,7 @@ export interface ShippingRecord {
 }
 
 /**
- * Cupón (US-52). `amount`/`minimumCartAmount` son `numeric` sin escala →
+ * Cupón. `amount`/`minimumCartAmount` son `numeric` sin escala →
  * number. `image` sale de una columna `json` (no `jsonb`): conserva el
  * orden de claves del mock. `is_valid` NO está aquí: depende del reloj y lo
  * calcula el consumidor.
@@ -397,7 +395,7 @@ export interface CouponRecord {
 }
 
 /**
- * Reseña (US-54), fila plana. `photos` sale de una columna `json` (no
+ * Reseña, fila plana. `photos` sale de una columna `json` (no
  * `jsonb`): conserva el orden de claves de cada foto. Los contadores de
  * feedback son columnas: no hay filas de votos que los respalden.
  */
@@ -417,7 +415,7 @@ export interface ReviewRecord {
   updatedAt: Date;
 }
 
-/** Pregunta sobre un producto (US-55). `answer` null = sin responder. */
+/** Pregunta sobre un producto. `answer` null = sin responder. */
 export interface QuestionRecord {
   id: number;
   userId: number;
@@ -431,7 +429,7 @@ export interface QuestionRecord {
   updatedAt: Date;
 }
 
-/** Conversación usuario ↔ tienda (US-56). Una por par (userId, shopId). */
+/** Conversación usuario ↔ tienda. Una por par (userId, shopId). */
 export interface ConversationRecord {
   id: number;
   userId: number;
@@ -440,7 +438,7 @@ export interface ConversationRecord {
   updatedAt: Date;
 }
 
-/** Mensaje de una conversación (US-56). */
+/** Mensaje de una conversación. */
 export interface MessageRecord {
   id: number;
   conversationId: number;
@@ -451,7 +449,7 @@ export interface MessageRecord {
 }
 
 /**
- * Orden (US-58), fila plana. Padre (`parentId`/`shopId` null) o hija de una
+ * Orden, fila plana. Padre (`parentId`/`shopId` null) o hija de una
  * tienda. Los snapshots y las direcciones salen de columnas `json`: conservan
  * el orden de claves del mock. El dinero, `numeric` → number.
  */
@@ -489,7 +487,7 @@ export interface OrderRecord {
 }
 
 /**
- * Línea de una orden (US-58). `productSnapshot` es el producto en el momento
+ * Línea de una orden. `productSnapshot` es el producto en el momento
  * de la compra, sin su `pivot`; las columnas son el `pivot`.
  */
 export interface OrderProductRecord {
@@ -506,7 +504,7 @@ export interface OrderProductRecord {
 }
 
 /**
- * Descarga digital de un cliente (US-60). `file` sale de una columna `json`:
+ * Descarga digital de un cliente. `file` sale de una columna `json`:
  * el snapshot del archivo con su `fileable`, con las claves en el orden del
  * mock. `digitalFileId` se repite entre filas.
  */
@@ -522,7 +520,7 @@ export interface OrderFileRecord {
 }
 
 /**
- * Estado de pedido (US-57). `serial` es la posición en el flujo (UNIQUE).
+ * Estado de pedido. `serial` es la posición en el flujo (UNIQUE).
  * `translated_languages` no es columna: lo emite la API.
  */
 export interface OrderStatusRecord {
@@ -537,7 +535,7 @@ export interface OrderStatusRecord {
 }
 
 /**
- * Retiro de una tienda (US-62). `amount` es `numeric(12,2)` → number
+ * Retiro de una tienda. `amount` es `numeric(12,2)` → number
  * (`_dec`): el contrato emite `10`, no `"10.00"`. `status` es la minúscula
  * del dato (`on_hold` con guion bajo).
  */
@@ -554,7 +552,7 @@ export interface WithdrawRecord {
 }
 
 /**
- * Transferencia de propiedad de tienda (US-63). `balanceInfo` y los otros
+ * Transferencia de propiedad de tienda. `balanceInfo` y los otros
  * `*Info` salen de columnas `json` como `Prisma.JsonValue`, con las claves
  * en el orden del texto: `balanceInfo` es una foto histórica, no un balance
  * vivo. `shopId` es `null` en las filas sembradas.
@@ -576,7 +574,7 @@ export interface OwnershipTransferRecord {
   updatedAt: Date;
 }
 
-/** Reporte de abuso (US-54). `modelType` es el nombre corto: 'Review' | 'Question'. */
+/** Reporte de abuso. `modelType` es el nombre corto: 'Review' | 'Question'. */
 export interface AbusiveReportRecord {
   id: number;
   userId: number;
@@ -823,7 +821,7 @@ export function _toTagRecord(row: Tag): TagRecord {
 /**
  * `row` tipado como `User` completo (incluye `passwordHash`) porque así
  * llega de cualquier `include`/`select` sin proyección — pero el mapper es
- * el choke point: nunca lo copia al `UserRecord` de salida (frontera D-2).
+ * el choke point: nunca lo copia al `UserRecord` de salida (frontera del hash).
  */
 export function _toUserRecord(row: User): UserRecord {
   return {

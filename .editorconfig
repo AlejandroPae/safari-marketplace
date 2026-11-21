@@ -1,6 +1,6 @@
 root = true
 
-# LF en todo el repo (US-72, DA-2 b), en línea con `.gitattributes`
+# LF en todo el repo, en línea con `.gitattributes`
 # (`* text=auto eol=lf`): los editores guardan LF aunque git use autocrlf.
 [*]
 charset = utf-8

@@ -1,5 +1,5 @@
 /**
- * flash-sale.repository.ts — ventas flash del catálogo (US-94, Épico 92).
+ * flash-sale.repository.ts — ventas flash del catálogo.
  *
  * Padre `flash_sales` + tabla puente `flash_sale_products` hacia
  * `products`. La venta es global (el mock no trae `shop_id`). La tabla
@@ -37,7 +37,7 @@ const AGGREGATE = 'flash_sales';
 
 /**
  * Include de una venta con sus productos hidratados, en orden de `product_id`.
- * Exportado para `flash-sale-requests.repository.ts` (US-97); no está en el
+ * Exportado para `flash-sale-requests.repository.ts`; no está en el
  * barrel.
  */
 export const FLASH_SALE_INCLUDE = {
@@ -74,7 +74,7 @@ export interface ListFlashSalesInput {
 
 /**
  * Listado paginado, `id DESC` como el mock (`flash-sale.json` va 3, 1). Sin
- * filtro por vigencia (R-3 del épico): las ventas sembradas ya terminaron.
+ * filtro por vigencia: las ventas sembradas ya terminaron.
  */
 export async function listFlashSales(
   input: ListFlashSalesInput = {}
@@ -111,7 +111,7 @@ export async function findFlashSaleBySlug(
 
 /**
  * Ventas en las que está un producto, `id DESC` como el listado, con sus
- * productos (US-96, `product-flash-sale-info`). `[]` si no está en
+ * productos (`product-flash-sale-info`). `[]` si no está en
  * ninguna; `null` si el producto no existe (el servicio responde 404).
  */
 export async function listProductFlashSales(
@@ -294,7 +294,7 @@ async function _resolveProductIds(ids: number[]): Promise<number[]> {
 
 /**
  * `sale_builder` con `product_ids` reescrito. Exportado para
- * `flash-sale-requests.repository.ts` (US-98); no está en el barrel.
+ * `flash-sale-requests.repository.ts`; no está en el barrel.
  */
 export function _saleBuilder(
   base: Prisma.JsonValue | Prisma.InputJsonObject | undefined,
@@ -363,7 +363,7 @@ export async function createFlashSale(
 /**
  * Actualiza la venta y, si llega `productIds`, reemplaza sus filas puente,
  * todo en una transacción. Las fechas se validan contra las guardadas
- * cuando solo llega una. `updatedAt: now()` explícito (US-32).
+ * cuando solo llega una. `updatedAt: now()` explícito.
  */
 export async function updateFlashSale(
   id: number,

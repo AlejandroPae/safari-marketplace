@@ -24,8 +24,7 @@ import { Conversation } from '#src/conversations/entities/conversation.entity.js
 import { Message } from './entities/message.entity.js';
 
 /**
- * Mensajes de una conversación (US-56). Antes las dos rutas ignoraban el id
- * y devolvían el mock entero. La conversación debe ser visible para quien
+ * Mensajes de una conversación. La conversación debe ser visible para quien
  * llama; si no, 404.
  */
 @Injectable()
@@ -50,7 +49,7 @@ export class MessagesService {
   }
 
   /**
-   * Solo los de `:param`, `id DESC`, CON paginador (V-11): el admin usa
+   * Solo los de `:param`, `id DESC`, CON paginador: el admin usa
    * `useInfiniteQuery` sobre `current_page`/`last_page`. `limit` 15.
    */
   async getMessages(
@@ -78,7 +77,7 @@ export class MessagesService {
   }
 
   /**
-   * Marca la conversación como leída por quien llama (US-64) y la devuelve
+   * Marca la conversación como leída por quien llama y la devuelve
    * proyectada, ya con `unseen: 0`. El admin ignora la respuesta. Ajena,
    * inexistente o id no numérico ⇒ 404, sin escribir nada.
    */

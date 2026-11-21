@@ -16,7 +16,7 @@ import { CreateWishlistDto } from './dto/create-wishlists.dto.js';
 import { GetWishlistDto } from './dto/get-wishlists.dto.js';
 import { MyWishlistService } from './my-wishlists.service.js';
 
-// Misma lista por usuario que `wishlists` (US-53); `:id` es un id de producto.
+// Misma lista por usuario que `wishlists`; `:id` es un id de producto.
 @Controller('my-wishlists')
 export class MyWishlistsController {
   constructor(private myWishlistService: MyWishlistService) {}

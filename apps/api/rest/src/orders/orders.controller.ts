@@ -48,9 +48,9 @@ export class OrdersController {
     private readonly jwtService: JwtService,
   ) {}
 
-  // D-10 (proposal.md): el checkout de invitado (`guestCheckout: true`) es un
-  // flujo vivo del shop; crear tu propio pedido no expone datos de terceros.
-  // R-i (US-59): `@Public` no decodifica el token, así que se verifica aquí.
+  // El checkout de invitado (`guestCheckout: true`) es un flujo vivo del
+  // shop; crear tu propio pedido no expone datos de terceros.
+  // `@Public` no decodifica el token, así que se verifica aquí.
   // Sin Bearer, o con uno inválido, la orden es de invitado: un token vencido
   // no debe romper el checkout (mismo criterio que `JwtAuthGuard`).
   @Public()
@@ -80,8 +80,8 @@ export class OrdersController {
     @Query() query: GetOrdersDto,
     @CurrentUser() user: CurrentUserPayload,
   ): Promise<OrderPaginator> {
-    // D-8 (un cliente solo pide SUS pedidos) y US-100 (un dueño o staff solo
-    // ve sus tiendas): las reglas viven en el servicio.
+    // Un cliente solo pide SUS pedidos y un dueño o staff solo ve sus
+    // tiendas: las reglas viven en el servicio.
     return this.ordersService.getOrders(query, user);
   }
 
@@ -117,7 +117,7 @@ export class OrdersController {
     return this.ordersService.remove(+id, user);
   }
 
-  // D-10 (proposal.md): mismo motivo que POST /orders.
+  // Pública por el mismo motivo que POST /orders (checkout de invitado).
   @Public()
   @Post('checkout/verify')
   verifyCheckout(@Body() input: CheckoutVerificationDto) {
@@ -172,7 +172,7 @@ export class OrderStatusController {
 export class OrderFilesController {
   constructor(private ordersService: OrdersService) {}
 
-  // US-60: siempre del usuario del token, nunca de un customer_id de la query.
+  // Siempre del usuario del token, nunca de un customer_id de la query.
   @Get()
   async getOrderFileItems(
     @Query() query: GetOrderFilesDto,
@@ -193,7 +193,7 @@ export class OrderFilesController {
   }
 }
 
-// Facturas (design.md, Decisión B): ADMIN_AND_OWNER.
+// Facturas: ADMIN_AND_OWNER.
 @Permissions(...ADMIN_AND_OWNER)
 @Controller('export-order-url')
 export class OrderExportController {

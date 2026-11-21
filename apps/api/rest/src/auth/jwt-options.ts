@@ -9,7 +9,7 @@ import { JwtModuleOptions, JwtSignOptions } from '@nestjs/jwt';
 type ExpiresIn = NonNullable<JwtSignOptions['expiresIn']>;
 
 /**
- * Único lector de `JWT_SECRET`/`JWT_EXPIRES_IN` (Decisión B, design.md).
+ * Único lector de `JWT_SECRET`/`JWT_EXPIRES_IN`.
  *
  * `apps/api/rest` no carga `.env` con `dotenv` propio: lo hace
  * `ConfigModule.forRoot()` (`app.module.ts`), de forma síncrona, pero

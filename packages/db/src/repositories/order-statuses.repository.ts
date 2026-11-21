@@ -1,5 +1,5 @@
 /**
- * order-statuses.repository.ts — catálogo de estados de pedido (US-57).
+ * order-statuses.repository.ts — catálogo de estados de pedido.
  *
  * No es el vocabulario de `orders.order_status` (enum `OrderStatusType` de la
  * API): no hay FK entre las dos tablas, así que borrar un estado no tiene
@@ -10,7 +10,7 @@
  * Prisma: se validan aquí con `InvalidFieldValueError` (400).
  *
  * A diferencia de `tags`, el slug NO es inmutable: si el update trae `name`,
- * se recalcula (decisión del dueño en US-57, CA-3).
+ * se recalcula (decisión de producto).
  */
 
 import type { Prisma } from '../../generated/prisma/client/client';
@@ -167,7 +167,7 @@ export async function createOrderStatus(
  * Actualiza un estado. Si llega `name`, el slug se recalcula sin contar la
  * propia fila: renombrar al mismo nombre conserva el slug. Una clave ausente
  * del input no llega al `data` de Prisma. `updatedAt: now()` explícito
- * (reloj único, US-32).
+ * (reloj único de `clock.ts`).
  */
 export async function updateOrderStatus(
   id: number,

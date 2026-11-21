@@ -23,14 +23,13 @@ function extractBearerToken(request: Request): string | undefined {
 }
 
 /**
- * Guard global (registrado como provider de guard global de Nest en la
- * Fase 3 de `tasks.md` — inerte hasta entonces), deny-by-default. Ruta sin
- * `@Public()` exige un
+ * Guard global (registrado con `APP_GUARD` en `app.module.ts`),
+ * deny-by-default. Ruta sin `@Public()` exige un
  * bearer token válido: ausencia de header, esquema distinto de `Bearer`,
  * token vacío, firma inválida o expirado devuelven 401 con el mismo
- * `INVALID_TOKEN_MESSAGE` que ya emitía `@CurrentUser()` en US-22 (design.md,
- * Decisión D). Ruta con `@Public()` pasa sin mirar el header — una cookie
- * vencida no debe romper el checkout de invitado.
+ * `INVALID_TOKEN_MESSAGE` que emite `@CurrentUser()` en su fallback. Ruta
+ * con `@Public()` pasa sin mirar el header — una cookie vencida no debe
+ * romper el checkout de invitado.
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {

@@ -42,8 +42,8 @@ export function toConversationId(param: unknown): number {
 }
 
 /**
- * Busca la conversación visible para quien llama; ajena o inexistente ⇒ 404
- * (V-10). Lo usan este servicio y el de mensajes.
+ * Busca la conversación visible para quien llama; ajena o inexistente ⇒ 404.
+ * Lo usan este servicio y el de mensajes.
  */
 export async function findVisibleConversation(
   param: unknown,
@@ -65,8 +65,8 @@ export async function findVisibleConversation(
 @Injectable()
 export class ConversationsService {
   /**
-   * Una conversación por (usuario, tienda): devuelve la existente o la crea
-   * (V-12). El admin manda también `via`, que se ignora. Tienda inexistente
+   * Una conversación por (usuario, tienda): devuelve la existente o la crea.
+   * El admin manda también `via`, que se ignora. Tienda inexistente
    * ⇒ 400 por `InvalidReferenceError`.
    */
   async create(
@@ -90,8 +90,8 @@ export class ConversationsService {
   }
 
   /**
-   * Paginador real con `limit` 15 por defecto (V-8). Respeta
-   * `orderBy=updated_at&sortedBy=desc` del admin (V-9); sin `orderBy`, `id
+   * Paginador real con `limit` 15 por defecto. Respeta
+   * `orderBy=updated_at&sortedBy=desc` del admin; sin `orderBy`, `id
    * ASC`. `search` es texto libre sobre el nombre de la tienda (el admin lo
    * manda sin `clave:`; si llega con clave, se usa el valor).
    */
@@ -128,7 +128,7 @@ export class ConversationsService {
     }
   }
 
-  /** Por `id` (V-10), no por `latest_message.conversation_id`. */
+  /** Por `id`, no por `latest_message.conversation_id`. */
   async getConversation(
     param: string,
     user: CurrentUserPayload,

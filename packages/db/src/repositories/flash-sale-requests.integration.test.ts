@@ -1,6 +1,6 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`).
- * Solicitudes de venta flash (US-97): las tablas nacen vacías (DA-4), así
+ * Solicitudes de venta flash: las tablas nacen vacías, así
  * que cada test crea las suyas con el centinela `zz-fsr-` en el título.
  *
  * Datos del seed que se usan: la venta 1; los productos 1, 2 y 3 (tienda 6,

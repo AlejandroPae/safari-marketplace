@@ -3,11 +3,11 @@
 const path = require('path');
 const { i18n } = require('./next-i18next.config');
 
-// US-102: `/backend/*` en `next dev` va a la API local (API_INTERNAL_URL),
+// `/backend/*` en `next dev` va a la API local (API_INTERNAL_URL),
 // sin proxy externo. En `next build` no hay rewrite: en producción lo enruta
 // el reverse proxy. Sin `locale: false`: con i18n, Next compara contra la
 // ruta ya prefijada con el idioma, y con `locale: false` `/backend/...` no
-// casaba nunca (404 de Next, medido en US-102).
+// casaba nunca (404 de Next).
 function backendRewrites() {
   if (process.env.NODE_ENV !== 'development') return [];
   const api = process.env.API_INTERNAL_URL;
@@ -31,7 +31,7 @@ const nextConfig = {
   i18n,
   // Next 16 escribe un AGENTS.md en la app en cada `next dev`; no se versiona.
   agentRules: false,
-  // US-105: build mínimo para la imagen Docker, solo cuando el Dockerfile lo
+  // Build mínimo para la imagen Docker, solo cuando el Dockerfile lo
   // pide (NEXT_OUTPUT=standalone). `just build` y `next start` quedan como
   // estaban: `next start` no funciona con standalone. La raíz del trazado es
   // el workspace de yarn (apps/), de donde salen los node_modules.
@@ -43,7 +43,7 @@ const nextConfig = {
     return backendRewrites();
   },
   images: {
-    // Sustituye a images.domains (obsoleto, R-4). Un patrón por host sin
+    // Sustituye a images.domains (obsoleto). Un patrón por host sin
     // protocolo, puerto ni ruta equivale a la entrada de `domains`. La antigua
     // entrada '127.0.0.1:8000' no casaba nunca (`domains` compara el hostname,
     // que no lleva puerto) y ya la cubre '127.0.0.1'.

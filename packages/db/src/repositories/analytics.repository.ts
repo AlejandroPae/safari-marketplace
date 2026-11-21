@@ -1,14 +1,14 @@
 /**
- * analytics.repository.ts — el dashboard del super admin, calculado (US-61).
+ * analytics.repository.ts — el dashboard del super admin, calculado.
  *
  * Solo lectura: no hay tabla de analytics, todo sale de `orders`, `shops`,
  * `users`, `products`, `reviews` y `category_product`. Las definiciones
- * M-1..M-12 son el contrato (`docs/product/46-api-sin-mocks-json/
- * 61-analytics-calculado.md`); aquí no se ajustan para acercarse al mock.
+ * M-1..M-12 (una por métrica, anotadas en cada campo) son el contrato;
+ * aquí no se ajustan para acercarse al mock.
  *
  * Todo en UTC y con «ahora» = `now()` de `clock.ts` (el que el servicio
  * pasa), para que los tests fijen el reloj. Solo cuentan órdenes padre
- * (`parent_id IS NULL`): las hijas repiten el importe por tienda (US-58).
+ * (`parent_id IS NULL`): las hijas repiten el importe por tienda.
  *
  * `$queryRaw` y no `groupBy`/`aggregate` de Prisma: las ventanas de tiempo
  * de M-8 son `count(*) FILTER (WHERE ...)` sobre una sola pasada, y M-9

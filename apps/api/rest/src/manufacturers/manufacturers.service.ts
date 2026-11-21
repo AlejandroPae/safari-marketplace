@@ -34,9 +34,9 @@ import { parseSearch } from '../common/search/parse-search.js';
  * `ManufacturerRecord` (camelCase, `@safari/db`) → proyección de 13 claves
  * snake_case que ya publicaba `manufacturers.json`. `products_count`,
  * `socials`, `cover_image` y `language` son constantes: no hay columna que
- * los respalde (V-1/V-2/V-3/V-10). `type` es el `TypeRecord` resuelto en
- * memoria (Decisión F, design.md). Se castea a `Manufacturer`, igual que
- * `toProductDto` — la entidad declara campos que este listado no emite.
+ * los respalde. `type` es el `TypeRecord` resuelto en memoria. Se castea a
+ * `Manufacturer`, igual que `toProductDto` — la entidad declara campos que
+ * este listado no emite.
  */
 function toManufacturerDto(
   record: ManufacturerRecord,
@@ -104,7 +104,7 @@ export class ManufacturersService {
     };
   }
 
-  /** V-20: ignora `search` a propósito, igual que el mock (solo usa `limit`). */
+  /** Ignora `search` a propósito, igual que el mock (solo usa `limit`). */
   async getTopManufactures({
     limit,
   }: GetTopManufacturersDto): Promise<Manufacturer[]> {
@@ -157,20 +157,20 @@ export class ManufacturersService {
   }
 
   /**
-   * Proyecta el DTO campo a campo en `CreateManufacturerInput` (B-4:
-   * nunca spread del DTO, nunca ausente → `null`). `is_approved` se
-   * coerciona a `Boolean(...)` (DD-6) — el repositorio solo conoce
+   * Proyecta el DTO campo a campo en `CreateManufacturerInput` (nunca
+   * spread del DTO, nunca ausente → `null`). `is_approved` se coerciona a
+   * `Boolean(...)` — el repositorio solo conoce
    * `boolean`; `undefined` NO se coerciona a `false`: se omite y la
    * columna aplica `DEFAULT true`. `type_id` se coerciona a `Number(...)`
-   * (DD-2) porque `Manufacturer.type_id` está declarado `?: string` en la
+   * porque `Manufacturer.type_id` está declarado `?: string` en la
    * entidad (`manufacturer.entity.ts:16`, inconsistencia preexistente,
-   * V-10, no corregida aquí). `image` se castea en la frontera (`as
+   * no corregida aquí). `image` se castea en la frontera (`as
    * unknown as Prisma.InputJsonValue`, nunca `as any`). `socials`,
-   * `cover_image`, `language` y `shop_id` NUNCA se proyectan (V-1/V-2/V-3
-   * — sin columna).
+   * `cover_image`, `language` y `shop_id` NUNCA se proyectan (sin
+   * columna).
    *
    * `type` se resuelve con un `listTypes()` SECUENCIAL, después de la
-   * escritura (design.md, DD-7): nunca `Promise.all`.
+   * escritura: nunca `Promise.all`.
    */
   async create(
     createManufactureDto: CreateManufacturerDto,
@@ -210,11 +210,11 @@ export class ManufacturersService {
   /**
    * `+id` llega como `NaN` desde el controlador si `PUT /api/manufacturers/abc`
    * (`manufacturers.controller.ts:58`); sin esta guarda, `BigInt(NaN)`
-   * revienta en 500 dentro del repositorio (design.md, DD-10). El `slug`
+   * revienta en 500 dentro del repositorio. El `slug`
    * del DTO se ignora siempre: es inmutable (`UpdateManufacturerInput` ni
    * siquiera lo declara).
    *
-   * `Number.isSafeInteger` (no `Number.isInteger`, US-31): `Number.isInteger`
+   * `Number.isSafeInteger` (no `Number.isInteger`): `Number.isInteger`
    * deja pasar `1e21` hasta el driver, que revienta en `invalid input syntax
    * for type bigint` (500). `id <= 0` porque ningún id real es no positivo
    * (`bigserial` arrancando en 1).
@@ -259,7 +259,7 @@ export class ManufacturersService {
     }
   }
 
-  /** Misma guarda de id que `update` (US-31). */
+  /** Misma guarda de id que `update`. */
   async remove(id: number): Promise<Manufacturer> {
     if (!Number.isSafeInteger(id) || id <= 0) {
       throw new NotFoundException(`No existe una marca con id ${id}.`);

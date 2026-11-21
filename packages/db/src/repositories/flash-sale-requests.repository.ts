@@ -1,11 +1,11 @@
 /**
  * flash-sale-requests.repository.ts — solicitudes de vendedores para ventas
- * flash (US-97, Épico 95).
+ * flash.
  *
  * Padre `flash_sale_requests` + tabla puente `flash_sale_request_products`
  * hacia `products`. La tienda de una solicitud se deduce de sus productos:
  * todos deben ser de la misma tienda, y esa tienda no cambia al editar. No
- * hay mock: las tablas nacen vacías (DA-4).
+ * hay mock: las tablas nacen vacías.
  *
  * Visibilidad: con `viewerId`, las lecturas solo ven las solicitudes de las
  * tiendas de las que ese usuario es dueño o staff (`shop_staff`). Sin
@@ -17,11 +17,11 @@
  * filas puente se escriben en una sola sentencia anidada de Prisma, que es
  * atómica.
  *
- * Aprobar y rechazar (US-98) escriben en `flash_sale_products`, la fuente de
+ * Aprobar y rechazar escriben en `flash_sale_products`, la fuente de
  * verdad de la venta, en una transacción que bloquea la solicitud y la
  * venta (`FOR UPDATE`): dos aprobaciones a la vez no pueden pisarse el
  * `sale_builder.product_ids`. `added_to_sale` marca lo que metió la
- * aprobación, y rechazar retira solo eso (DA-6).
+ * aprobación, y rechazar retira solo eso.
  */
 
 import type { Prisma } from '../../generated/prisma/client/client';
@@ -399,8 +399,8 @@ export async function updateFlashSaleRequest(
 }
 
 /**
- * Borra una solicitud que no esté `approved` (409: hay que rechazarla antes,
- * US-98). Cascada a la tabla puente. Devuelve la solicitud borrada.
+ * Borra una solicitud que no esté `approved` (409: hay que rechazarla
+ * antes). Cascada a la tabla puente. Devuelve la solicitud borrada.
  */
 export async function deleteFlashSaleRequest(
   id: number
@@ -427,7 +427,7 @@ export async function deleteFlashSaleRequest(
 }
 
 // ---------------------------------------------------------------------------
-// Aprobar y rechazar (US-98)
+// Aprobar y rechazar
 // ---------------------------------------------------------------------------
 
 type Tx = Prisma.TransactionClient;
@@ -474,7 +474,7 @@ async function _syncSaleBuilder(tx: Tx, flashSaleId: bigint): Promise<void> {
 
 /**
  * `pending` o `rejected` → `approved`. Mete en la venta los productos de la
- * solicitud que no estaban, marca esos con `added_to_sale` (DA-6) y deja sin
+ * solicitud que no estaban, marca esos con `added_to_sale` y deja sin
  * marca los que ya estaban. Ya aprobada: `FlashSaleRequestStateError` (409).
  * Inexistente: `RecordNotFoundError`.
  */

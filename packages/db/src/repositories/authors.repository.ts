@@ -1,13 +1,13 @@
 /**
- * authors.repository.ts — autores del catálogo (US-93, Épico 92).
+ * authors.repository.ts — autores del catálogo.
  *
  * Calco de `manufacturers.repository.ts` sin FK saliente: el autor es global
  * (el mock no trae `shop_id`) y nada lo referencia, porque `products` no
- * tiene `author_id` (DA-3 del Épico 92). Por eso `deleteAuthor` no cuenta
+ * tiene `author_id`. Por eso `deleteAuthor` no cuenta
  * dependientes y su único error es `RecordNotFoundError`.
  *
  * `productsCount` se siembra y se conserva, pero ninguna escritura lo toca:
- * no hay productos con los que contarlo (DA-4).
+ * no hay productos con los que contarlo.
  */
 
 import type { Prisma } from '../../generated/prisma/client/client';
@@ -65,7 +65,7 @@ export async function listAuthors(input: ListAuthorsInput = {}): Promise<{
 }
 
 /**
- * Los `limit` autores con más productos (V-4 de US-93). Con empate, el más
+ * Los `limit` autores con más productos. Con empate, el más
  * reciente primero, para que el orden sea estable.
  */
 export async function listTopAuthors(limit = 10): Promise<AuthorRecord[]> {
@@ -106,7 +106,7 @@ export interface CreateAuthorInput {
   death?: Date | null;
   languages?: string | null;
   socials?: Prisma.InputJsonValue;
-  /** Columnas `json` nullable: `null` se trata como ausente (DD-5). */
+  /** Columnas `json` nullable: `null` se trata como ausente. */
   image?: Prisma.InputJsonValue;
   coverImage?: Prisma.InputJsonValue;
   /** Ausente ⇒ `DEFAULT true`. */
@@ -155,7 +155,7 @@ export async function createAuthor(
  * Actualiza un autor. Un `name` que normaliza a slug vacío da
  * `EmptySlugError`, igual que en `updateManufacturer`. Una clave ausente del
  * input no llega al `data` de Prisma. `updatedAt: now()` explícito: ninguna
- * tabla tiene trigger (US-32).
+ * tabla tiene trigger.
  */
 export async function updateAuthor(
   id: number,

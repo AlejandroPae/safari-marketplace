@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `WishlistsService` (US-53). Mismo arnés que
+ * Tests unitarios de `WishlistsService`. Mismo arnés que
  * `coupons.service.spec.ts`: solo se mockea el acceso a datos.
  */
 import 'reflect-metadata';
@@ -176,7 +176,7 @@ describe('WishlistsService', () => {
     });
 
     it.each(['abc', '0', '-1', '1.5', String(Number.MAX_SAFE_INTEGER + 2)])(
-      'id %s ⇒ 400 sin consultar (US-31)',
+      'id %s ⇒ 400 sin consultar',
       async (id) => {
         await expect(service.findOne(CUSTOMER, id)).rejects.toBeInstanceOf(
           BadRequestException,

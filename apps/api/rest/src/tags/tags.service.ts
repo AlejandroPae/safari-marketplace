@@ -29,10 +29,9 @@ import { parseSearch } from '#src/common/search/parse-search.js';
 /**
  * `TagRecord` (camelCase, `@safari/db`) → proyección de 9 claves
  * snake_case que ya publicaba `tags.json`. `type` es el `TypeRecord`
- * resuelto en memoria (Decisión F, design.md): `null` si `typeId` es
- * `null` (V-23), nunca un objeto a medias. Se castea a `Tag`, igual que
- * `toProductDto` — la entidad declara campos que este listado no emite
- * (`parent`, `products`).
+ * resuelto en memoria: `null` si `typeId` es `null`, nunca un objeto a
+ * medias. Se castea a `Tag`, igual que `toProductDto` — la entidad declara
+ * campos que este listado no emite (`parent`, `products`).
  */
 function toTagDto(record: TagRecord, typesById: Map<number, TypeRecord>): Tag {
   const type =
@@ -90,7 +89,7 @@ export class TagsService {
 
     // El try envuelve SOLO las llamadas de I/O (mismo criterio que
     // findAll()). El 404 queda fuera a propósito: dentro, este catch lo
-    // convertiría en un 500. D-8: solo por slug — la rama numérica del
+    // convertiría en un 500. Solo por slug — la rama numérica del
     // mock (`id === Number(param)`) pasa a 404.
     let types: TypeRecord[];
     try {
@@ -112,20 +111,20 @@ export class TagsService {
   }
 
   /**
-   * Proyecta el DTO campo a campo en `CreateTagInput` (B-4: nunca spread
+   * Proyecta el DTO campo a campo en `CreateTagInput` (nunca spread
    * del DTO, nunca ausente → `null`). `type_id` se coerciona a `Number(...)`
-   * igual que en `manufacturers.service.ts` (design.md, DD-2): el DTO lo
+   * igual que en `manufacturers.service.ts`: el DTO lo
    * declara `number`, pero `ValidationPipe` corre sin `transform`
    * (`main.ts:9`), así que `{"type_id":"9"}` llega como STRING y sin la
    * coerción el repositorio lo rechazaba con `!Number.isInteger("9")` — un 400
    * con el mensaje FALSO «referencia un registro inexistente (`9`)» para un
-   * type que sí existe (hallazgo W-2 de `sdd-verify` en US-27b). `null` se
+   * type que sí existe. `null` se
    * respeta tal cual: limpia la FK. `image` se castea en la frontera (`as
-   * unknown as Prisma.InputJsonValue`, nunca `as any` — design.md, DD-1):
+   * unknown as Prisma.InputJsonValue`, nunca `as any`):
    * `Prisma` viaja type-only desde el barrel.
    *
    * `type` se resuelve con un `listTypes()` SECUENCIAL, después de la
-   * escritura (design.md, DD-7): nunca `Promise.all` — en paralelo, si la
+   * escritura: nunca `Promise.all` — en paralelo, si la
    * escritura rechaza con un error de dominio y `listTypes()` rechaza por
    * conexión, `Promise.all` propaga el primero que rechace y un 400
    * determinista podría salir como 503.
@@ -160,11 +159,11 @@ export class TagsService {
   /**
    * `+id` llega como `NaN` desde el controlador si `PUT /api/tags/abc`
    * (`tags.controller.ts:43`); sin esta guarda, `BigInt(NaN)` revienta en
-   * 500 dentro del repositorio (design.md, DD-10 — precedente exacto
+   * 500 dentro del repositorio (precedente exacto
    * `categories.service.ts:275-293`). El `slug` del DTO se ignora siempre:
    * es inmutable (`UpdateTagInput` ni siquiera lo declara).
    *
-   * `Number.isSafeInteger` (no `Number.isInteger`, US-31): `Number.isInteger`
+   * `Number.isSafeInteger` (no `Number.isInteger`): `Number.isInteger`
    * deja pasar `1e21` hasta el driver, que revienta en `invalid input syntax
    * for type bigint` (500). `id <= 0` porque ningún id real es no positivo
    * (`bigserial` arrancando en 1).
@@ -199,7 +198,7 @@ export class TagsService {
     }
   }
 
-  /** Misma guarda de id que `update` (US-31). */
+  /** Misma guarda de id que `update`. */
   async remove(id: number): Promise<Tag> {
     if (!Number.isSafeInteger(id) || id <= 0) {
       throw new NotFoundException(`No existe un tag con id ${id}.`);

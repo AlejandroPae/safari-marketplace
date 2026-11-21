@@ -46,5 +46,5 @@ yarn-error.log*
 **/public/worker-*.js.map
 
 # Next 16 lo regenera en cada `next dev` / `next build` (cambia segun cual corra);
-# Next recomienda no versionarlo (US-82).
+# Next recomienda no versionarlo.
 **/next-env.d.ts

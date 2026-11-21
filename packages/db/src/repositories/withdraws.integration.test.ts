@@ -1,6 +1,6 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`: 2
- * retiros de la tienda 3, ids 1 y 2). US-62.
+ * retiros de la tienda 3, ids 1 y 2).
  *
  * Escrituras con el centinela `zz-withdraws-`: un dueño con su tienda y los
  * retiros creados en el test. La tienda se borra antes que el usuario

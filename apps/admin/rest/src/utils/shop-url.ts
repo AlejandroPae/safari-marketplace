@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 
 /**
- * URL pública de la tienda, leída al ejecutar desde `/api/runtime-config`
- * (US-103, D-3). Mientras no llega, o si la ruta falla (falta `SHOP_URL`),
- * vale `undefined` y quien la usa no pinta el enlace (DA-2).
+ * URL pública de la tienda, leída al ejecutar desde `/api/runtime-config`.
+ * Mientras no llega, o si la ruta falla (falta `SHOP_URL`), vale
+ * `undefined` y quien la usa no pinta el enlace.
  */
 let cached: string | undefined;
 

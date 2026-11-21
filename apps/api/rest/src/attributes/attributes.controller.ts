@@ -17,8 +17,8 @@ import {
   Permissions,
 } from '#src/auth/decorators/permissions.decorator.js';
 
-// Taxonomía global (design.md, Decisión B): ninguna de sus rutas está en el
-// inventario de catálogo público (proposal.md, CA-1) — homogéneo, ADMIN_ONLY.
+// Taxonomía global: ninguna de sus rutas está en el inventario de catálogo
+// público — homogéneo, ADMIN_ONLY.
 @Permissions(...ADMIN_ONLY)
 @Controller('attributes')
 export class AttributesController {

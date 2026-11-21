@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `ReportsService` (`/my-reports`, US-54).
+ * Tests unitarios de `ReportsService` (`/my-reports`).
  */
 import 'reflect-metadata';
 import { listAbusiveReportsByUser } from '@safari/db';

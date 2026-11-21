@@ -228,7 +228,7 @@ async function read<T>(io: () => Promise<T>): Promise<T> {
 }
 
 /**
- * Dashboard del super admin calculado desde Postgres (US-61). Las
+ * Dashboard del super admin calculado desde Postgres. Las
  * definiciones M-1..M-12 viven en `analytics.repository.ts`; aquí solo se
  * proyecta la forma de los 4 JSON del mock.
  */

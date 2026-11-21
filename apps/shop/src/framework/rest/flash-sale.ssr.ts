@@ -14,7 +14,7 @@ import { SettingsQueryOptions } from '@/types';
 type ParsedQueryParams = {
   slug: string;
 };
-// D-1 (US-104): sin prerender de rutas dinámicas. El build no llama a la API;
+// Sin prerender de rutas dinámicas. El build no llama a la API;
 // cada página se genera en su primera visita, con datos del entorno donde
 // corre.
 export const getStaticPaths: GetStaticPaths<ParsedQueryParams> = async () => ({

@@ -1,10 +1,9 @@
 /**
  * Test de integración contra el Postgres real (docker-compose, puerto 5433).
- * `shop_staff` es un pivote puro user<->shop (US-41): sin repositorio de
- * funciones planas en esta capability (llega en US-42), así que la suite
- * consulta Prisma directo, mismo patrón que `permission_user` en
+ * `shop_staff` es un pivote puro user<->shop: sus funciones planas viven
+ * en `staff.repository.ts`, así que esta suite consulta Prisma directo, mismo patrón que `permission_user` en
  * `users.integration.test.ts`. La única función que sí existe es la
- * consulta de pertenencia `isShopStaff` (US-66, en `shops.repository.ts`).
+ * consulta de pertenencia `isShopStaff` (en `shops.repository.ts`).
  *
  * Tiendas centinela con prefijo `zz-tiendas-staff-` (empieza por
  * `zz-tiendas-`, así que el `beforeAll(cleanupSentinel)` de
@@ -45,9 +44,9 @@ afterAll(async () => {
 
 // ---------------------------------------------------------------------------
 // Test 1 — VA PRIMERO, antes de que cualquier otro `describe` cree filas
-// propias: es la única forma de observar el seed determinista de US-41.
+// propias: es la única forma de observar el seed determinista.
 // ---------------------------------------------------------------------------
-describe('seed determinista de shop_staff (CA-5)', () => {
+describe('seed determinista de shop_staff', () => {
   it('exactamente 3 filas, pares (2,1)/(2,2)/(3,1), ninguna con userId 1', async () => {
     const rows = await prisma.shopStaff.findMany({
       orderBy: [{ userId: 'asc' }, { shopId: 'asc' }],
@@ -204,7 +203,7 @@ describe('cascadas del pivote staff<->tienda', () => {
   });
 });
 
-describe('shop_staff sin columna de rol, sin updated_at, sin trigger (CA-1, CA-3)', () => {
+describe('shop_staff sin columna de rol, sin updated_at, sin trigger', () => {
   it('information_schema.columns expone exactamente {user_id, shop_id, created_at}', async () => {
     const columnas = await prisma.$queryRaw<Array<{ column_name: string }>>`
       SELECT column_name FROM information_schema.columns
@@ -239,7 +238,7 @@ describe('_toShopStaffRecord (mapper, extended-identity-data-layer)', () => {
   });
 });
 
-describe('isShopStaff (US-66, CA-1)', () => {
+describe('isShopStaff', () => {
   it.each([
     [2, 1, true],
     [2, 2, true],

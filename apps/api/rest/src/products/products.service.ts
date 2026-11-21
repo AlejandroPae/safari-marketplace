@@ -36,13 +36,13 @@ import { GetBestSellingProductsDto } from './dto/get-best-selling-products.dto.j
 /**
  * `value` → number solo si es finito; si no (`'abc'`, `''`, `undefined`),
  * `undefined` — el token se ignora en vez de colar un `NaN` hasta Prisma
- * (regresión V-3: `Number('abc')` es `NaN`, que pasa el `!== undefined` de
+ * (regresión: `Number('abc')` es `NaN`, que pasa el `!== undefined` de
  * `buildWhere` y hace que Prisma lance, convirtiéndose en un 500).
  *
  * Replica el comportamiento de facto del mock: `parseInt('abc', 10)` daba
  * `NaN`, `if (exactFilters.shop_id)` era falsy y el filtro se descartaba en
  * silencio mientras el request seguía respondiendo 200. Aquí no hay 400:
- * el contrato a preservar (CA-1) es que el mock respondía 200.
+ * el contrato a preservar es que el mock respondía 200.
  */
 function parseFiniteNumber(value: string | undefined): number | undefined {
   const parsed = Number(value);
@@ -113,9 +113,9 @@ function parseProductSearch(search?: string): ListProductsInput {
 @Injectable()
 export class ProductsService {
   /**
-   * Propiedad por tienda (DD29-4): `super_admin` corta en seco sin
-   * consultar `shops`; el resto debe ser dueño de `shopId` o su staff (fila
-   * en `shop_staff`, US-66 Ampliación), y el staff se consulta solo si no es
+   * Propiedad por tienda: `super_admin` corta en seco sin consultar
+   * `shops`; el resto debe ser dueño de `shopId` o su staff (fila en
+   * `shop_staff`), y el staff se consulta solo si no es
    * dueño. `findShopOwnerById(shopId) === null` (tienda inexistente) NO es
    * 403: se deja pasar para que el repositorio produzca el 400 vía `P2003` —
    * mismo desenlace que si hubiera sido `super_admin` (nunca sondeó).
@@ -139,15 +139,15 @@ export class ProductsService {
       }
     }
 
-    // Campo a campo (R29-6): nunca `...createProductDto` — el body trae
+    // Campo a campo: nunca `...createProductDto` — el body trae
     // `variation_options`, `author_id`, `digital_file`, etc. sin columna.
     const input: CreateProductInput = {
       name: createProductDto.name,
       typeId: Number(createProductDto.type_id),
       shopId,
-      // Tres vías (paralelo a DD29-7 en el repositorio): ausente
+      // Tres vías (paralelo a la misma regla del repositorio): ausente
       // (`undefined`) omite la clave; `null` explícito llega como `null`
-      // (SET NULL, "sin fabricante" — R29-7); cualquier otra cosa se
+      // (SET NULL, "sin fabricante"); cualquier otra cosa se
       // coerciona con `Number(...)`. `Number(null) === 0` es el defecto que
       // esto evita: sin la rama `=== null`, un cliente que limpia el
       // fabricante terminaría enlazando la fila al fabricante id `0`.
@@ -231,7 +231,8 @@ export class ProductsService {
       ...parseProductSearch(search),
       // listProducts() exige números (Prisma usa page/limit en skip/take);
       // page/limit siguen crudos (sin convertir) para paginate() y la URL
-      // más abajo — ver Decision A / MUST-KEEP en design.md.
+      // más abajo: así `per_page` sale como el string que mandó el cliente
+      // (`"30"`), igual que en el mock.
       page: Number(page) || 1,
       limit: Number(limit) || 30,
     };
@@ -280,9 +281,9 @@ export class ProductsService {
   }
 
   /**
-   * `type_slug` filtra DENTRO del ranking ya ordenado por `ratings desc`
-   * (B-2), no vía búsqueda difusa sobre todo el catálogo. Default `limit`
-   * ausente: 10 (Decision H). `type_slug` vacío/ausente → `undefined`, sin
+   * `type_slug` filtra DENTRO del ranking ya ordenado por `ratings desc`,
+   * no vía búsqueda difusa sobre todo el catálogo. Default `limit`
+   * ausente: 10. `type_slug` vacío/ausente → `undefined`, sin
    * filtro.
    */
   async getPopularProducts({
@@ -330,8 +331,8 @@ export class ProductsService {
 
   /**
    * Vista de inventario (`quantity <= 9`), sin el default `publish`/
-   * `visibility_public` del listado principal (Decision C): el mock tampoco
-   * lo aplicaba aquí. `search` se combina con AND sobre `maxQuantity` (B-5),
+   * `visibility_public` del listado principal: el mock tampoco
+   * lo aplicaba aquí. `search` se combina con AND sobre `maxQuantity`,
    * no reemplaza el filtro base como hacía el `fuse.search($and)` del mock.
    */
   async getProductsStock({
@@ -367,10 +368,10 @@ export class ProductsService {
   }
 
   /**
-   * Borradores (`status = 'draft'`), mismo criterio sin default de vitrina
-   * (Decision C). `status: 'draft'` va DESPUÉS del spread de
+   * Borradores (`status = 'draft'`), mismo criterio sin default de vitrina.
+   * `status: 'draft'` va DESPUÉS del spread de
    * `parseProductSearch` a propósito: es el filtro base, no negociable —
-   * un `search=status:publish` no debe hacerlo desaparecer (B-5).
+   * un `search=status:publish` no debe hacerlo desaparecer.
    */
   async getDraftProducts({
     limit,
@@ -405,11 +406,11 @@ export class ProductsService {
   }
 
   /**
-   * 404 antes que 403 (DD29-4): la propiedad se evalúa sobre el `shop_id`
+   * 404 antes que 403: la propiedad se evalúa sobre el `shop_id`
    * **actual** de la fila, que exige tenerla primero. Mover `shop_id`
-   * (`D29-1` ratificada: es mutable) exige propiedad de AMBAS tiendas — la
+   * (es mutable) exige propiedad de AMBAS tiendas — la
    * actual primero, la destino después. En cada lado vale ser dueño o
-   * staff (US-66 Ampliación); el staff se consulta solo si no es dueño.
+   * staff; el staff se consulta solo si no es dueño.
    */
   async update(
     id: number,
@@ -464,7 +465,7 @@ export class ProductsService {
         shopId: Number(updateProductDto.shop_id),
       }),
       // Mismo tratamiento de tres vías que `create()` — ver el comentario de
-      // arriba (R29-7): `null` explícito NUNCA se coerciona con `Number(...)`.
+      // arriba: `null` explícito NUNCA se coerciona con `Number(...)`.
       ...(updateProductDto.manufacturer_id !== undefined && {
         manufacturerId:
           updateProductDto.manufacturer_id === null

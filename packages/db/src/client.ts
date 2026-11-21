@@ -12,7 +12,7 @@ const defaultSink: PrismaLogSink = (level, message) => {
 let logSink: PrismaLogSink = defaultSink;
 
 /**
- * Redirige los errores y warnings de Prisma a otro logger (US-17). La API los
+ * Redirige los errores y warnings de Prisma a otro logger. La API los
  * manda al Logger de Nest para que salgan con timestamp y nivel. Sin llamar a
  * esto, se imprimen como hasta ahora. `null` restaura el sink por defecto.
  */

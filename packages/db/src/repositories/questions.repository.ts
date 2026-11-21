@@ -1,11 +1,11 @@
 /**
- * questions.repository.ts — preguntas sobre productos (US-55).
+ * questions.repository.ts — preguntas sobre productos.
  *
  * Mismo agregado de lectura que las reseñas: cada lectura devuelve
  * `QuestionDetailRecord`, con el autor (`UserRecord`), el producto hidratado
  * (`ProductRecord`) y `abusiveReportsCount` (un `groupBy` por página, sin
  * N+1). La búsqueda por texto es `contains` + `insensitive` (ILIKE), que
- * usa `questions_question_ilike_trgm_idx`, trigram sobre la columna (US-69).
+ * usa `questions_question_ilike_trgm_idx`, trigram sobre la columna.
  *
  * El CHECK `length(question) > 0` no existe para Prisma: se valida aquí con
  * `InvalidFieldValueError`. Sin UNIQUE: un usuario puede preguntar varias

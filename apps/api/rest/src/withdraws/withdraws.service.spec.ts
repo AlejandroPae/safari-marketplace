@@ -5,7 +5,7 @@
  * se limita a este archivo para no tocar la config del build.
  */
 /**
- * Tests unitarios de `WithdrawsService` (US-62): forma del mock,
+ * Tests unitarios de `WithdrawsService`: forma del mock,
  * visibilidad por dueño, filtros, propiedad al escribir y traducción de
  * errores. Se mockea solo el acceso a datos; las clases de error de dominio
  * y `toWriteHttpException` son reales.

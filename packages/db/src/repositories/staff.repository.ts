@@ -1,15 +1,15 @@
 /**
- * Escrituras del staff de tienda sobre el pivote `shop_staff` (US-42).
+ * Escrituras del staff de tienda sobre el pivote `shop_staff`.
  *
  * Los listados NO viven aquí: `listUsersWithRelations({ staffOf })` de
  * `users.repository.ts` los sirve con el mismo `include` y el mismo orden que
  * el resto de listados de usuarios.
  *
- * Reloj (US-32): el usuario nuevo y su fila del pivote fijan `createdAt` y
+ * Reloj: el usuario nuevo y su fila del pivote fijan `createdAt` y
  * `updatedAt` desde `clock.ts`. Retirar staff borra filas del pivote, que no
  * tiene `updated_at`, y no toca `users`.
  *
- * Permiso (US-101): el permiso global `staff` refleja si el usuario es staff
+ * Permiso: el permiso global `staff` refleja si el usuario es staff
  * de alguna tienda. El alta lo concede; retirar la última tienda lo quita.
  * El seed sigue la misma regla.
  */
@@ -26,7 +26,7 @@ const STAFF_PERMISSION = 'staff';
 export interface CreateShopStaffInput {
   name: string;
   email: string;
-  /** Ya hasheado: hashear es de la API (precedente `createUser`, US-22). */
+  /** Ya hasheado: hashear es de la API (precedente `createUser`). */
   passwordHash: string;
   shopId: number;
 }
@@ -81,8 +81,8 @@ export async function createShopStaff(
       });
       if (existing) {
         if (existing.staffShops.length > 0) {
-          // Idempotente, pero garantiza el permiso: un staff de antes de
-          // US-101 puede no tenerlo.
+          // Idempotente, pero garantiza el permiso: un staff creado antes
+          // de que se otorgara `staff` puede no tenerlo.
           await _grantStaffPermission(tx, existing.id);
           return { userId: Number(existing.id), created: false };
         }
@@ -98,7 +98,7 @@ export async function createShopStaff(
           isActive: true,
           createdAt: at,
           updatedAt: at,
-          // US-101: `staff` para que pueda entrar al admin.
+          // `staff` para que pueda entrar al admin.
           permissions: {
             create: [
               { permission: { connect: { name: 'customer' } } },
@@ -131,7 +131,7 @@ export interface RemoveShopStaffInput {
  * Retira a un usuario del staff: borra sus filas de `shop_staff` en las
  * tiendas que pasan el filtro. El usuario NO se borra. Si se queda sin
  * ninguna tienda, pierde el permiso `staff` en la misma transacción
- * (US-101). Devuelve cuántas filas se borraron; 0 si no había nada que
+ *. Devuelve cuántas filas se borraron; 0 si no había nada que
  * retirar (el caller decide el 404).
  */
 export async function removeShopStaff(
@@ -167,7 +167,7 @@ export async function removeShopStaff(
 /**
  * Tiendas de las que el usuario es staff (fila en `shop_staff`), por
  * `shop_id` ascendente. `/me` las suma a las suyas para que el admin le deje
- * entrar a cada una (US-101).
+ * entrar a cada una.
  */
 export async function listStaffShops(userId: number): Promise<ShopRecord[]> {
   const rows = await prisma.shopStaff.findMany({

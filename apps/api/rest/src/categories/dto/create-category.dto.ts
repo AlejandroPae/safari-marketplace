@@ -6,7 +6,7 @@ import { Category } from '../entities/category.entity.js';
  * (`entities/category.entity.ts:9,14`) los declara como objetos y el admin
  * manda números (`category-form.tsx:234-235`). `type_id`/`parent`/`slug` se
  * declaran standalone, sin efecto de runtime: `main.ts:9` registra
- * `ValidationPipe` sin `transform` ni `whitelist` (DD28-9, design.md). No se
+ * `ValidationPipe` sin `transform` ni `whitelist`. No se
  * añade soporte de objetos anidados (fuera de alcance, vinculante).
  */
 export class CreateCategoryDto extends PickType(Category, [

@@ -39,7 +39,7 @@ export class ReviewController {
     return this.reviewService.findReview(+id);
   }
 
-  //  create a new review — el autor es quien llama (US-54).
+  //  create a new review — el autor es quien llama.
   @Post()
   create(
     @Body() createReviewDto: CreateReviewDto,
@@ -48,7 +48,7 @@ export class ReviewController {
     return this.reviewService.create(createReviewDto, user);
   }
 
-  // Solo el autor o un super_admin (US-54).
+  // Solo el autor o un super_admin.
   @Put(':id')
   update(
     @Param('id') id: string,
@@ -58,7 +58,7 @@ export class ReviewController {
     return this.reviewService.update(+id, updateReviewDto, user);
   }
 
-  // delete a review — solo el autor o un super_admin (US-54).
+  // delete a review — solo el autor o un super_admin.
   @Delete(':id')
   delete(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
     return this.reviewService.delete(+id, user);

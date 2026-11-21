@@ -1,6 +1,6 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
- * 8 motivos con las fechas del mock, 2023-11-12T10:58:58Z). US-48.
+ * 8 motivos con las fechas del mock, 2023-11-12T10:58:58Z).
  *
  * Centinela `zz-rrea-` en el slug. Lecturas del seed ANTES que escrituras.
  */

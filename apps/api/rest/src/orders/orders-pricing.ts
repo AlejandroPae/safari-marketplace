@@ -1,7 +1,33 @@
 /**
- * orders-pricing.ts — el cálculo del checkout (US-59, R-a a R-f), puro: sin
+ * orders-pricing.ts — el cálculo del checkout (reglas R-a a R-f), puro: sin
  * base, sin reloj y sin Nest. `checkout/verify` y `POST /orders` lo llaman
  * igual, así que lo que el shop ve al verificar es lo que luego se cobra.
+ *
+ * Reglas de órdenes (este archivo y `orders.service.ts` las citan):
+ * - R-a: disponibilidad. Una línea no está disponible si el producto no
+ *   existe, no es `publish`, no está `in_stock` o `quantity < pedida`.
+ * - R-b: precio unitario del servidor: `sale_price ?? price`; con variación,
+ *   el `unit_price` del cliente solo si cae en `[min_price, max_price]`.
+ * - R-c: impuesto = `amount × rate / 100` de la clase de `settings`, sin
+ *   redondear y sin aplicarlo al envío (`on_shipping` se ignora).
+ * - R-d: envío. 0 sin dirección, con envío gratis por umbral o con cupón
+ *   `free_shipping`; si no, la clase de envío de `settings`.
+ * - R-e: cupón. Aprobado, vigente, `amount >= minimum_cart_amount` y, si es
+ *   de una tienda, con alguna línea de ella; si no, 422.
+ * - R-f: totales del servidor (`amount + impuesto + envío − descuento`); las
+ *   cifras del cliente se ignoran y un desfase solo deja un `warn`.
+ * - R-g: una orden hija por tienda, con sus líneas, bajo el padre.
+ * - R-h: estados iniciales según la pasarela (el `switch` del mock).
+ * - R-i: cliente. Con Bearer válido, el usuario del token; sin él, invitado.
+ * - R-j: número de seguimiento `YYYYMMDD` (UTC) + 6 dígitos aleatorios.
+ * - R-k: una sola transacción que crea la orden y descuenta el stock; si una
+ *   línea pierde la carrera por el stock, rollback y 409.
+ * - R-l: `PUT` cambia `order_status`/`payment_status`; en un padre se
+ *   propaga a las hijas. Id de ruta mal formado ⇒ 400.
+ * - R-m: `DELETE` borra la orden (hijas y líneas en cascada) y devuelve el
+ *   snapshot previo; no repone stock.
+ * - R-n: `POST /orders/payment` marca la orden del `tracking_number` (y sus
+ *   hijas) según la pasarela; inexistente ⇒ 404.
  *
  * El dinero se calcula con `Decimal` (la aritmética de `numeric`): `2.2 ×
  * 0.02` da `0.044` exacto, como en el mock, y no `0.044000000000000004`.
@@ -66,7 +92,7 @@ export interface PricingResult {
   unavailable: number[];
 }
 
-/** Lo que R-e mira de un cupón de `coupons` (US-52). */
+/** Lo que R-e mira de un cupón de `coupons`. */
 export interface CouponCandidate extends PricingCoupon {
   isApprove: boolean;
   activeFrom: Date;
@@ -76,9 +102,9 @@ export interface CouponCandidate extends PricingCoupon {
 }
 
 /**
- * R-e: aprobado, vigente en `at` (`active_from <= at < expire_at`, la regla
- * del `is_valid` de US-52), `amount >= minimum_cart_amount` y, si el cupón es
- * de una tienda, alguna línea de esa tienda.
+ * R-e: aprobado, vigente en `at` (`active_from <= at < expire_at`, la
+ * regla del `is_valid` de los cupones), `amount >= minimum_cart_amount` y,
+ * si el cupón es de una tienda, alguna línea de esa tienda.
  */
 export function isCouponApplicable(
   coupon: CouponCandidate,

@@ -1,5 +1,5 @@
 /**
- * wishlists.repository.ts — lista de deseos por usuario (US-53).
+ * wishlists.repository.ts — lista de deseos por usuario.
  *
  * El pivote `wishlists` (usuario ↔ producto) no se expone: las lecturas
  * devuelven `ProductRecord`, hidratado con el mismo include y el mismo mapper

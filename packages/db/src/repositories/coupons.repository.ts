@@ -1,5 +1,5 @@
 /**
- * coupons.repository.ts — cupones de descuento (US-52).
+ * coupons.repository.ts — cupones de descuento.
  *
  * Un cupón es de una tienda (`shopId`) o global (`null`, solo super_admin; esa
  * regla es de la API). `is_valid` no se guarda: depende del reloj y lo calcula
@@ -75,7 +75,7 @@ export interface CreateCouponInput {
   activeFrom: Date;
   expireAt: Date;
   description?: string | null;
-  /** `json` nullable; `image: null` se trata como ausente (DD-5, precedente tags). */
+  /** `json` nullable; `image: null` se trata como ausente (precedente tags). */
   image?: Prisma.InputJsonValue;
   minimumCartAmount?: number;
   target?: boolean;
@@ -220,7 +220,7 @@ export async function updateCoupon(
   }
 }
 
-/** Moderación del admin. `updatedAt: now()` explícito (US-32). */
+/** Moderación del admin. `updatedAt: now()` explícito. */
 export async function setCouponApproval(
   id: number,
   isApprove: boolean
@@ -236,7 +236,7 @@ export async function setCouponApproval(
   }
 }
 
-/** Borra un cupón y devuelve la fila borrada. Nada lo referencia con FK todavía (US-58). */
+/** Borra un cupón y devuelve la fila borrada. Nada lo referencia con FK todavía. */
 export async function deleteCoupon(id: number): Promise<CouponRecord> {
   try {
     return _toCouponRecord(await prisma.coupon.delete({ where: { id } }));

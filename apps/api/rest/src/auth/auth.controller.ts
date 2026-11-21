@@ -71,9 +71,9 @@ export class AuthController {
   }
   @Post('logout')
   async logout(): Promise<boolean> {
-    // D-9: sin refresh tokens ni denylist. El JWT sigue siendo válido hasta su
+    // Sin refresh tokens ni denylist. El JWT sigue siendo válido hasta su
     // `exp`; la sesión se cierra porque el frontend borra la cookie. Revocar
-    // exigiría estado servidor que esta US no introduce.
+    // exigiría estado en el servidor, que la API no mantiene.
     return true;
   }
   @Public()

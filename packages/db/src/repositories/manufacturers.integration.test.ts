@@ -1,13 +1,12 @@
 /**
  * Test de integración contra el Postgres real (docker-compose, puerto
- * 5433, sembrado por `just db-up`: 14 manufacturers). Lectura y escritura
- * (CA-1, CA-2, CA-3 — US-27b).
+ * 5433, sembrado por `just db-up`: 14 manufacturers). Lectura y escritura.
  *
  * Las escrituras operan sobre un centinela `zz-manu-` en `name`/`slug` —
  * prefijo distinto de otros archivos de este mismo paquete (`zz-types-`,
  * `zz-tags-`) para que las suites no se limpien la basura mutuamente: no
  * hay `vitest.config.*` en `packages/db`, así que los archivos corren en
- * paralelo (design.md, DD-8.1). `cleanup` corre en `beforeAll` (corrida
+ * paralelo. `cleanup` corre en `beforeAll` (corrida
  * abortada previa) y se PLIEGA dentro del `afterAll` que ya existía — no se
  * agrega un segundo `afterAll`: `sequence.hooks: 'stack'` es el default de
  * vitest y correría LIFO sobre un cliente ya desconectado si se registrara
@@ -70,7 +69,7 @@ describe('listManufacturers', () => {
     expect((await listManufacturers({ name: 'publication' })).total).toBe(9);
   });
 
-  it('limit:10 → 10 items, ids = slice(0,10) del orden asc (D-9)', async () => {
+  it('limit:10 → 10 items, ids = slice(0,10) del orden asc', async () => {
     const { items } = await listManufacturers({ limit: 10 });
     expect(items).toHaveLength(10);
     expect(items.map((r) => r.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
@@ -90,14 +89,14 @@ describe('findManufacturerBySlug', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Escrituras (CA-1, CA-2, CA-3, CA-6 — US-27b). Sin trampa de orden aquí: a
+// Escrituras. Sin trampa de orden aquí: a
 // diferencia de `tags.integration.test.ts`, `listManufacturers` ordena `asc`
 // y el assert de `:32-36` está acotado a `limit:10` sobre los ids sembrados
 // 1..10 — un centinela con id ≥ 20 (secuencia sembrada en 20) nunca entra en
 // ese slice. Se agregan al final igualmente, siguiendo la misma convención.
 // ---------------------------------------------------------------------------
 
-describe('createManufacturer — CA-1, centinela zz-manu-', () => {
+describe('createManufacturer — centinela zz-manu-', () => {
   it('persiste y devuelve el registro; sobrevive a una relectura por slug', async () => {
     const created = await createManufacturer({
       name: `${SENTINEL_PREFIX}Marca Verano`,
@@ -131,7 +130,7 @@ describe('createManufacturer — CA-1, centinela zz-manu-', () => {
     ).toBeNull();
   });
 
-  it('typeId fuera del rango seguro de bigint (1e21) ⇒ InvalidReferenceError, sin tocar Postgres (US-31, antirregresión)', async () => {
+  it('typeId fuera del rango seguro de bigint (1e21) ⇒ InvalidReferenceError, sin tocar Postgres (antirregresión)', async () => {
     // `Number.isInteger` deja pasar `1e21` (no tiene parte decimal); sin
     // `Number.isSafeInteger` este valor llegaría a Postgres como `bigint` y
     // reventaría en `invalid input syntax for type bigint` (500). Precedente
@@ -148,7 +147,7 @@ describe('createManufacturer — CA-1, centinela zz-manu-', () => {
     ).toBeNull();
   });
 
-  it('typeId negativo (-5) ⇒ InvalidReferenceError por P2003 (FK), NO por la guarda (US-31, D31-2)', async () => {
+  it('typeId negativo (-5) ⇒ InvalidReferenceError por P2003 (FK), NO por la guarda', async () => {
     expect.assertions(3);
     // Discriminador: la guarda pasa el tercer argumento `value` a
     // `InvalidReferenceError` y el mensaje lo interpola; la rama `P2003` de
@@ -171,7 +170,7 @@ describe('createManufacturer — CA-1, centinela zz-manu-', () => {
   });
 });
 
-describe('updateManufacturer — CA-2, slug inmutable, updatedAt explícito', () => {
+describe('updateManufacturer — slug inmutable, updatedAt explícito', () => {
   it('cambia name, NO el slug, y updatedAt avanza (medido con _setNowProvider)', async () => {
     try {
       const created = await createManufacturer({
@@ -240,7 +239,7 @@ describe('updateManufacturer — CA-2, slug inmutable, updatedAt explícito', ()
   });
 });
 
-describe('deleteManufacturer — CA-3, sin conteo de dependientes (D27b-3)', () => {
+describe('deleteManufacturer — sin conteo de dependientes', () => {
   it('id inexistente ⇒ RecordNotFoundError', async () => {
     await expect(deleteManufacturer(999999)).rejects.toBeInstanceOf(
       RecordNotFoundError
@@ -262,7 +261,7 @@ describe('deleteManufacturer — CA-3, sin conteo de dependientes (D27b-3)', () 
     ).toBeNull();
   });
 
-  it('desenlace: borra la marca y `products.manufacturer_id` desenlaza por SET NULL — assert POR FILA, nunca un conteo global (B-2: la fixture de products.integration.test.ts:198-237 mantiene viva otra fila mientras esa suite corre)', async () => {
+  it('desenlace: borra la marca y `products.manufacturer_id` desenlaza por SET NULL — assert POR FILA, nunca un conteo global (la fixture de products.integration.test.ts:198-237 mantiene viva otra fila mientras esa suite corre)', async () => {
     const created = await createManufacturer({
       name: `${SENTINEL_PREFIX}Desenlace`,
       slug: `${SENTINEL_PREFIX}desenlace`,
@@ -302,14 +301,14 @@ describe('deleteManufacturer — CA-3, sin conteo de dependientes (D27b-3)', () 
   });
 });
 
-describe('image: null se trata como ausente (DD-5) — RV-1 de US-27b', () => {
+describe('image: null se trata como ausente', () => {
   // Misma frontera que en `tags.integration.test.ts`: el tipo del input NO
   // admite `null`, pero `manufacturers.service.ts` castea el `image` del DTO
   // con `as unknown as Prisma.InputJsonValue` y un cliente puede mandar
   // `"image": null`. El cast reproduce esa entrada real (nunca `as any`).
   // Sin el `!= null` de los spreads del repositorio, Prisma rechazaría el
   // `null` crudo sobre un `Json?` y, de colar, el toggle de aprobación del
-  // admin borraría la imagen en cada clic (W-1). Asserts POR FILA.
+  // admin borraría la imagen en cada clic. Asserts POR FILA.
   const NULL_IMAGE = null as unknown as Prisma.InputJsonValue;
   const IMAGE = {
     id: 7,
@@ -376,7 +375,7 @@ describe('image: null se trata como ausente (DD-5) — RV-1 de US-27b', () => {
   });
 });
 
-describe('cierre de la suite (CA-6)', () => {
+describe('cierre de la suite', () => {
   it('ningún test de escritura dejó basura: prisma.manufacturer.count() vuelve a 14', async () => {
     expect(await prisma.manufacturer.count()).toBe(14);
   });

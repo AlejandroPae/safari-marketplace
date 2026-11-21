@@ -25,7 +25,7 @@ import {
   type CurrentUserPayload,
 } from '#src/auth/decorators/current-user.decorator.js';
 
-// Plataforma (design.md, Decisión B): gestión de usuarios es ADMIN_ONLY.
+// Plataforma: gestión de usuarios es ADMIN_ONLY.
 @Permissions(...ADMIN_ONLY)
 @Controller('users')
 export class UsersController {
@@ -69,7 +69,7 @@ export class UsersController {
     return this.usersService.banUser(+id, currentUser);
   }
 
-  // D-H: la ruta no declara `:user_id` como path param — `@Param('user_id')`
+  // La ruta no declara `:user_id` como path param — `@Param('user_id')`
   // era siempre `undefined`. El admin lo manda en el body
   // (`apps/admin/rest/src/types/index.ts:442-444`), no en la ruta.
   @Post('make-admin')
@@ -78,7 +78,8 @@ export class UsersController {
   }
 }
 
-// CA-5: único de los 7 grupos sin `@Permissions()` antes de US-25 (D-G).
+// Solo admin, como el resto de grupos de usuarios: sin token ⇒ 401;
+// `customer` ⇒ 403.
 @Permissions(...ADMIN_ONLY)
 @Controller('profiles')
 export class ProfilesController {
@@ -87,7 +88,7 @@ export class ProfilesController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  // US-99, DA-2: stub; nunca el cuerpo (contacto, bio, redes: datos personales).
+  // Stub; nunca el cuerpo (contacto, bio, redes: datos personales).
   createProfile(@Body() _createProfileDto: CreateProfileDto) {
     this.logger.warn('POST /profiles es un stub: no guarda nada');
   }

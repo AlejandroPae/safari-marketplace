@@ -5,8 +5,8 @@
  * se limita a este archivo para no tocar la config del build.
  */
 /**
- * Gate portante de PR3 (US-25): `UsersService` deja de leer `users.json` y
- * pasa a llamar funciones planas de `@safari/db`. Mismo arnés que
+ * Tests de `UsersService`, que lee de Postgres con funciones planas de
+ * `@safari/db` (no de `users.json`). Mismo arnés que
  * `shops.service.spec.ts:21-38,57` — se mockea SOLO el acceso a datos y se
  * dejan REALES `buildPaginator`/`isPrismaConnectionError`/
  * `getUserFriendlyMessage`/`DuplicateEmailError` (`importOriginal` de `vi.mock`), para
@@ -15,7 +15,7 @@
  *
  * `rawQuery()` existe porque `new ValidationPipe()` corre sin `transform`
  * (`main.ts:9`): en runtime `limit`/`page` llegan como strings crudas aunque
- * el DTO declare números — el bug real que D-B del design documenta.
+ * el DTO declare números — un bug real, no hipotético.
  */
 import 'reflect-metadata';
 import {
@@ -87,7 +87,7 @@ function currentUser(sub: number): CurrentUserPayload {
   return { sub, email: 'x@x.com', permissions: [], iat: 0, exp: 0 };
 }
 
-describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
+describe('UsersService (Postgres)', () => {
   let service: UsersService;
 
   beforeEach(() => {
@@ -100,7 +100,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
     service = new UsersService();
   });
 
-  describe('getUsers — envoltorio de paginación (D-B, CRÍTICO)', () => {
+  describe('getUsers — envoltorio de paginación (CRÍTICO)', () => {
     it('coincide clave por clave y por TIPO con paginate(), con limit="20" crudo (per_page string)', async () => {
       const items = [buildFixture({ id: 1 }), buildFixture({ id: 2 })];
       listUsersWithRelationsMock.mockResolvedValue({ items, total: 2 });
@@ -113,7 +113,8 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
         unknown
       >;
 
-      // Repositorio recibe SIEMPRE valores numéricos (D-B guarda #1).
+      // Repositorio recibe SIEMPRE valores numéricos: Prisma lanza con
+      // `NaN` o un string en `skip`/`take`.
       expect(listUsersWithRelationsMock).toHaveBeenCalledWith({
         page: 1,
         limit: 20,
@@ -134,7 +135,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
       for (const key of Object.keys(expected) as Array<keyof typeof expected>) {
         expect(actualPagination[key]).toStrictEqual(expected[key]);
       }
-      // El punto crítico de D-B: per_page es la STRING cruda, no el número 20.
+      // El punto crítico: per_page es la STRING cruda, no el número 20.
       expect(actualPagination.per_page).toBe('20');
       expect(typeof actualPagination.per_page).toBe('string');
       // Las 4 *_page_url son strings, nunca null (baseUrl siempre presente).
@@ -156,7 +157,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
       expect(result.data).toEqual([]);
     });
 
-    it('my-staffs y all-staffs salen de shop_staff (US-42) y conservan su propia url', async () => {
+    it('my-staffs y all-staffs salen de shop_staff y conservan su propia url', async () => {
       listUsersWithRelationsMock.mockResolvedValue({ items: [], total: 0 });
 
       const myStaffsResult = await service.getMyStaffs(
@@ -184,7 +185,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
       );
     });
 
-    it('my-staffs con shop_id inválido no llega a BigInt: lista vacía (US-31)', async () => {
+    it('my-staffs con shop_id inválido no llega a BigInt: lista vacía', async () => {
       listUsersWithRelationsMock.mockResolvedValue({ items: [], total: 0 });
 
       await service.getMyStaffs(
@@ -217,7 +218,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
     });
   });
 
-  describe('getUsersNotify — D-B guarda #2', () => {
+  describe('getUsersNotify — limit numérico al repositorio', () => {
     it('?limit=5 (string cruda) pasa take:5 (numérico) al repositorio, no "5"', async () => {
       listUsersWithRelationsMock.mockResolvedValue({ items: [], total: 0 });
 
@@ -254,7 +255,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
     });
   });
 
-  describe('findOne — D-B guarda #3 (404, nunca 500)', () => {
+  describe('findOne — guarda de id (404, nunca 500)', () => {
     it('id inexistente → 404', async () => {
       findUserWithRelationsMock.mockResolvedValue(null);
 
@@ -269,7 +270,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
       ['negativo', -5],
       ['fuera del rango seguro de bigint (1e21)', 1e21],
     ])(
-      'id %s → 404 sin llamar al repositorio (`!Number.isSafeInteger(id) || id <= 0`, US-31)',
+      'id %s → 404 sin llamar al repositorio (`!Number.isSafeInteger(id) || id <= 0`)',
       async (_label, id) => {
         expect.assertions(3);
         try {
@@ -280,18 +281,18 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
           expect((error as NotFoundException).message).toBe(
             'El identificador de usuario no es válido.',
           );
-          // Testigo real (DD31-E): las dos aserciones de arriba no distinguen
+          // Testigo real: las dos aserciones de arriba no distinguen
           // "la guarda atajó" de "la fila no existía" — solo esta lo hace.
           expect(findUserWithRelationsMock).not.toHaveBeenCalled();
         }
       },
     );
 
-    // Inverso de CA-4 (CA-2, US-31): un id grande pero seguro atraviesa la
+    // Inverso del corte de id inválido: un id grande pero seguro atraviesa la
     // guarda y el 404 lo decide la fila inexistente, no el guard — el
     // mensaje distinto lo delata. Se pone rojo si alguien adelanta el corte
     // (p. ej. `|| id > 1e6`).
-    it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente (CA-2, US-31)', async () => {
+    it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente', async () => {
       findUserWithRelationsMock.mockResolvedValue(null);
 
       expect.assertions(3);
@@ -331,7 +332,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
     });
   });
 
-  describe('block-user / unblock-user — CA-4', () => {
+  describe('block-user / unblock-user', () => {
     it('block-user fija is_active:false explícitamente (setUserActive, sin invertir)', async () => {
       findUserWithRelationsMock.mockResolvedValue(
         buildFixture({ id: 2, permissions: [] }),
@@ -444,7 +445,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
       ['negativo', -5],
       ['fuera del rango seguro de bigint (1e21)', 1e21],
     ])(
-      'block-user: id %s → 404 sin llamar al repositorio ni a setUserActive (`!Number.isSafeInteger(id) || id <= 0`, US-31)',
+      'block-user: id %s → 404 sin llamar al repositorio ni a setUserActive (`!Number.isSafeInteger(id) || id <= 0`)',
       async (_label, id) => {
         expect.assertions(3);
         try {
@@ -463,7 +464,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
       ['negativo', -5],
       ['fuera del rango seguro de bigint (1e21)', 1e21],
     ])(
-      'unblock-user: id %s → 404 sin llamar al repositorio ni a setUserActive (`!Number.isSafeInteger(id) || id <= 0`, US-31)',
+      'unblock-user: id %s → 404 sin llamar al repositorio ni a setUserActive (`!Number.isSafeInteger(id) || id <= 0`)',
       async (_label, id) => {
         expect.assertions(3);
         try {
@@ -476,7 +477,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
       },
     );
 
-    it('block-user: id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente (CA-2, US-31)', async () => {
+    it('block-user: id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente', async () => {
       findUserWithRelationsMock.mockResolvedValue(null);
 
       expect.assertions(4);
@@ -492,7 +493,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
       }
     });
 
-    it('unblock-user: id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente (CA-2, US-31)', async () => {
+    it('unblock-user: id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente', async () => {
       findUserWithRelationsMock.mockResolvedValue(null);
 
       expect.assertions(4);
@@ -509,7 +510,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
     });
   });
 
-  describe('make-admin — D-H/D-5', () => {
+  describe('make-admin', () => {
     it('convierte el user_id (string) a número y concede super_admin', async () => {
       grantPermissionMock.mockResolvedValue(buildFixture({ id: 2 }));
 
@@ -524,7 +525,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
       ['negativo', '-5'],
       ['fuera del rango seguro de bigint (1e21)', '1e21'],
     ])(
-      'user_id %s → 404 sin conceder el permiso (`!Number.isSafeInteger(id) || id <= 0`, US-31)',
+      'user_id %s → 404 sin conceder el permiso (`!Number.isSafeInteger(id) || id <= 0`)',
       async (_label, userId) => {
         expect.assertions(2);
         try {
@@ -536,7 +537,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
       },
     );
 
-    it('user_id "123456789012345" (seguro) → llega a grantPermission; el 404 lo da la fila inexistente (CA-2, US-31)', async () => {
+    it('user_id "123456789012345" (seguro) → llega a grantPermission; el 404 lo da la fila inexistente', async () => {
       grantPermissionMock.mockResolvedValue(null);
 
       expect.assertions(3);
@@ -629,7 +630,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
     });
   });
 
-  describe('update — PUT stub (A11, no persiste)', () => {
+  describe('update — PUT stub (no persiste)', () => {
     it('devuelve el usuario actual sin aplicar el body', async () => {
       findUserWithRelationsMock.mockResolvedValue(
         buildFixture({ id: 3, name: 'Original' }),
@@ -656,7 +657,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
       ['negativo', -5],
       ['fuera del rango seguro de bigint (1e21)', 1e21],
     ])(
-      'id %s → 404 sin llamar al repositorio (`!Number.isSafeInteger(id) || id <= 0`, US-31)',
+      'id %s → 404 sin llamar al repositorio (`!Number.isSafeInteger(id) || id <= 0`)',
       async (_label, id) => {
         expect.assertions(2);
         try {
@@ -668,7 +669,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
       },
     );
 
-    it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente (CA-2, US-31)', async () => {
+    it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente', async () => {
       findUserWithRelationsMock.mockResolvedValue(null);
 
       expect.assertions(3);
@@ -684,7 +685,7 @@ describe('UsersService (US-25 PR3 — migración a Postgres)', () => {
     });
   });
 
-  describe('remove — stub sin cambios (A11)', () => {
+  describe('remove — stub sin cambios', () => {
     it('devuelve el string fijo, sin tocar la base', () => {
       expect(service.remove(7)).toBe('This action removes a #7 user');
     });

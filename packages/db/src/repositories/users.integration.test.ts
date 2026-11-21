@@ -2,13 +2,12 @@
  * Test de integración contra el Postgres real (docker-compose, puerto
  * 5433, sembrado por `just db-up`: 3 usuarios, 12 tiendas).
  *
- * Las escrituras (CA-4) operan EXCLUSIVAMENTE sobre un dominio centinela
- * (Decisión C, design.md) — nunca sobre los 3 usuarios sembrados:
- * `updateUserPasswordHash(3, …)` destruiría la credencial `demodemo` de
- * la que depende la DoD de US-22, y `setUserActive(3, false)` sin
+ * Las escrituras operan EXCLUSIVAMENTE sobre un dominio centinela — nunca
+ * sobre los 3 usuarios sembrados: `updateUserPasswordHash(3, …)` destruiría
+ * la credencial `demodemo` con la que se entra a la demo, y `setUserActive(3, false)` sin
  * restaurar deja el panel de admin inaccesible sin `just db-reset`.
  *
- * El casing mezclado que exigen CA-2/CA-4 va en la PARTE LOCAL del email
+ * El casing mezclado de los emails de prueba va en la PARTE LOCAL del email
  * de prueba, nunca en el dominio: la columna `email` es `text` y
  * `endsWith` genera un `LIKE` case-sensitive, así que si el casing
  * viviera en el dominio la limpieza no encontraría su propia fila.
@@ -88,7 +87,7 @@ describe('findUserWithRelations', () => {
     expect(user?.permissions).toHaveLength(2);
     expect(user?.shops).toHaveLength(12);
     // Ninguna relación anidada filtra el hash — el prefijo bcrypt atrapa
-    // la fuga que un Object.keys de primer nivel no vería (R-4).
+    // la fuga que un Object.keys de primer nivel no vería.
     expect(JSON.stringify(user)).not.toContain('$2');
   });
 
@@ -135,7 +134,7 @@ describe('listUsersWithRelations', () => {
     expect(admin?.email).toBe('admin@demo.com');
     expect(admin?.profile).not.toBeNull();
     expect(admin?.permissions.length).toBeGreaterThan(0);
-    // Ninguna relación anidada filtra el hash (D-2, R-4).
+    // Ninguna relación anidada filtra el hash.
     expect(JSON.stringify(items)).not.toContain('$2');
   });
 
@@ -151,8 +150,8 @@ describe('listUsersWithRelations', () => {
   });
 
   it('un permiso sin titulares devuelve total 0, no un error', async () => {
-    // Desde US-101 `staff` tiene titulares; se usa un nombre fuera del
-    // catálogo para seguir comprobando el caso vacío.
+    // `staff` tiene titulares; se usa un nombre fuera del
+    // catálogo para comprobar el caso vacío.
     const { items, total } = await listUsersWithRelations({
       permissionName: 'zz-sin-titulares',
     });
@@ -160,18 +159,18 @@ describe('listUsersWithRelations', () => {
     expect(items).toEqual([]);
   });
 
-  it('staff: los usuarios con fila en shop_staff del seed (US-101)', async () => {
+  it('staff: los usuarios con fila en shop_staff del seed', async () => {
     const { items } = await listUsersWithRelations({ permissionName: 'staff' });
     expect(items.map((u) => u.id)).toEqual([2, 3]);
   });
 });
 
-describe('escrituras de identidad (CA-4) — dominio centinela, nunca los sembrados', () => {
+describe('escrituras de identidad — dominio centinela, nunca los sembrados', () => {
   afterEach(() => {
     _setNowProvider(() => new Date());
   });
 
-  it('setUserActive: updated_at sale de clock.ts y cumple updated_at >= created_at (CA-2 de US-32)', async () => {
+  it('setUserActive: updated_at sale de clock.ts y cumple updated_at >= created_at', async () => {
     const email = `Reloj-User${TEST_DOMAIN}`;
     const user = await createUser({
       name: 'Reloj',
@@ -191,20 +190,19 @@ describe('escrituras de identidad (CA-4) — dominio centinela, nunca los sembra
 
     // (a) ruta olvidada: sin `updatedAt` el valor sería el del INSERT y FALLA.
     expect(updated.updatedAt.getTime()).toBe(future.getTime());
-    // (b) el invariante de CA-2.
+    // (b) el invariante updated_at >= created_at.
     expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(
       updated.createdAt.getTime()
     );
-    // (c) createdAt NO es mockeable (D-5, no-goal declarado).
+    // (c) createdAt NO es mockeable, a propósito.
     expect(updated.createdAt.getTime()).toBeLessThan(future.getTime());
   });
 
-  it('updateUserPasswordHash: updated_at sale de clock.ts y cumple updated_at >= created_at (CA-2 de US-32)', async () => {
-    // Cierra W-1 del verify-report: era la única de las 7 rutas de la política
-    // de reloj cuyo `updatedAt: now()` ningún test protegía — borrar esa línea
-    // de `users.repository.ts` dejaba la suite entera en verde. Va sobre el
-    // dominio centinela: `updateUserPasswordHash(3, …)` destruiría la
-    // credencial `demodemo` de la que depende la DoD de US-22 (ver cabecera).
+  it('updateUserPasswordHash: updated_at sale de clock.ts y cumple updated_at >= created_at', async () => {
+    // Sin este test, ninguno protegería el `updatedAt: now()` de esta ruta:
+    // borrar esa línea de `users.repository.ts` dejaría la suite entera en
+    // verde. Va sobre el dominio centinela: `updateUserPasswordHash(3, …)`
+    // destruiría la credencial `demodemo` (ver cabecera).
     const email = `Reloj-Password${TEST_DOMAIN}`;
     const user = await createUser({
       name: 'Reloj Password',
@@ -222,11 +220,11 @@ describe('escrituras de identidad (CA-4) — dominio centinela, nunca los sembra
 
     // (a) ruta olvidada: sin `updatedAt` el valor sería el del INSERT y FALLA.
     expect(updated.updatedAt.getTime()).toBe(future.getTime());
-    // (b) el invariante de CA-2.
+    // (b) el invariante updated_at >= created_at.
     expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(
       updated.createdAt.getTime()
     );
-    // (c) createdAt NO es mockeable (D-5, no-goal declarado).
+    // (c) createdAt NO es mockeable, a propósito.
     expect(updated.createdAt.getTime()).toBeLessThan(future.getTime());
   });
 
@@ -375,4 +373,4 @@ describe('grantPermission — idempotente, dominio centinela con store_owner (nu
 // filas del dominio centinela siguen vivas (la limpieza de `afterAll` no
 // se ha ejecutado todavía). La prueba real de que la suite completa deja
 // la base como la encontró es el `SELECT count(*)` externo antes/después
-// de `just db-check` (ver apply-progress.md, evidencia de la Fase 6).
+// de `just db-check`.

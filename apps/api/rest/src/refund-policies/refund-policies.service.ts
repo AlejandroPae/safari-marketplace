@@ -29,7 +29,7 @@ import { UpdateRefundPolicyDto } from './dto/update-refund-policy.dto.js';
 /**
  * `RefundPolicyRecord` → las 8 claves de `refund-policies.json`, en su
  * orden. `shop_id` y los timestamps tienen columna pero el mock no los
- * emite (US-48, D-1). `translated_languages` es constante (D-6).
+ * emite. `translated_languages` es constante.
  */
 function toRefundPolicyDto(record: RefundPolicyRecord): RefundPolicy {
   return {
@@ -73,7 +73,7 @@ function assertId(id: number): void {
 @Injectable()
 export class RefundPoliciesService {
   /**
-   * Filtros reales con AND (US-48, V-1/V-2): el shop manda
+   * Filtros reales con AND: el shop manda
    * `search=target:customer;status:approved`. El mock aplicaba Fuse con el
    * último token (`approved`) sobre `title` y servía las 5 con `total: 0`.
    */
@@ -112,7 +112,7 @@ export class RefundPoliciesService {
     return { data, ...paginate(result.total, page, limit, data.length, url) };
   }
 
-  /** Por slug, como el mock; inexistente ⇒ 404 (V-3). */
+  /** Por slug, como el mock; inexistente ⇒ 404. */
   async getRefundPolicy(
     param: string,
     _language?: string,
@@ -174,7 +174,7 @@ export class RefundPoliciesService {
     }
   }
 
-  /** Devuelve la política borrada (V-4: el mock devolvía un string). */
+  /** Devuelve la política borrada (el mock devolvía un string). */
   async remove(id: number): Promise<RefundPolicy> {
     assertId(id);
     try {

@@ -1,5 +1,5 @@
 /**
- * `POST /transfer-shop-ownership` (US-63). El admin manda `{...vendor,
+ * `POST /transfer-shop-ownership`. El admin manda `{...vendor,
  * shop_id, vendor_id, message}`: del vendedor solo cuenta `vendor_id`.
  */
 export class TransferShopOwnershipDto {

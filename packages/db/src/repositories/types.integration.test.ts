@@ -2,9 +2,9 @@
  * Test de integración contra el Postgres real (docker-compose, puerto
  * 5433, sembrado por `just db-up`: 10 types).
  *
- * Las escrituras (CA-1, CA-2, CA-3) operan sobre un centinela `zz-types-`
- * en `name`/`slug` — prefijo distinto de `zz-test-` (design.md, B4/N5) y
- * distinto por archivo para que US-27b/28/29/30 no se pisen en paralelo.
+ * Las escrituras operan sobre un centinela `zz-types-` en `name`/`slug` —
+ * prefijo distinto de `zz-test-` y distinto por archivo para que las suites
+ * de integración no se pisen en paralelo.
  * `cleanup` corre en `beforeAll` (corrida abortada previa) y se PLIEGA
  * dentro del `afterAll` que ya existía (no se agrega un segundo `afterAll`:
  * `sequence.hooks: 'stack'` es el default de vitest y correría LIFO sobre
@@ -70,7 +70,7 @@ describe('findTypeBySlug', () => {
   });
 });
 
-describe('createType — CA-1, centinela zz-types-', () => {
+describe('createType — centinela zz-types-', () => {
   it('persiste y devuelve el registro; sobrevive a una relectura por slug', async () => {
     const created = await createType({
       name: `${SENTINEL_PREFIX}Vertical Prueba`,
@@ -99,7 +99,7 @@ describe('createType — CA-1, centinela zz-types-', () => {
   });
 });
 
-describe('updateType — CA-2, slug inmutable, updatedAt explícito', () => {
+describe('updateType — slug inmutable, updatedAt explícito', () => {
   afterEach(() => {
     _setNowProvider(() => new Date());
   });
@@ -150,7 +150,7 @@ describe('updateType — CA-2, slug inmutable, updatedAt explícito', () => {
   });
 });
 
-describe('deleteType — CA-3, R-1 (dos conteos antes de borrar)', () => {
+describe('deleteType — dos conteos antes de borrar', () => {
   it('gadget (id 9) tiene dependientes ⇒ DependentRowsError, conteos intactos', async () => {
     const [categoriesBefore, productsBefore] = await Promise.all([
       prisma.category.count({ where: { typeId: 9 } }),
@@ -192,7 +192,7 @@ describe('deleteType — CA-3, R-1 (dos conteos antes de borrar)', () => {
   });
 });
 
-describe('cierre de la suite (CA-6)', () => {
+describe('cierre de la suite', () => {
   it('ningún test de escritura dejó basura: prisma.type.count() vuelve a 10', async () => {
     expect(await prisma.type.count()).toBe(10);
   });

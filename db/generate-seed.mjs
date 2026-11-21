@@ -63,7 +63,7 @@ const num = (v) => (v === null || v === undefined || v === '' ? 'NULL' : Number(
 const bool = (v) => (v ? 'true' : 'false');
 const json = (v) =>
   v === null || v === undefined ? 'NULL' : `${txt(JSON.stringify(v))}::jsonb`;
-// Para columnas `json` (D-5 del Épico 46): castear a jsonb reordenaría las
+// Para columnas `json`: castear a jsonb reordenaría las
 // claves ANTES de llegar a la columna, que es justo lo que `json` evita.
 const jsonTal = (v) =>
   v === null || v === undefined ? 'NULL' : `${txt(JSON.stringify(v))}::json`;
@@ -73,7 +73,7 @@ const arr = (v) =>
     : `ARRAY[${v.map(txt).join(',')}]::text[]`;
 const ts = (v) => (v ? txt(v) : 'now()');
 
-// ── Credencial demo compartida por los 3 usuarios (Decision E) ───────────
+// ── Credencial demo compartida por los 3 usuarios ────────────────────────
 // Los tres usuarios de users.json comparten la contraseña `demodemo`.
 // bcrypt embebe un salt aleatorio: hashear en tiempo de generación haría
 // que cada corrida produjera un seed.sql distinto sin que nada cambiara,
@@ -88,11 +88,11 @@ const ts = (v) => (v ? txt(v) : 'now()');
 // importante es que quede fijo, no que sea reproducible byte a byte.
 const HASH_DEMO = '$2b$10$j/.1t7ZmKUU4qHu8Elw3dO6N4udivEj1oxeVxA1m6HOnp7D4J761S';
 
-// ── Catálogo de permisos y su matriz de asignación (D-5, D-9) ────────────
+// ── Catálogo de permisos y su matriz de asignación ───────────────────────
 // guard_name = 'api' para las 4, como en el origen Laravel. `staff` (4) es
 // nueva -- no está en users.json pero hasAccess() en ambos frontends
-// compara contra un universo de 4 valores -- y queda sin asignar hasta
-// que US-25 la reparta.
+// compara contra un universo de 4 valores --; la reciben los usuarios con
+// fila en shop_staff (ver más abajo).
 const permissionsCatalogo = [
   { id: 1, name: 'super_admin', guard_name: 'api' },
   { id: 2, name: 'customer', guard_name: 'api' },
@@ -102,12 +102,12 @@ const permissionsCatalogo = [
 
 // user_id sale del `id` real del usuario iterado, NUNCA de
 // `permissions[].pivot.model_id`: el de admin vale 6, que no es un usuario
-// real y violaría la FK de permission_user.user_id (R-1).
+// real y violaría la FK de permission_user.user_id.
 const asignaciones = users.flatMap((u) =>
   (u.permissions ?? []).map((p) => ({ user_id: u.id, permission_id: p.id }))
 );
 
-// ── Staff por tienda (US-41, array literal validado, no viene del mock) ──
+// ── Staff por tienda (array literal validado, no viene del mock) ─────────
 // Usuario 1 excluido a propósito: es dueño de las 12 tiendas de shops.json
 // (owner_id ?? 1), así que asignarlo como staff de sus propias tiendas sería
 // redundante con la relación de propiedad que ya expresa shops.owner_id.
@@ -153,7 +153,7 @@ for (const c of categories) {
   if (!idsDeTypes.has(c.type_id)) problemas.push(`categoria ${c.id}: type_id ${c.type_id} inexistente`);
 }
 
-// ── Validación de identidad (US-20, Decision F) ──────────────────────────
+// ── Validación de identidad ──────────────────────────────────────────────
 const idsDeUsers = new Set(users.map((u) => u.id));
 const idsDePermisos = new Set(permissionsCatalogo.map((p) => p.id));
 
@@ -176,7 +176,7 @@ for (const u of users) {
 }
 if (!HASH_DEMO.startsWith('$2')) problemas.push(`HASH_DEMO no parece un hash bcrypt (prefijo esperado '$2')`);
 
-// ── Validación de shop_staff / become_seller (US-41) ─────────────────────
+// ── Validación de shop_staff / become_seller ─────────────────────────────
 for (const s of staffAsignaciones) {
   if (!idsDeUsers.has(s.user_id)) problemas.push(`shop_staff: user_id ${s.user_id} inexistente`);
   if (!idsFinalesShops.has(s.shop_id)) problemas.push(`shop_staff: shop_id ${s.shop_id} inexistente`);
@@ -191,7 +191,7 @@ if (!becomeSeller.page_options?.page_options)
 if (!Array.isArray(becomeSeller.commissions) || becomeSeller.commissions.length !== 2)
   problemas.push('become-seller: commissions no es un array de 2 tiers');
 
-// ── Contenido: FAQ y términos (US-47) ────────────────────────────────────
+// ── Contenido: FAQ y términos ────────────────────────────────────────────
 // faqs.json no trae shop_id: las FAQ de tienda solo dicen `issued_by` con el
 // NOMBRE de la tienda. Se deriva contra las tiendas sembradas; un nombre que
 // no casa es error, no NULL silencioso (la tienda dejaría de ver su FAQ).
@@ -233,7 +233,7 @@ for (const t of termsFilas) {
     problemas.push(`terms ${t.id}: type '${t.type}' fuera del CHECK`);
 }
 
-// ── Reembolsos: políticas y motivos (US-48) ──────────────────────────────
+// ── Reembolsos: políticas y motivos ──────────────────────────────────────
 for (const p of refundPolicies) {
   if (!['vendor', 'customer'].includes(p.target))
     problemas.push(`refund_policies ${p.id}: target '${p.target}' fuera del CHECK`);
@@ -249,7 +249,7 @@ for (const r of refundReasons) {
     problemas.push(`refund_reasons ${r.id}: sin created_at/updated_at (el contrato los emite)`);
 }
 
-// ── Configuración fiscal y de envío (US-49) ──────────────────────────────
+// ── Configuración fiscal y de envío ──────────────────────────────────────
 // settings.options.taxClass/shippingClass apuntan al id 1 como texto: si el
 // mock dejara de traerlo, los selectores del admin quedarían sin resolver.
 for (const [nombre, filas, campo] of [['taxes', taxes, 'rate'], ['shippings', shippings, 'amount']]) {
@@ -264,7 +264,7 @@ for (const s of shippings) {
     problemas.push(`shippings ${s.id}: type '${s.type}' fuera del CHECK`);
 }
 
-// ── Atributos de producto (US-50) ────────────────────────────────────────
+// ── Atributos de producto ────────────────────────────────────────────────
 // El attribute_id de cada valor sale del PADRE iterado, no del campo del
 // hijo: si los dos no coinciden, el JSON es incoherente y se para.
 const valoresAtributo = attributes.flatMap((a) => (a.values ?? []).map((v) => ({ ...v, _padre: a.id })));
@@ -281,7 +281,7 @@ for (const v of valoresAtributo) {
 if (new Set(valoresAtributo.map((v) => `${v._padre}:${v.slug}`)).size !== valoresAtributo.length)
   problemas.push('attribute_values: slug duplicado dentro de un atributo');
 
-// ── Identidad referenciada por el mock (D-4 del Épico 46) ────────────────
+// ── Identidad referenciada por el mock ───────────────────────────────────
 // Los mocks que no son users.json apuntan a ids de usuario del Laravel
 // original que el seed no tiene (6 = admin@demo.com, que aquí es el 3).
 // Contrato de resolverUsuarioPorEmail(snapshot, donde):
@@ -289,15 +289,15 @@ if (new Set(valoresAtributo.map((v) => `${v._padre}:${v.slug}`)).size !== valore
 //     `customer` embebido…) y una descripción de dónde salió, para el error;
 //   · busca el email case-insensitive entre los usuarios que el generador
 //     siembra y devuelve SU id, nunca el `id` del snapshot;
-//   · email conocido ⇒ remapea (US-51);
-//   · email desconocido ⇒ SIEMBRA el usuario (US-54) con el id, name,
+//   · email conocido ⇒ remapea;
+//   · email desconocido ⇒ SIEMBRA el usuario con el id, name,
 //     is_active y timestamps del snapshot, la contraseña demo y el permiso
 //     `customer`, sin perfil. Queda en `usuariosSembrados` y los siguientes
 //     snapshots con ese email ya lo remapean;
 //   · email ausente, id del snapshot no válido u ocupado por OTRO email ⇒
 //     anota el problema y devuelve null: la generación se detiene antes de
 //     escribir seed.sql;
-//   · `permisosExtra` (US-63, opcional): nombres de permiso que el usuario
+//   · `permisosExtra` (opcional): nombres de permiso que el usuario
 //     SEMBRADO recibe además de `customer` (los owners de ownership-transfer
 //     son dueños de tienda: `store_owner`). No toca a un usuario conocido.
 const PERMISO_CUSTOMER = permissionsCatalogo.find((p) => p.name === 'customer').id;
@@ -340,7 +340,7 @@ function resolverUsuarioPorEmail(snapshot, donde, permisosExtra = []) {
   return id;
 }
 
-// ── Avisos de tienda (US-51) ─────────────────────────────────────────────
+// ── Avisos de tienda ─────────────────────────────────────────────────────
 // created_by/updated_by vienen como el id 6 del mock: se resuelven vía
 // creator.email (updated_by solo existe en el aviso 2, y es el mismo admin).
 const avisos = storeNotices.map((n) => {
@@ -369,10 +369,10 @@ for (const n of avisos) {
     problemas.push(`store_notices ${n.id}: trae shops[] y el generador no los siembra todavía`);
 }
 
-// ── Cupones (US-52) ──────────────────────────────────────────────────────
+// ── Cupones ──────────────────────────────────────────────────────────────
 // is_valid NO se siembra: la API lo calcula desde la vigencia. user_id es
 // null en las 10 filas del mock; si alguna lo trajera, tendría que pasar por
-// resolverUsuarioPorEmail (D-4) y aquí no hay snapshot con email.
+// resolverUsuarioPorEmail y aquí no hay snapshot con email.
 if (new Set(coupons.map((c) => c.code)).size !== coupons.length)
   problemas.push('coupons: code duplicado');
 for (const c of coupons) {
@@ -386,11 +386,10 @@ for (const c of coupons) {
     problemas.push(`coupons ${c.id}: trae user_id y no hay snapshot para resolverlo por email`);
 }
 
-// Vigencia desplazada (US-68, decisión del dueño 2026-10-23: opción (b), +5
-// años). Las fechas del mock vencieron entre 2024-03 y 2025-05, así que con
-// is_valid calculado (US-52) el shop no mostraba ofertas. Los registros son
-// los del mock y solo se transforman sus fechas, como el remapeo por email
-// (D-4) o fechaUtc (US-56); duración y orden relativo se conservan. La
+// Vigencia desplazada +5 años. Las fechas del mock vencieron entre 2024-03
+// y 2025-05, así que con is_valid calculado el shop no mostraba ofertas. Los
+// registros son los del mock y solo se transforman sus fechas, como el
+// remapeo por email o fechaUtc; duración y orden relativo se conservan. La
 // constante es fija para que seed.sql sea determinista: cuando vuelvan a
 // vencer (desde 2029-03-28), se sube.
 const DESPLAZAMIENTO_CUPONES_ANIOS = 5;
@@ -416,12 +415,12 @@ const fueraDeVigencia = cuponesSembrados.filter(
 if (fueraDeVigencia.length)
   console.warn(
     `AVISO coupons: fuera de vigencia hoy: ${fueraDeVigencia.map((c) => c.code).join(', ')}; ` +
-      'sube DESPLAZAMIENTO_CUPONES_ANIOS (US-68).'
+      'sube DESPLAZAMIENTO_CUPONES_ANIOS.'
   );
 
-// ── Lista de deseos (US-53) ──────────────────────────────────────────────
+// ── Lista de deseos ──────────────────────────────────────────────────────
 // Las filas de wishlists.json son PRODUCTOS sin dueño (no hay user_id ni
-// pivote). El seed se las da al único cliente, resuelto por email (D-4). El
+// pivote). El seed se las da al único cliente, resuelto por email. El
 // orden del archivo (id DESC) se fija con un created_at determinista: la
 // fila i recibe base + (N - i) minutos, así ORDER BY created_at DESC lo
 // reproduce.
@@ -434,7 +433,7 @@ for (const w of wishlists) {
 if (new Set(wishlists.map((w) => w.id)).size !== wishlists.length)
   problemas.push('wishlists: producto repetido para el mismo usuario');
 
-// ── Reseñas y reportes de abuso (US-54) ──────────────────────────────────
+// ── Reseñas y reportes de abuso ──────────────────────────────────────────
 // El autor sale del `user` embebido por email: customer@demo.com remapea al
 // 2 del seed; customer2/customer3 (4 y 5) no existen y el helper los siembra.
 // shop_id debe ser la tienda del producto (la API lo exige al crear).
@@ -471,10 +470,10 @@ for (const a of reportes) {
   if (!a.message) problemas.push(`abusive_reports ${a.id}: message vacío`);
 }
 
-// ── Preguntas sobre productos (US-55) ────────────────────────────────────
+// ── Preguntas sobre productos ────────────────────────────────────────────
 // Autores 2 y 4: el 4 (customer2) ya lo sembró el bloque de reseñas, así que
-// el helper solo REMAPEA. Si tuviera que sembrar aquí, US-54 no está
-// aplicada (o el mock cambió): se para. Sin UNIQUE (user, product): el mock
+// el helper solo REMAPEA. Si tuviera que sembrar aquí, el bloque de reseñas
+// no lo sembró (o el mock cambió): se para. Sin UNIQUE (user, product): el mock
 // trae varios pares repetidos legítimos.
 const sembradosAntesDePreguntas = usuariosSembrados.length;
 const preguntas = questions.map((q) => ({
@@ -482,7 +481,7 @@ const preguntas = questions.map((q) => ({
   _user_id: resolverUsuarioPorEmail(q.user, `questions ${q.id}.user`),
 }));
 for (const s of usuariosSembrados.slice(sembradosAntesDePreguntas))
-  problemas.push(`questions: el autor '${s.email}' no existía; debería venir sembrado por las reseñas (US-54)`);
+  problemas.push(`questions: el autor '${s.email}' no existía; debería venir sembrado por las reseñas`);
 for (const q of preguntas) {
   if (!tiendaDeProducto.has(q.product_id))
     problemas.push(`questions ${q.id}: producto ${q.product_id} inexistente`);
@@ -491,13 +490,13 @@ for (const q of preguntas) {
   if (!q.question) problemas.push(`questions ${q.id}: question vacía`);
 }
 
-// ── Mensajería cliente ↔ tienda (US-56) ──────────────────────────────────
+// ── Mensajería cliente ↔ tienda ──────────────────────────────────────────
 // conversations.json es sabor GraphQL: ids como string y fechas mezcladas.
 // Las "YYYY-MM-DD HH:mm:ss" sin zona se fijan en UTC explícito (se añade la
 // Z) para no depender de la zona del servidor que aplique el seed.
 // El usuario 6 del mock (admin@demo.com) se resuelve por email al 3. En
 // messages.json el autor 6 es el `user` de la conversación embebida; el
-// autor 1 ya existe en el seed. Esta US no siembra usuarios.
+// autor 1 ya existe en el seed. Este bloque no siembra usuarios.
 const fechaUtc = (v) => (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(v ?? '') ? `${v.replace(' ', 'T')}Z` : v);
 const sembradosAntesDeMensajeria = usuariosSembrados.length;
 const conversaciones = conversations.map((c) => ({
@@ -520,7 +519,7 @@ const mensajes = messages.map((m) => {
   return { ...m, _user_id: userId };
 });
 for (const s of usuariosSembrados.slice(sembradosAntesDeMensajeria))
-  problemas.push(`conversations/messages: '${s.email}' no existía; esta US no siembra usuarios`);
+  problemas.push(`conversations/messages: '${s.email}' no existía; este bloque no siembra usuarios`);
 for (const c of conversaciones) {
   if (!Number.isSafeInteger(c._id)) problemas.push(`conversations: id '${c.id}' no es numérico`);
   if (!idsFinalesShops.has(c._shop_id)) problemas.push(`conversations ${c.id}: shop_id ${c.shop_id} inexistente`);
@@ -533,8 +532,8 @@ for (const m of mensajes) {
   if (!String(m.body ?? '').trim()) problemas.push(`messages ${m.id}: body vacío`);
 }
 
-// ── Estados de pedido (US-57) ──────────────────────────────────────────
-// Ids y fechas del mock (D-3). Slug y serial son UNIQUE en el esquema y el
+// ── Estados de pedido ──────────────────────────────────────────────────
+// Ids y fechas del mock. Slug y serial son UNIQUE en el esquema y el
 // color tiene una CHECK: se validan aquí para fallar antes de emitir.
 const COLOR_HEX = /^#[0-9a-fA-F]{6}$/;
 if (new Set(orderStatuses.map((o) => o.slug)).size !== orderStatuses.length)
@@ -548,11 +547,11 @@ for (const o of orderStatuses) {
   if (!o.created_at || !o.updated_at) problemas.push(`order_statuses ${o.id}: sin created_at/updated_at`);
 }
 
-// ── Órdenes (US-58) ──────────────────────────────────────────────────────
+// ── Órdenes ──────────────────────────────────────────────────────────────
 // orders.json trae 20 padres con sus hijas en children[]. Se aplanan: cada
 // padre y después su hija. El cliente se resuelve por el email del
 // `customer` embebido (el 6 del mock es admin@demo.com = 3); el snapshot va
-// verbatim. Esta US no siembra usuarios.
+// verbatim. Este bloque no siembra usuarios.
 const PAYMENT_GATEWAYS = ['STRIPE', 'CASH_ON_DELIVERY', 'CASH', 'FULL_WALLET_PAYMENT', 'PAYPAL', 'RAZORPAY'];
 const ORDER_STATUSES = [
   'order-pending', 'order-processing', 'order-completed', 'order-cancelled',
@@ -570,7 +569,7 @@ for (const padre of orders) {
 }
 for (const o of ordenes) o._customer_id = o.customer ? resolverUsuarioPorEmail(o.customer, `orders ${o.id}.customer`) : null;
 for (const s of usuariosSembrados.slice(sembradosAntesDeOrdenes))
-  problemas.push(`orders: '${s.email}' no existía; esta US no siembra usuarios`);
+  problemas.push(`orders: '${s.email}' no existía; este bloque no siembra usuarios`);
 const idsOrdenes = new Set(ordenes.map((o) => o.id));
 if (idsOrdenes.size !== ordenes.length) problemas.push('orders: id duplicado');
 if (new Set(ordenes.map((o) => o.tracking_number)).size !== ordenes.length)
@@ -601,7 +600,7 @@ for (const o of ordenes) {
   }
 }
 
-// ── Descargas digitales (US-60) ──────────────────────────────────────────
+// ── Descargas digitales ──────────────────────────────────────────────────
 // order-files.json solo trae el id del cliente (2), sin snapshot con email:
 // tiene que ser un usuario ya sembrado. order_id es null en las 10 filas.
 const idsUsuariosSembrados = new Set([...emailPorId.keys()]);
@@ -616,7 +615,7 @@ for (const f of orderFiles) {
   if (!f.file || typeof f.file !== 'object') problemas.push(`order_files ${f.id}: sin file`);
 }
 
-// ── Retiros (US-62) ──────────────────────────────────────────────────────
+// ── Retiros ──────────────────────────────────────────────────────────────
 // status es la minúscula del dato: 'Pending' (el TitleCase de la entidad) no
 // pasa el CHECK. El snapshot `shop` no se siembra: la API lo proyecta.
 const ESTADOS_RETIRO = ['pending', 'approved', 'on_hold', 'rejected', 'processing'];
@@ -629,10 +628,10 @@ for (const w of withdraws) {
   if (!w.payment_method) problemas.push(`withdraws ${w.id}: sin payment_method`);
 }
 
-// ── Transferencias de propiedad (US-63) ──────────────────────────────────
+// ── Transferencias de propiedad ──────────────────────────────────────────
 // Los owners traen snapshot con email: se resuelven con el helper y, si son
 // nuevos, se siembran con 'store_owner'. created_by trae solo el id: se
-// remapea por la tabla de D-4. Un owner cuyo email ya existe en el seed solo
+// remapea por REMAPEO_ID_MOCK. Un owner cuyo email ya existe en el seed solo
 // se acepta si su id del mock está en esa tabla y apunta a ese usuario (o si
 // lo sembró una fila anterior de este mismo bloque); si no, es otra persona
 // con el mismo email (también en otra caja) y se para.
@@ -653,7 +652,7 @@ for (const t of transferencias) {
   t._current_owner_id = resolverOwner(t.current_owner, `ownership_transfers ${t.id}.current_owner`);
   t._created_by = REMAPEO_ID_MOCK.get(t.created_by) ?? null;
   if (t._created_by === null)
-    problemas.push(`ownership_transfers ${t.id}: created_by ${t.created_by} sin entrada en la tabla de remapeo (D-4)`);
+    problemas.push(`ownership_transfers ${t.id}: created_by ${t.created_by} sin entrada en la tabla de remapeo`);
   if (t._previous_owner_id !== null && t._previous_owner_id === t._current_owner_id)
     problemas.push(`ownership_transfers ${t.id}: previous_owner y current_owner son el mismo usuario`);
   if (!/^\d{4}-\d{2}-\d{2}-\d{4}$/.test(t.transaction_identifier ?? ''))
@@ -665,9 +664,9 @@ if (new Set(transferencias.map((t) => t.transaction_identifier)).size !== transf
   problemas.push('ownership_transfers: transaction_identifier duplicado');
 const ownersSembrados = usuariosSembrados.slice(sembradosAntesDeTransferencias);
 
-// ── Autores (US-93) ──────────────────────────────────────────────────────
+// ── Autores ──────────────────────────────────────────────────────────────
 // Globales del catálogo (sin shop_id). products_count se siembra tal cual:
-// products no tiene author_id (DA-3/DA-4 del Épico 92).
+// products no tiene author_id (products.json no lo trae).
 for (const a of authors) {
   if (!a.name) problemas.push(`authors ${a.id}: sin name`);
   if (!a.slug) problemas.push(`authors ${a.id}: sin slug`);
@@ -681,9 +680,9 @@ for (const a of authors) {
 if (new Set(authors.map((a) => a.slug)).size !== authors.length)
   problemas.push('authors: slug duplicado');
 
-// ── Ventas flash (US-94) ─────────────────────────────────────────────────
+// ── Ventas flash ─────────────────────────────────────────────────────────
 // La tabla puente sale de los products[].id de la venta ITERADA, nunca de
-// products[].pivot.flash_sale_id: en la venta 1 del mock vale 3 (V-2).
+// products[].pivot.flash_sale_id: en la venta 1 del mock vale 3.
 const TIPOS_FLASH_SALE = ['percentage', 'fixed_rate'];
 const FECHA_VENTA = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 const flashSaleProductos = flashSales.flatMap((f) =>
@@ -798,7 +797,7 @@ L.push(
 );
 
 // users --------------------------------------------------------------------
-// Identidad antes que shops (US-20): shops.owner_id ahora es una FK real.
+// Identidad antes que shops: shops.owner_id es una FK real.
 bloque(`users — ${users.length} usuarios demo (ids preservados del mock)`);
 L.push(
   '-- password_hash usa HASH_DEMO (arriba): los 3 comparten la contraseña',
@@ -820,7 +819,7 @@ L.push(
 bloque(`profiles — ${users.filter((u) => u.profile).length} (1:1 con users, PK = user_id)`);
 L.push(
   '-- `profile.id` del mock NO se persiste: admin y customer declaran ambos',
-  '-- profile.id = 2, y la PK real es user_id (D-4).',
+  '-- profile.id = 2, y la PK real es user_id.',
   'INSERT INTO profiles (user_id, avatar, bio, socials, contact, notifications) VALUES'
 );
 L.push(
@@ -845,10 +844,10 @@ L.push(
 );
 
 // permission_user ----------------------------------------------------------
-bloque(`permission_user — ${asignaciones.length} asignaciones reales (D-5: user_id del usuario iterado)`);
+bloque(`permission_user — ${asignaciones.length} asignaciones reales (user_id del usuario iterado)`);
 L.push(
   '-- NUNCA permissions[].pivot.model_id: el de admin vale 6, que no es un',
-  '-- usuario real y violaría esta misma FK (R-1).',
+  '-- usuario real y violaría esta misma FK.',
   'INSERT INTO permission_user (user_id, permission_id) VALUES'
 );
 L.push(
@@ -857,7 +856,7 @@ L.push(
     .join(',\n') + '\nON CONFLICT (user_id, permission_id) DO NOTHING;'
 );
 
-// usuarios sembrados por el helper de identidad (US-54, D-4) ----------------
+// usuarios sembrados por el helper de identidad ----------------------------
 bloque(
   `users sembrados desde snapshots — ${usuariosSembrados.length} ` +
     `(${usuariosSembrados.map((u) => `${u.id} ${u.email}`).join(', ')})`
@@ -866,7 +865,7 @@ L.push(
   '-- No están en users.json: los referencian los `user` embebidos de otros',
   '-- mocks (reviews.json). Id, nombre y timestamps del snapshot, contraseña',
   "-- demo y permiso 'customer'; sin perfil. El setval de users cubre el máximo.",
-  "-- Los owners de ownership-transfer.json (US-63) llevan además 'store_owner':",
+  "-- Los owners de ownership-transfer.json llevan además 'store_owner':",
   '-- en el mock son dueños de tienda, y sin él no salen en /vendors/list.',
   'INSERT INTO users (id, name, email, password_hash, is_active, email_verified_at, created_at, updated_at) VALUES'
 );
@@ -906,7 +905,7 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// shop_staff (US-41, orden obligatorio: referencia shops recién insertadas) -
+// shop_staff (orden obligatorio: referencia shops recién insertadas) -------
 bloque(`shop_staff — ${staffAsignaciones.length} asignaciones deterministas (array literal, no del mock)`);
 L.push(
   'INSERT INTO shop_staff (user_id, shop_id) VALUES',
@@ -914,18 +913,18 @@ L.push(
     '\nON CONFLICT (user_id, shop_id) DO NOTHING;'
 );
 
-// US-101: el permiso global 'staff' refleja si el usuario es staff de alguna
+// El permiso global 'staff' refleja si el usuario es staff de alguna
 // tienda. Es la misma regla que aplican createShopStaff y removeShopStaff en
 // @safari/db. Sin él, el admin no deja entrar a un staff.
 const usuariosStaff = [...new Set(staffAsignaciones.map((s) => s.user_id))].sort((a, b) => a - b);
 L.push(
-  `-- Permiso 'staff' para los ${usuariosStaff.length} usuarios con fila en shop_staff (US-101).`,
+  `-- Permiso 'staff' para los ${usuariosStaff.length} usuarios con fila en shop_staff.`,
   'INSERT INTO permission_user (user_id, permission_id) VALUES',
   usuariosStaff.map((id) => `  (${id}, ${idPermiso('staff')})`).join(',\n') +
     '\nON CONFLICT (user_id, permission_id) DO NOTHING;'
 );
 
-// faqs (US-47; tras shops y users: las dos FK lo exigen) -------------------
+// faqs (tras shops y users: las dos FK lo exigen) -------------------------
 const faqsDeTienda = faqsFilas.filter((f) => f._shop_id != null).length;
 bloque(`faqs — ${faqsFilas.length} (${faqsFilas.length - faqsDeTienda} globales, ${faqsDeTienda} de tienda)`);
 L.push(
@@ -944,7 +943,7 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// terms_and_conditions (US-47) -----------------------------------------------
+// terms_and_conditions -------------------------------------------------------
 bloque(
   `terms_and_conditions — ${termsFilas.length} de ${termsAndConditions.length} ` +
     `(${termsDescartados.length} copias exactas descartadas por slug)`
@@ -965,7 +964,7 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// refund_policies (US-48) -----------------------------------------------------
+// refund_policies -------------------------------------------------------------
 bloque(`refund_policies — ${refundPolicies.length}`);
 L.push(
   '-- shop_id queda NULL: el mock no lo trae. Sin timestamps del mock (el',
@@ -982,11 +981,11 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// refund_reasons (US-48) ------------------------------------------------------
+// refund_reasons --------------------------------------------------------------
 bloque(`refund_reasons — ${refundReasons.length} (con las fechas del mock)`);
 L.push(
-  '-- Primer bloque que inserta created_at/updated_at del mock (D-3 del Épico',
-  '-- 46): el contrato los emite y el DEFAULT now() los cambiaría en cada reset.',
+  '-- Primer bloque que inserta created_at/updated_at del mock: el contrato',
+  '-- los emite y el DEFAULT now() los cambiaría en cada reset.',
   'INSERT INTO refund_reasons (id, name, slug, language, created_at, updated_at) VALUES'
 );
 L.push(
@@ -999,7 +998,7 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// taxes / shippings (US-49) ---------------------------------------------------
+// taxes / shippings -----------------------------------------------------------
 bloque(`taxes — ${taxes.length} · shippings — ${shippings.length} (ids y fechas del mock)`);
 L.push(
   '-- El id 1 lo referencian settings.options.taxClass/shippingClass (texto, sin',
@@ -1028,7 +1027,7 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// attributes / attribute_values (US-50; tras shops: la FK lo exige) ---------
+// attributes / attribute_values (tras shops: la FK lo exige) ---------------
 bloque(`attributes — ${attributes.length} · attribute_values — ${valoresAtributo.length}`);
 L.push(
   '-- Slugs tal cual, incluidas las mayúsculas del mock (color-OMG, size-zLh,',
@@ -1053,7 +1052,7 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// store_notices + pivotes (US-51; tras users y shops: las FK lo exigen) ------
+// store_notices + pivotes (tras users y shops: las FK lo exigen) ------------
 const lecturas = avisos.flatMap((n) => n._lecturas.map((l) => ({ ...l, notice: n.id })));
 bloque(
   `store_notices — ${avisos.length} · store_notice_user — ${avisos.reduce((s, n) => s + n._destinatarios.length, 0)} · ` +
@@ -1093,9 +1092,9 @@ L.push(
     .join(',\n') + '\nON CONFLICT (store_notice_id, user_id) DO NOTHING;'
 );
 
-// coupons (US-52; tras shops: la FK lo exige) --------------------------------
+// coupons (tras shops: la FK lo exige) --------------------------------------
 bloque(
-  `coupons — ${coupons.length} (vigencia del mock + ${DESPLAZAMIENTO_CUPONES_ANIOS} años, US-68; is_valid se calcula en la API)`
+  `coupons — ${coupons.length} (vigencia del mock + ${DESPLAZAMIENTO_CUPONES_ANIOS} años; is_valid se calcula en la API)`
 );
 L.push(
   '-- target/is_approve llegan como entero 1/0 -> bool(). image va a una columna',
@@ -1173,7 +1172,7 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// ranking (US-5) ───────────────────────────────────────────────────────
+// ranking ──────────────────────────────────────────────────────────────
 // `products.json` no trae `ratings`/`total_reviews`/`sold_quantity` para
 // ningún producto: sin esto no hay criterio por el que ordenar "popular" ni
 // "más vendido" (0 filas con ratings>0, 2/1200 con sold_quantity>0). Los dos
@@ -1231,7 +1230,7 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// wishlists (US-53; tras products y users: las FK lo exigen) -----------------
+// wishlists (tras products y users: las FK lo exigen) -----------------------
 bloque(`wishlists — ${wishlists.length} (todas de ${DUENO_WISHLIST}, id ${duenoWishlist})`);
 L.push(
   '-- El mock no trae dueño: se eligió al único cliente del seed. created_at',
@@ -1248,10 +1247,10 @@ L.push(
     .join(',\n') + '\nON CONFLICT (user_id, product_id) DO NOTHING;'
 );
 
-// reviews / abusive_reports (US-54; tras users, sembrados y products) --------
+// reviews / abusive_reports (tras users, sembrados y products) --------------
 bloque(`reviews — ${resenas.length} · abusive_reports — ${reportes.length}`);
 L.push(
-  '-- user_id resuelto por email (D-4). photos va a una columna json (no jsonb)',
+  '-- user_id resuelto por email. photos va a una columna json (no jsonb)',
   '-- para conservar el orden de claves. Contadores y fechas del mock.',
   'INSERT INTO reviews (id, order_id, user_id, shop_id, product_id, variation_option_id, comment, rating, photos,',
   '                     positive_feedbacks_count, negative_feedbacks_count, created_at, updated_at) VALUES'
@@ -1281,10 +1280,10 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// questions (US-55; tras users, sembrados y products) -------------------------
+// questions (tras users, sembrados y products) -------------------------------
 bloque(`questions — ${preguntas.length}`);
 L.push(
-  '-- user_id resuelto por email (D-4). Respuesta, contadores y fechas del mock.',
+  '-- user_id resuelto por email. Respuesta, contadores y fechas del mock.',
   'INSERT INTO questions (id, user_id, shop_id, product_id, question, answer,',
   '                       positive_feedbacks_count, negative_feedbacks_count, created_at, updated_at) VALUES'
 );
@@ -1299,7 +1298,7 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// conversations / messages (US-56; tras users y shops) -----------------------
+// conversations / messages (tras users y shops) -----------------------------
 bloque(`conversations — ${conversaciones.length} · messages — ${mensajes.length}`);
 L.push(
   '-- Ids del mock convertidos a número. shop_id sale de conversations.json, no',
@@ -1326,7 +1325,7 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// order_statuses (US-57; sin FK) --------------------------------------------
+// order_statuses (sin FK) --------------------------------------------------
 bloque(`order_statuses — ${orderStatuses.length}`);
 L.push(
   '-- Ids, seriales y fechas del mock. translated_languages no es columna.',
@@ -1342,11 +1341,11 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// orders / order_products (US-58; tras users, shops, products y coupons) ---
+// orders / order_products (tras users, shops, products y coupons) ---------
 const lineas = ordenes.flatMap((o) => o.products.map((p, i) => ({ orden: o, producto: p, lineNo: i + 1 })));
 bloque(`orders — ${ordenes.length} (${orders.length} padres + ${ordenes.length - orders.length} hijas) · order_products — ${lineas.length}`);
 L.push(
-  '-- Padre y después su hija. customer_id resuelto por email (D-4); el customer',
+  '-- Padre y después su hija. customer_id resuelto por email; el customer',
   '-- embebido va verbatim a customer_snapshot. Dinero tal cual (hay 3',
   '-- decimales). updated_at = created_at: el mock no lo trae.',
   'INSERT INTO orders (id, tracking_number, parent_id, customer_id, customer_contact, customer_name,',
@@ -1390,7 +1389,7 @@ L.push(
     .join(',\n') + '\nON CONFLICT (order_id, line_no) DO NOTHING;'
 );
 
-// order_files (US-60; tras users y orders) ----------------------------------
+// order_files (tras users y orders) ----------------------------------------
 bloque(`order_files — ${orderFiles.length}`);
 L.push(
   '-- Ids y fechas del mock. file va verbatim en json (no jsonb): conserva el',
@@ -1407,7 +1406,7 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// withdraws (US-62; tras shops) ---------------------------------------------
+// withdraws (tras shops) ---------------------------------------------------
 bloque(`withdraws — ${withdraws.length}`);
 L.push(
   '-- Ids y fechas del mock. Sin el snapshot shop ni deleted_at: la API los emite.',
@@ -1423,14 +1422,14 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// ownership_transfers (US-63; tras users) ------------------------------------
+// ownership_transfers (tras users) ------------------------------------------
 bloque(
   `ownership_transfers — ${transferencias.length} (owners sembrados: ` +
     `${ownersSembrados.map((u) => u.id).join(', ')})`
 );
 L.push(
   '-- Ids del mock. previous/current_owner y created_by resueltos por email y por',
-  '-- la tabla de D-4 (el 6 del mock es admin@demo.com = 3 aquí). shop_id NULL:',
+  '-- la tabla de remapeo (el 6 del mock es admin@demo.com = 3 aquí). shop_id NULL:',
   '-- el mock no lo trae. balance_info va verbatim en json (no jsonb): es la foto',
   '-- histórica del balance y el orden de sus claves es contrato; payment_info',
   '-- sigue siendo un string dentro. El mock no trae timestamps: se derivan del',
@@ -1451,12 +1450,12 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// authors (US-93) -------------------------------------------------------------
+// authors ---------------------------------------------------------------------
 bloque(`authors — ${authors.length}`);
 L.push(
   '-- Ids del mock. Sin timestamps en el mock: toman now(), y la API no los emite.',
   '-- socials, image y cover_image van verbatim en json (el orden de claves es',
-  '-- contrato). products_count es el dato del mock, no un conteo (DA-4).',
+  '-- contrato). products_count es el dato del mock, no un conteo.',
   'INSERT INTO authors (id, name, slug, bio, quote, born, death, languages, socials, image, cover_image, products_count, is_approved, language) VALUES'
 );
 L.push(
@@ -1470,12 +1469,13 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 
-// flash_sales + flash_sale_products (US-94) -----------------------------------
+// flash_sales + flash_sale_products -----------------------------------------
 bloque(`flash_sales — ${flashSales.length}; flash_sale_products — ${flashSaleProductos.length}`);
 L.push(
-  '-- Ids y timestamps del mock (D-3). start_date/end_date sin zona, como el mock.',
+  '-- Ids y timestamps del mock. start_date/end_date sin zona, como el mock.',
   '-- sale_builder, image y cover_image verbatim en json (el orden de claves es',
-  '-- contrato). products-by-flash-sale.json NO se siembra (DA-6 del épico).',
+  '-- contrato). products-by-flash-sale.json NO se siembra: la tabla puente sale',
+  '-- de flash-sale.json.',
   'INSERT INTO flash_sales (id, title, slug, description, start_date, end_date, sale_status, type, rate, sale_builder, image, cover_image, language, created_at, updated_at) VALUES'
 );
 L.push(
@@ -1489,7 +1489,7 @@ L.push(
     .join(',\n') + '\nON CONFLICT (id) DO NOTHING;'
 );
 L.push(
-  '-- Los products[].id de cada venta; el pivot.flash_sale_id del mock se ignora (V-2).',
+  '-- Los products[].id de cada venta; el pivot.flash_sale_id del mock se ignora.',
   'INSERT INTO flash_sale_products (flash_sale_id, product_id) VALUES'
 );
 L.push(

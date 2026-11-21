@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `ConversationsService` (US-56). Solo se mockea el
+ * Tests unitarios de `ConversationsService`. Solo se mockea el
  * acceso a datos; los proyectores son los reales.
  */
 import 'reflect-metadata';
@@ -152,7 +152,7 @@ describe('ConversationsService', () => {
       expect(dto.latest_message).toBeNull();
     });
 
-    it('US-64: la lectura apaga unseen y un mensaje posterior lo vuelve a encender', async () => {
+    it('la lectura apaga unseen y un mensaje posterior lo vuelve a encender', async () => {
       findMock.mockResolvedValue(makeConversation({ lastSeenAt: AT }));
       expect((await service.getConversation('1', OWNER)).unseen).toBe(0);
       findMock.mockResolvedValue(

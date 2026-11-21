@@ -1,5 +1,5 @@
 /**
- * store-notices.repository.ts — avisos de tienda y su estado de lectura (US-51).
+ * store-notices.repository.ts — avisos de tienda y su estado de lectura.
  *
  * Un aviso va dirigido según su `type`:
  *   · all_vendor      → todos los usuarios con permiso `store_owner`;

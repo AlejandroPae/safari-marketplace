@@ -46,23 +46,22 @@ import { User } from '#src/users/entities/user.entity.js';
 import { toUserDto } from '#src/users/user-dto.mapper.js';
 import { oneLine } from '#src/common/logging.js';
 
-// Un solo mensaje para los tres casos que no deben distinguirse (D-4 del
-// épico, extendido por el spec): contraseña mala, email inexistente,
-// usuario inactivo. Diferenciar el texto sería en sí mismo una forma de
-// enumeración de cuentas.
+// Un solo mensaje para los tres casos que no deben distinguirse: contraseña
+// mala, email inexistente, usuario inactivo. Diferenciar el texto sería en
+// sí mismo una forma de enumeración de cuentas.
 const INVALID_CREDENTIALS_MESSAGE = 'Las credenciales no son válidas.';
 
-// Literal heredado del mock (CA-2/CA-6): una sola constante para que las dos
+// Literal heredado del mock: una sola constante para que las dos
 // ramas de `forgetPassword` (email existente / inexistente) construyan el
 // mismo cuerpo desde la misma fuente, nunca desde dos literales que puedan
 // divergir al editarse.
 const PASSWORD_CHANGE_SUCCESS_MESSAGE = 'Password change successful';
 
-// D6/CA-6: mensaje de fallo de dominio para token/código inválido, vencido
+// Mensaje de fallo de dominio para token/código inválido, vencido
 // o ya consumido — la misma clave para las tres causas (no se distinguen).
 const INVALID_TOKEN_MESSAGE = 'PICKBAZAR_MESSAGE.INVALID_TOKEN';
 
-// Precedencia de `role` sobre `permissions[]` (Decisión F, design.md).
+// Precedencia de `role` sobre `permissions[]`.
 // Decorativa: ningún `hasAccess()` de los frontends la lee, pero el admin
 // la guarda en cookie (`login-form.tsx:48`).
 const ROLE_PRECEDENCE = [
@@ -83,7 +82,7 @@ export class AuthService {
   constructor(private readonly jwtService: JwtService) {}
 
   async login(loginInput: LoginDto): Promise<AuthResponse> {
-    // Guarda R-5: `LoginDto` es `PartialType`, ambos campos son opcionales.
+    // Guarda: `LoginDto` es `PartialType`, ambos campos son opcionales.
     // Sin esto, `bcryptjs.compare(undefined, hash)` lanza en vez de
     // devolver `false` — un body vacío sería un 500, no un 401.
     if (!loginInput.email || !loginInput.password) {
@@ -122,7 +121,7 @@ export class AuthService {
   }
 
   async register(createUserInput: RegisterDto): Promise<AuthResponse> {
-    // D-6: se ignora `createUserInput.permission` — aceptar un permiso del
+    // Se ignora `createUserInput.permission` — aceptar un permiso del
     // body sería escalada de privilegios. El registro concede SIEMPRE
     // `customer`, sin importar qué mande el cliente.
     const passwordHash = await bcrypt.hash(createUserInput.password, 10);
@@ -152,7 +151,7 @@ export class AuthService {
       permissions,
     });
 
-    // V-20: `role` se agrega a la respuesta de registro (el mock solo
+    // `role` se agrega a la respuesta de registro (el mock solo
     // devolvía `token`+`permissions`). Lo exige el spec.
     return { token, permissions, role: deriveRole(permissions) };
   }
@@ -173,7 +172,7 @@ export class AuthService {
       ));
 
     if (!oldPasswordMatches) {
-      // CA-5: contraseña actual equivocada devuelve `CoreResponse` con
+      // Contraseña actual equivocada devuelve `CoreResponse` con
       // `success: false`, NUNCA una excepción — es el shape que el
       // formulario de la tienda ya traduce (`change-password-form.tsx`).
       return {
@@ -194,10 +193,9 @@ export class AuthService {
   }
 
   /**
-   * CA-1/CA-2: email existente genera y persiste un token de recuperación
-   * hasheado; email inexistente responde EXACTAMENTE igual, sin fila ni
-   * log (D-4 del épico, sin enumeración de cuentas). La latencia difiere
-   * (Decisión E, design.md) — declarado, no mitigado (V-3).
+   * Email existente genera y persiste un token de recuperación hasheado;
+   * email inexistente responde EXACTAMENTE igual, sin fila ni log (sin
+   * enumeración de cuentas). La latencia difiere — declarado, no mitigado.
    */
   async forgetPassword(
     forgetPasswordInput: ForgetPasswordDto,
@@ -218,7 +216,8 @@ export class AuthService {
       createPasswordResetToken({ userId: creds.id, tokenHash, expiresAt }),
     );
 
-    // D5: advertencia de "sin envío real" en la MISMA emisión que el secreto.
+    // La advertencia de "sin envío real" va en la MISMA emisión que el
+    // secreto.
     this.logger.warn(
       `[forget-password] Implementación de desarrollo, SIN envío real de correo. ` +
         `Token en claro para ${
@@ -230,10 +229,10 @@ export class AuthService {
   }
 
   /**
-   * CA-3: `success:true` solo si, para el usuario resuelto del email, existe
+   * `success:true` solo si, para el usuario resuelto del email, existe
    * un token vivo (no vencido, no consumido) cuyo hash coincide. NO consume
-   * — repetible. Bucle secuencial con corte en la primera coincidencia
-   * (Decisión C/D, design.md): nunca `Promise.all`, acota el coste bcrypt.
+   * — repetible. Bucle secuencial con corte en la primera coincidencia:
+   * nunca `Promise.all`, acota el coste bcrypt.
    */
   async verifyForgetPasswordToken(
     verifyForgetPasswordTokenInput: VerifyForgetPasswordDto,
@@ -267,7 +266,7 @@ export class AuthService {
   }
 
   /**
-   * CA-4: mismo bucle de comparación que `verifyForgetPasswordToken`. La
+   * Mismo bucle de comparación que `verifyForgetPasswordToken`. La
    * primera coincidencia se consume con un UPDATE condicional ANTES de
    * cambiar el hash — si el cambio de hash fallara después, el token queda
    * quemado y el usuario pide otro (falla en la dirección segura).
@@ -317,13 +316,13 @@ export class AuthService {
     return { success: true, message: PASSWORD_CHANGE_SUCCESS_MESSAGE };
   }
 
-  // Stub declarado por D-11 del épico: requiere credenciales OAuth externas. La
-  // respuesta fija de abajo no cambia.
+  // Stub declarado: requiere credenciales OAuth externas. La respuesta fija de
+  // abajo no cambia.
   async socialLogin(socialLoginDto: SocialLoginDto): Promise<AuthResponse> {
-    // US-99, DA-1: solo el proveedor. Nunca el `access_token`: con el login
-    // de Google de US-70 activo, es el token real del usuario.
+    // Solo el proveedor. Nunca el `access_token`: con el login de Google
+    // activo, es el token real del usuario.
     this.logger.warn(
-      `social-login es un stub (D-11): provider=${oneLine(String(socialLoginDto?.provider ?? ''))}`,
+      `social-login es un stub: provider=${oneLine(String(socialLoginDto?.provider ?? ''))}`,
     );
     return {
       token: 'jwt token',
@@ -333,9 +332,9 @@ export class AuthService {
   }
 
   /**
-   * D2: la identidad se resuelve SOLO por `phone_number` vía
+   * La identidad se resuelve SOLO por `phone_number` vía
    * `findUserIdByProfileContact` — `name`/`email` del body se ignoran a
-   * propósito y NUNCA crea cuentas. D6: toda causa de fallo (código
+   * propósito y NUNCA crea cuentas. Toda causa de fallo (código
    * inválido, teléfono no coincidente, teléfono ambiguo/sin perfil, usuario
    * inactivo, o carrera perdida al consumir) lanza el MISMO
    * `UnauthorizedException` genérico de `login()` — nunca `CoreResponse`.
@@ -393,7 +392,7 @@ export class AuthService {
   }
 
   /**
-   * CA-5: `success:true` solo si `otp_id` corresponde a una fila viva cuyo
+   * `success:true` solo si `otp_id` corresponde a una fila viva cuyo
    * `phone` coincide con `phone_number` y cuyo código coincide. NO consume
    * — repetible.
    */
@@ -418,8 +417,8 @@ export class AuthService {
   }
 
   /**
-   * CA-5: genera un código de 6 dígitos (admite ceros a la izquierda, V-5),
-   * lo persiste hasheado con vencimiento y lo emite al log (D5). Un
+   * Genera un código de 6 dígitos (admite ceros a la izquierda), lo
+   * persiste hasheado con vencimiento y lo emite al log. Un
    * `phone_number` vacío es fallo de dominio, no infraestructura.
    */
   async sendOtpCode(otpInput: OtpDto): Promise<OtpResponse> {
@@ -435,7 +434,7 @@ export class AuthService {
     }
 
     const { otpCodeTtlMinutes } = resolveRecoveryOptions();
-    // V-5: `padStart` preserva ceros a la izquierda — `randomInt(100000,1e6)`
+    // `padStart` preserva ceros a la izquierda — `randomInt(100000,1e6)`
     // perdería el 10% del espacio de códigos.
     const code = crypto.randomInt(0, 1_000_000).toString().padStart(6, '0');
     const codeHash = await bcrypt.hash(code, 10);
@@ -449,7 +448,8 @@ export class AuthService {
         findUserIdByProfileContact(otpInput.phone_number),
       )) !== null;
 
-    // D5: advertencia de "sin envío real" en la MISMA emisión que el secreto.
+    // La advertencia de "sin envío real" va en la MISMA emisión que el
+    // secreto.
     this.logger.warn(
       `[send-otp-code] Implementación de desarrollo, SIN envío real de SMS. ` +
         `Código en claro para ${
@@ -468,7 +468,7 @@ export class AuthService {
   }
 
   /**
-   * US-101, Decisión B: en `/me`, `shops` son las tiendas que el usuario
+   * En `/me`, `shops` son las tiendas que el usuario
    * gestiona. Primero las suyas como dueño y después aquellas de las que es
    * staff (`shop_staff`, `shop_id` asc), sin duplicados. Las páginas
    * `[shop]/*` del admin dejan entrar si la tienda está en `me.shops`, así

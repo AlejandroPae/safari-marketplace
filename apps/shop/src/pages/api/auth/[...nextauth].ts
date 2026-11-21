@@ -3,7 +3,7 @@ import NextAuth from 'next-auth';
 import FacebookProvider from 'next-auth/providers/facebook';
 import GoogleProvider from 'next-auth/providers/google';
 
-// Google es opcional (US-70): sin las dos variables no se registra y el
+// Google es opcional: sin las dos variables no se registra y el
 // formulario de login no ofrece el botón (lo consulta con getProviders()).
 // Se leen de process.env y no con getEnv, que lanza y tumbaría todo
 // /api/auth/*. Si solo llega una, se avisa una vez por arranque, sin valores.

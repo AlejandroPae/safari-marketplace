@@ -1,4 +1,4 @@
-// Flat config de ESLint 9 (US-81). Reproduce el antiguo .eslintrc.js:
+// Flat config de ESLint 9. Reproduce el antiguo .eslintrc.js:
 // `@typescript-eslint/recommended` + `prettier/recommended`, entornos node y
 // jest, y las mismas excepciones locales.
 import { defineConfig } from 'eslint/config';
@@ -21,7 +21,7 @@ export default defineConfig(
       },
     },
     rules: {
-      // Paridad con el `recommended` de typescript-eslint 5 (CA-1 de US-81).
+      // Paridad con el `recommended` de typescript-eslint 5.
       // Salieron del `recommended` en la 8, pero existen: se mantienen.
       '@typescript-eslint/adjacent-overload-signatures': 'error',
       '@typescript-eslint/no-empty-function': 'error',
@@ -30,7 +30,7 @@ export default defineConfig(
       // La 8 quitó `@typescript-eslint/no-loss-of-precision`: la regla del
       // núcleo ya cubre lo mismo.
       'no-loss-of-precision': 'error',
-      // Entraron al `recommended` en la 8; activarlas es endurecer (otra US).
+      // Entraron al `recommended` en la 8; activarlas es endurecer (queda pendiente).
       '@typescript-eslint/no-duplicate-enum-values': 'off',
       '@typescript-eslint/no-unsafe-declaration-merging': 'off',
       '@typescript-eslint/no-unused-expressions': 'off',
@@ -51,8 +51,8 @@ export default defineConfig(
       ],
     },
   },
-  // US-99: todo log de la API pasa por el Logger de Nest (timestamp, nivel
-  // y contexto; US-17). Un `console.*` se salta ese formato y ya filtró el
+  // Todo log de la API pasa por el Logger de Nest (timestamp, nivel y
+  // contexto). Un `console.*` se salta ese formato y ya filtró el
   // access_token del login social. Los specs quedan fuera porque espían la
   // consola.
   {

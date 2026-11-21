@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * US-99, DA-2: el stub de `POST /attachments` registra metadatos (cuántos
+ * El stub de `POST /attachments` registra metadatos (cuántos
  * archivos, `mimetype` y `size`) y nunca el contenido ni el nombre original.
  */
 import 'reflect-metadata';

@@ -1,7 +1,7 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
  * 2 ventas, ids 3 y 1, con los productos 951/952 y 1013/1023). Lectura y
- * escritura (US-94).
+ * escritura.
  *
  * Las escrituras usan el centinela `zz-flash-` en el título, que
  * `generateSlug` lleva al slug. Las lecturas van ANTES que las escrituras:
@@ -129,7 +129,7 @@ describe('listFlashSaleProducts', () => {
   });
 });
 
-describe('listProductFlashSales (US-96)', () => {
+describe('listProductFlashSales', () => {
   it('las ventas del producto, con sus productos', async () => {
     const sales = await listProductFlashSales(1013);
     expect(sales?.map((s) => s.id)).toEqual([1]);
@@ -145,7 +145,7 @@ describe('listProductFlashSales (US-96)', () => {
   });
 });
 
-describe('inFlashSale en ProductRecord (US-96)', () => {
+describe('inFlashSale en ProductRecord', () => {
   it('true exactamente en los 4 productos de las ventas del seed', async () => {
     const { items } = await listProducts({ limit: 2000 });
     expect(items.filter((p) => p.inFlashSale).map((p) => p.id)).toEqual([

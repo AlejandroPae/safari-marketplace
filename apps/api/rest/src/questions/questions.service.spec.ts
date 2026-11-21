@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `QuestionService` (US-55). Solo se mockea el acceso a
+ * Tests unitarios de `QuestionService`. Solo se mockea el acceso a
  * datos; los proyectores son los reales.
  */
 import 'reflect-metadata';
@@ -311,7 +311,7 @@ describe('QuestionService', () => {
       expect(answerMock).toHaveBeenCalledWith(68, { answer: 'x' });
     });
 
-    it('el staff de la tienda responde (US-66): se consulta solo tras fallar el dueño', async () => {
+    it('el staff de la tienda responde: se consulta solo tras fallar el dueño', async () => {
       findMock.mockResolvedValue(makeRecord({ shopId: 1 }));
       ownerMock.mockResolvedValue(1);
       staffMock.mockResolvedValue(true);
@@ -372,7 +372,7 @@ describe('QuestionService', () => {
       expect(deleteMock).toHaveBeenCalledTimes(3);
     });
 
-    it('el staff no borra preguntas ajenas (US-66, Decisión 3): ni se consulta shop_staff', async () => {
+    it('el staff no borra preguntas ajenas: ni se consulta shop_staff', async () => {
       findMock.mockResolvedValue(makeRecord({ userId: 4, shopId: 1 }));
       ownerMock.mockResolvedValue(1);
       staffMock.mockResolvedValue(true);

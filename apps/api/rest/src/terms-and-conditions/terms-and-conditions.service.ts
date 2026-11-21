@@ -30,8 +30,8 @@ import { TermsAndConditions } from './entities/terms-and-conditions.entity.js';
 /**
  * `TermsAndConditionsRecord` → las 9 claves de `terms-and-conditions.json`,
  * en su orden. `is_approved` sale como ENTERO 1/0, que es lo que el mock
- * emite en las lecturas (V-7: también tras approve/disapprove, que antes
- * emitían boolean). `shop_id`/`user_id`/timestamps no se emiten (D-1).
+ * emite en las lecturas, también tras approve/disapprove.
+ * `shop_id`/`user_id`/timestamps no se emiten.
  */
 function toTermsDto(record: TermsAndConditionsRecord): TermsAndConditions {
   return {
@@ -76,7 +76,7 @@ function assertId(id: number): void {
 @Injectable()
 export class TermsAndConditionsService {
   /**
-   * Filtros reales con AND (US-47, V-1). El shop manda `type` reescrito como
+   * Filtros reales con AND. El shop manda `type` reescrito como
    * `type.slug` por `formatSearchParams`; se aceptan las dos claves.
    */
   async findAllTermsAndConditions({
@@ -119,7 +119,7 @@ export class TermsAndConditionsService {
     return { data, ...paginate(result.total, page, limit, data.length, url) };
   }
 
-  /** Por slug, como el mock; inexistente ⇒ 404 (V-4). */
+  /** Por slug, como el mock; inexistente ⇒ 404. */
   async findOne(
     param: string,
     _language?: string,
@@ -189,7 +189,7 @@ export class TermsAndConditionsService {
     }
   }
 
-  /** Persiste en la base lo que el mock mutaba en memoria (V-7). */
+  /** Persiste en la base lo que el mock mutaba en memoria. */
   async disapproveTermsAndCondition(id: unknown): Promise<TermsAndConditions> {
     return this.setApproval(Number(id), false);
   }

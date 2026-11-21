@@ -39,8 +39,8 @@ export const getStaticProps: GetStaticProps = async ({ locale }) => {
       ...(await serverSideTranslations(locale!, ['form', 'common', 'table'])),
       dehydratedState: JSON.parse(JSON.stringify(dehydrate(queryClient))),
     },
-    // D-3 (US-104): se regenera con datos reales en vez de quedar congelada
-    // con los del build.
+    // Se regenera con datos reales en vez de quedar congelada con los del
+    // build.
     revalidate: 60,
   };
 };

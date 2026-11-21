@@ -4,9 +4,8 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * US-101, Decisión A: guards de escritura de los catálogos globales. Antes
- * eran `ADMIN_OWNER_AND_STAFF`, y el permiso `staff` habría heredado el
- * derecho a borrar ventas flash, autores y marcas de toda la plataforma.
+ * Guards de escritura de los catálogos globales: solo `super_admin`. Con
+ * `ADMIN_OWNER_AND_STAFF`, el permiso `staff` heredaría el derecho a borrar ventas flash, autores y marcas de toda la plataforma.
  */
 import 'reflect-metadata';
 import { PERMISSIONS_KEY } from './decorators/permissions.decorator.js';
@@ -20,7 +19,7 @@ const guardOf = (controller: { prototype: object }, handler: string) =>
     (controller.prototype as Record<string, unknown>)[handler] as object,
   );
 
-describe('guards de escritura de catálogo global (US-101)', () => {
+describe('guards de escritura de catálogo global', () => {
   it.each([
     [FlashSaleController, 'createFlashSale', ['super_admin']],
     [FlashSaleController, 'update', ['super_admin']],

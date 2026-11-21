@@ -1,6 +1,6 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`: 20
- * órdenes padre con 1 hija cada una, ids 5..49, y 76 líneas). US-58 y US-59.
+ * órdenes padre con 1 hija cada una, ids 5..49, y 76 líneas).
  *
  * Las escrituras son centinelas: órdenes con `note` 'zz-orders-' (hechas con
  * `prisma` directo o con `createOrderWithChildren`), un cupón 'ZZ-ORDERS' y
@@ -325,7 +325,7 @@ describe('FK — centinelas', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Escrituras del repositorio (US-59)
+// Escrituras del repositorio
 // ---------------------------------------------------------------------------
 
 function line(

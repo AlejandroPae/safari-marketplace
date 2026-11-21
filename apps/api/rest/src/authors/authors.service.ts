@@ -28,9 +28,9 @@ import { GetTopAuthorsDto } from './dto/get-top-authors.dto.js';
 import { CreateAuthorDto } from './dto/create-author.dto.js';
 
 /**
- * `AuthorRecord` → las 15 claves de `authors.json`, en su orden (US-93, D-1).
+ * `AuthorRecord` → las 15 claves de `authors.json`, en su orden.
  * `is_approved` sale como `1`/`0` porque el mock emite enteros;
- * `translated_languages` es constante (D-6). Los timestamps tienen columna
+ * `translated_languages` es constante. Los timestamps tienen columna
  * pero el mock no los emite, así que tampoco aquí.
  */
 function toAuthorDto(record: AuthorRecord): Author {
@@ -105,7 +105,7 @@ function toWriteInput(dto: UpdateAuthorDto): UpdateAuthorInput {
 @Injectable()
 export class AuthorsService {
   /**
-   * El autor es global: el `shop_id` del admin se ignora (US-93). `slug`
+   * El autor es global: el `shop_id` del admin se ignora. `slug`
    * opcional: el admin lo reenvía al traducir un autor existente.
    */
   async create(createAuthorDto: CreateAuthorDto): Promise<Author> {
@@ -125,11 +125,11 @@ export class AuthorsService {
   }
 
   /**
-   * Filtros reales con AND (US-93, V-1): el mock aplicaba Fuse con el último
+   * Filtros reales con AND: el mock aplicaba Fuse con el último
    * token. `name` busca en nombre y slug; `is_approved` filtra; `type` (que
    * envía el admin) se ignora porque el autor no tiene tipo. `page`/`limit`
    * se pasan crudos a `paginate()` para conservar `per_page` como string
-   * cuando el cliente manda `limit` (Decision A).
+   * cuando el cliente manda `limit`.
    */
   async getAuthors({
     page,
@@ -157,7 +157,7 @@ export class AuthorsService {
     return { data, ...paginate(result.total, page, limit, data.length, url) };
   }
 
-  /** Por slug, como el mock; inexistente ⇒ 404 (V-2). */
+  /** Por slug, como el mock; inexistente ⇒ 404. */
   async getAuthorBySlug(slug: string): Promise<Author> {
     let record: AuthorRecord | null;
     try {
@@ -172,7 +172,7 @@ export class AuthorsService {
     return toAuthorDto(record);
   }
 
-  /** Los de más productos (V-4); sin paginador, como el mock. Default 10. */
+  /** Los de más productos; sin paginador, como el mock. Default 10. */
   async getTopAuthors({ limit }: GetTopAuthorsDto): Promise<Author[]> {
     try {
       return (await listTopAuthors(Number(limit) || 10)).map(toAuthorDto);
@@ -181,7 +181,10 @@ export class AuthorsService {
     }
   }
 
-  /** Guarda de id de US-31 antes de tocar el driver. */
+  /**
+   * Guarda de id antes de tocar el driver: `1e21` o un id fuera de `bigint`
+   * serían un 500.
+   */
   async update(id: number, updateAuthorDto: UpdateAuthorDto): Promise<Author> {
     if (!Number.isSafeInteger(id) || id <= 0) {
       throw new NotFoundException(`No existe un autor con id ${id}.`);
@@ -195,7 +198,7 @@ export class AuthorsService {
     }
   }
 
-  /** Devuelve el autor borrado (V-3: el mock devolvía un string). */
+  /** Devuelve el autor borrado (el mock devolvía un string). */
   async remove(id: number): Promise<Author> {
     if (!Number.isSafeInteger(id) || id <= 0) {
       throw new NotFoundException(`No existe un autor con id ${id}.`);

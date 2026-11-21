@@ -4,8 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `MessagesService` (US-56) y de `markSeen` (US-64). Solo
- * se mockea el acceso a datos.
+ * Tests unitarios de `MessagesService` y de `markSeen`. Solo se mockea el acceso a datos.
  */
 import 'reflect-metadata';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
@@ -230,7 +229,7 @@ describe('MessagesService', () => {
     });
   });
 
-  describe('markSeen (US-64)', () => {
+  describe('markSeen', () => {
     const OWNER: CurrentUserPayload = {
       ...ADMIN,
       sub: 1,

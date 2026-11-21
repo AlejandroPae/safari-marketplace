@@ -1,5 +1,5 @@
 /**
- * shippings.repository.ts — clases de envío (US-49).
+ * shippings.repository.ts — clases de envío.
  *
  * Gemelo de `taxes.repository.ts`: sin paginar (el admin espera un array) y
  * con el id 1 referenciado como texto desde `settings.options.shippingClass`.
@@ -102,7 +102,7 @@ export async function createShipping(
   }
 }
 
-/** `updatedAt: now()` explícito (US-32). */
+/** `updatedAt: now()` explícito. */
 export async function updateShipping(
   id: number,
   input: UpdateShippingInput

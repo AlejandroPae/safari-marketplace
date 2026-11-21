@@ -1,7 +1,7 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
  * 3 avisos del admin, id 3 en el seed, dirigidos a los usuarios 3 y 1; el 3
- * los leyó y el 1 no). US-51.
+ * los leyó y el 1 no).
  *
  * Las escrituras usan el centinela `zz-notice-` en el texto del aviso. La
  * prueba de lectura sobre el aviso 3 del seed se deshace en `afterAll`
@@ -31,8 +31,8 @@ const ADMIN = 3;
 const OWNER = 1;
 
 /**
- * Los store_owner del seed en id DESC, el orden de los destinatarios. Desde
- * US-63 son 8 (1 y 3, más los 6 owners de ownership-transfer.json): se leen
+ * Los store_owner del seed en id DESC, el orden de los destinatarios. Son
+ * 8 (1 y 3, más los 6 owners de ownership-transfer.json): se leen
  * de la base en vez de fijar la lista.
  */
 async function storeOwnerIds(): Promise<number[]> {
@@ -80,7 +80,7 @@ describe('listStoreNotices / findStoreNoticeById — seed', () => {
 
   it('el detalle trae creador con permisos, destinatarios y lecturas en orden fijo', async () => {
     const notice = await findStoreNoticeById(2);
-    // `staff` desde US-101: el admin del seed tiene fila en `shop_staff`.
+    // `staff`: el admin del seed tiene fila en `shop_staff`.
     expect(notice?.creator.permissions.map((p) => p.name)).toEqual([
       'super_admin',
       'customer',
@@ -141,7 +141,7 @@ describe('createStoreNotice — destinatarios según type', () => {
     expect(created.creator.id).toBe(ADMIN);
   });
 
-  it('all_vendor va a todos los store_owner (8 en el seed desde US-63)', async () => {
+  it('all_vendor va a todos los store_owner (8 en el seed)', async () => {
     const created = await createStoreNotice({
       priority: 'low',
       notice: `${SENTINEL_PREFIX}todos`,

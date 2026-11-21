@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `StoreNoticesService` (US-51). Mismo arnés que
+ * Tests unitarios de `StoreNoticesService`. Mismo arnés que
  * `tags.service.spec.ts`: solo se mockea el acceso a datos.
  */
 import 'reflect-metadata';
@@ -150,7 +150,7 @@ describe('StoreNoticesService', () => {
       expect(dto.creator_role).toBe('Super admin');
     });
 
-    it('is_read es el del viewer (V-5): true para el admin, false para el dueño', async () => {
+    it('is_read es el del viewer: true para el admin, false para el dueño', async () => {
       findMock.mockResolvedValue(makeRecord());
       expect((await service.getStoreNotice('2', 3)).is_read).toBe(true);
       expect((await service.getStoreNotice('2', 1)).is_read).toBe(false);
@@ -216,7 +216,7 @@ describe('StoreNoticesService', () => {
   });
 
   describe('getStoreNotices', () => {
-    it('traduce users.id, shops.slug, shop_id y notice a filtros (V-4)', async () => {
+    it('traduce users.id, shops.slug, shop_id y notice a filtros', async () => {
       listMock.mockResolvedValue({ items: [], total: 0 });
       await service.getStoreNotices(
         query({
@@ -319,7 +319,7 @@ describe('StoreNoticesService', () => {
       });
     });
 
-    it('markAsRead (V-6) proyecta para el lector; aviso inexistente o id inválido ⇒ 404', async () => {
+    it('markAsRead proyecta para el lector; aviso inexistente o id inválido ⇒ 404', async () => {
       readMock.mockResolvedValueOnce(
         makeRecord({ reads: [{ user: OWNER, isRead: true }] }),
       );

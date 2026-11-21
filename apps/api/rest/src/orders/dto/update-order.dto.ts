@@ -7,7 +7,7 @@ import {
 import { CreateOrderDto } from './create-order.dto.js';
 
 /**
- * V-9 (US-59): el admin cambia el estado con `{ order_status }`
+ * El admin cambia el estado con `{ order_status }`
  * (`pages/orders/[orderId]/index.tsx`), un campo que `CreateOrderDto` no
  * declara. Un valor fuera del enum da 400 antes de llegar al servicio.
  */

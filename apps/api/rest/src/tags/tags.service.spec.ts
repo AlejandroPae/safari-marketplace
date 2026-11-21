@@ -5,14 +5,14 @@
  * se limita a este archivo para no tocar la config del build.
  */
 /**
- * Tests unitarios de las escrituras de `TagsService` (US-27b):
+ * Tests unitarios de las escrituras de `TagsService`:
  * `create`/`update`/`remove`.
  *
  * Mismo arnés que `types.service.spec.ts:1-88` / `products.service.spec.ts:36-43`:
  * se mockea SOLO el acceso a datos (`createTag`/`updateTag`/`deleteTag`,
  * `findTagBySlug` — necesario para comparar el `Object.keys()` de las 3
- * escrituras contra el de la lectura, CA-1 — y `listTypes`, que las
- * escrituras necesitan para resolver el `type` embebido, design.md DD-7) y
+ * escrituras contra el de la lectura — y `listTypes`, que las escrituras
+ * necesitan para resolver el `type` embebido) y
  * se dejan REALES las 5 clases de error de dominio y `toWriteHttpException`
  * (vía `domain-error.mapper.ts`, tampoco mockeado), para que la traducción a
  * HTTP se pruebe de verdad.
@@ -97,7 +97,7 @@ function makeTypeRecord(overrides: Partial<TypeRecord> = {}): TypeRecord {
 /**
  * `ValidationPipe` corre sin `whitelist`; en runtime el body puede traer
  * claves sin columna (`socials`, `cover_image`) que sobreviven hasta el
- * servicio (`main.ts:9`, decisión 5 del épico). Este cast reproduce esa
+ * servicio (`main.ts:9`). Este cast reproduce esa
  * realidad para poder ejercer el servicio directamente con un payload que
  * incluye esas claves fantasma.
  */
@@ -118,7 +118,7 @@ beforeEach(() => {
   listTypesMock.mockResolvedValue([]);
 });
 
-describe('TagsService.create (US-27b)', () => {
+describe('TagsService.create', () => {
   let service: TagsService;
 
   beforeEach(() => {
@@ -126,7 +126,7 @@ describe('TagsService.create (US-27b)', () => {
     service = new TagsService();
   });
 
-  it('proyecta el DTO campo a campo: omite `details`/`icon`/`image`/`type_id`/`language` ausentes e ignora `socials`/`cover_image` (B-4)', async () => {
+  it('proyecta el DTO campo a campo: omite `details`/`icon`/`image`/`type_id`/`language` ausentes e ignora `socials`/`cover_image`', async () => {
     createTagMock.mockResolvedValue(makeTagRecord());
 
     await service.create(
@@ -176,7 +176,7 @@ describe('TagsService.create (US-27b)', () => {
     });
   });
 
-  it('`type_id` STRING (`"9"`: `ValidationPipe` sin `transform`) se coerciona a `typeId: 9`, igual que `manufacturers` (W-2 de US-27b)', async () => {
+  it('`type_id` STRING (`"9"`: `ValidationPipe` sin `transform`) se coerciona a `typeId: 9`, igual que `manufacturers`', async () => {
     createTagMock.mockResolvedValue(makeTagRecord({ typeId: 9 }));
 
     await service.create(
@@ -202,7 +202,7 @@ describe('TagsService.create (US-27b)', () => {
     });
   });
 
-  it('resuelve `type` con UN `listTypes()` secuencial, después de la escritura (design.md DD-7, nunca `Promise.all`)', async () => {
+  it('resuelve `type` con UN `listTypes()` secuencial, después de la escritura (nunca `Promise.all`: un 503 de `listTypes()` taparía el error de la escritura)', async () => {
     const callOrder: string[] = [];
     createTagMock.mockImplementation(async () => {
       callOrder.push('createTag');
@@ -323,7 +323,7 @@ describe('TagsService.create (US-27b)', () => {
   });
 });
 
-describe('TagsService.update (US-27b)', () => {
+describe('TagsService.update', () => {
   let service: TagsService;
 
   beforeEach(() => {
@@ -350,10 +350,10 @@ describe('TagsService.update (US-27b)', () => {
     },
   );
 
-  // Inverso de CA-4 (CA-2, US-31): un id grande pero seguro atraviesa la
+  // Inverso del corte de id inválido: un id grande pero seguro atraviesa la
   // guarda y el 404 lo decide la fila inexistente, no el guard. Se pone rojo
   // si alguien adelanta el corte (p. ej. `|| id > 1e6`).
-  it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente (CA-2, US-31)', async () => {
+  it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente', async () => {
     updateTagMock.mockRejectedValue(
       new RecordNotFoundError('tags', 123456789012345),
     );
@@ -394,7 +394,7 @@ describe('TagsService.update (US-27b)', () => {
     expect('cover_image' in calledWith).toBe(false);
   });
 
-  it('`type_id` STRING también se coerciona en PUT: `"9"` → `typeId: 9`; `null` → `typeId: null` (W-2 de US-27b)', async () => {
+  it('`type_id` STRING también se coerciona en PUT: `"9"` → `typeId: 9`; `null` → `typeId: null`', async () => {
     updateTagMock.mockResolvedValue(makeTagRecord({ typeId: 9 }));
 
     await service.update(63, updateDto({ type_id: '9' as never }));
@@ -459,7 +459,7 @@ describe('TagsService.update (US-27b)', () => {
   });
 });
 
-describe('TagsService.remove (US-27b)', () => {
+describe('TagsService.remove', () => {
   let service: TagsService;
 
   beforeEach(() => {
@@ -486,7 +486,7 @@ describe('TagsService.remove (US-27b)', () => {
     },
   );
 
-  it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente (CA-2, US-31)', async () => {
+  it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente', async () => {
     deleteTagMock.mockRejectedValue(
       new RecordNotFoundError('tags', 123456789012345),
     );
@@ -522,7 +522,7 @@ describe('TagsService.remove (US-27b)', () => {
   });
 });
 
-describe('Contrato de 9 claves — create/update/remove igual a findOne (CA-1)', () => {
+describe('Contrato de 9 claves — create/update/remove igual a findOne', () => {
   let service: TagsService;
 
   beforeEach(() => {
@@ -554,8 +554,7 @@ describe('Contrato de 9 claves — create/update/remove igual a findOne (CA-1)',
 
     const expectedKeys = Object.keys(readResult);
     expect(expectedKeys).toHaveLength(9);
-    // Comparación de ORDEN exacto — nunca `.sort()` (jq no está instalado,
-    // design.md nota sobre `node -e`, aquí equivalente con `toEqual`).
+    // Comparación de ORDEN exacto con `toEqual` — nunca `.sort()`.
     expect(Object.keys(createResult)).toEqual(expectedKeys);
     expect(Object.keys(updateResult)).toEqual(expectedKeys);
     expect(Object.keys(removeResult)).toEqual(expectedKeys);

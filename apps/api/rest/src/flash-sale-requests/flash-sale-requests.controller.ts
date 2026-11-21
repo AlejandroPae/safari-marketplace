@@ -23,7 +23,7 @@ import {
 } from './dto/flash-sale-request.dto.js';
 import { FlashSaleRequestsService } from './flash-sale-requests.service.js';
 
-/** Solicitudes de vendedores para ventas flash (US-97). Aprobar y rechazar, abajo (US-98). */
+/** Solicitudes de vendedores para ventas flash. Aprobar y rechazar, abajo. */
 @Permissions(...ADMIN_OWNER_AND_STAFF)
 @Controller('vendor-requests-for-flash-sale')
 export class VendorRequestsForFlashSaleController {
@@ -79,7 +79,7 @@ export class RequestedProductsForFlashSaleController {
   }
 }
 
-/** Aprobar una solicitud (US-98). Solo super admin; cuerpo `{ id }`. */
+/** Aprobar una solicitud. Solo super admin; cuerpo `{ id }`. */
 @Permissions(...ADMIN_ONLY)
 @Controller('approve-flash-sale-requested-products')
 export class ApproveFlashSaleRequestedProductsController {
@@ -91,7 +91,7 @@ export class ApproveFlashSaleRequestedProductsController {
   }
 }
 
-/** Rechazar una solicitud (US-98). Solo super admin; cuerpo `{ id }`. */
+/** Rechazar una solicitud. Solo super admin; cuerpo `{ id }`. */
 @Permissions(...ADMIN_ONLY)
 @Controller('disapprove-flash-sale-requested-products')
 export class DisapproveFlashSaleRequestedProductsController {

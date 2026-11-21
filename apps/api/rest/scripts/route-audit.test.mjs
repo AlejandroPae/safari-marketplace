@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 /**
- * Test de mutación de `route-audit.mjs` (US-23, hallazgos H-1/H-2 de
- * `verify-report.md`).
+ * Test de mutación de `route-audit.mjs`.
  *
  * Un auditor solo sirve si FALLA cuando debe. Que dé verde sobre el árbol
  * bueno no prueba nada: la primera versión de este script también daba verde
@@ -56,7 +55,7 @@ const CASES = [
     mutate: () => {},
   },
   {
-    name: 'H-1: se borra el @Permissions() de clase de UsersController (8 rutas se aflojan a "cualquier logueado")',
+    name: 'aflojamiento de permisos: se borra el @Permissions() de clase de UsersController (8 rutas se aflojan a "cualquier logueado")',
     expect: 1,
     mutate: (src) => {
       const f = join(src, 'users', 'users.controller.ts');
@@ -84,7 +83,7 @@ const CASES = [
     },
   },
   {
-    name: 'H-2: @Public() no adyacente (separado por otro decorador) sigue siendo visible',
+    name: 'invariante de atribución: @Public() no adyacente (separado por otro decorador) sigue siendo visible',
     expect: 0,
     mutate: (src) => {
       // Mueve el @Public() de GET /settings una línea más arriba, detrás de
@@ -101,7 +100,7 @@ const CASES = [
     },
   },
   {
-    name: 'H-2: una anotación que el parser NO puede atribuir hace fallar el check (no verde silencioso)',
+    name: 'invariante de atribución: una anotación que el parser NO puede atribuir hace fallar el check (no verde silencioso)',
     expect: 1,
     mutate: (src) => {
       // Un `@Public()` colgado de un miembro que no es un handler HTTP: no lo

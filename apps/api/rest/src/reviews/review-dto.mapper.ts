@@ -30,7 +30,7 @@ export function toShortModelType(value: unknown): string | undefined {
  * Autor embebido en reseñas y reportes, con la forma mínima del mock:
  * `is_active` como NÚMERO y `shop_id: null`. No es el `toUserDto` de
  * `users/user-dto.mapper.ts`, que emite otra forma. Los timestamps son los
- * de `users` (V-3). Las preguntas (US-55) añaden `email_verified` al final;
+ * de `users`. Las preguntas añaden `email_verified` al final;
  * las reseñas no lo traen.
  */
 export function toReviewUserDto(
@@ -51,9 +51,9 @@ export function toReviewUserDto(
 }
 
 /**
- * `ReviewDetailRecord` → las 18 claves del mock de reseñas en su orden (US-54).
- * `deleted_at` y `my_feedback` son constantes (D-6: `feedbacks` es un stub);
- * `product` sale de `toProductDto` (V-2).
+ * `ReviewDetailRecord` → las 18 claves del mock de reseñas en su orden.
+ * `deleted_at` y `my_feedback` son constantes (`feedbacks` es un stub);
+ * `product` sale de `toProductDto`.
  */
 export function toReviewDto(record: ReviewDetailRecord): Review {
   return {

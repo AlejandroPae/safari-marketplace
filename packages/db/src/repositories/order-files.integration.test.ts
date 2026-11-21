@@ -1,6 +1,6 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`: 10
- * descargas, ids 1-10, todas de customer@demo.com y sin orden). US-60.
+ * descargas, ids 1-10, todas de customer@demo.com y sin orden).
  *
  * Solo lectura: no escribe nada.
  */

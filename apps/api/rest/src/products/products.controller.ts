@@ -89,7 +89,7 @@ export class BestSellingProductsController {
   }
 }
 
-// D-6: moderación (aprobación), no catálogo público — cola de borradores.
+// Moderación (aprobación), no catálogo público — cola de borradores.
 @Permissions(...ADMIN_ONLY)
 @Controller('draft-products')
 export class DraftProductsController {

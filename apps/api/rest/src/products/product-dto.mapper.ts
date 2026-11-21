@@ -4,8 +4,8 @@ import { Product } from './entities/product.entity.js';
 /**
  * `ProductRecord` (camelCase, `@safari/db`) → proyección de 20 claves
  * snake_case que ya publicaba `products.json`. `type.logo` es constante: no
- * hay columna que lo respalde (divergencia documentada en `design.md`).
- * `in_flash_sale` es `1` si el producto está en alguna venta flash (US-96). Se castea a `Product`, igual
+ * hay columna que lo respalde.
+ * `in_flash_sale` es `1` si el producto está en alguna venta flash. Se castea a `Product`, igual
  * que `settings.service.ts:39` — la entidad declara campos que este
  * listado no emite.
  */

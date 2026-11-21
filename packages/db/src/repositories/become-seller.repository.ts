@@ -2,7 +2,7 @@
  * become-seller.repository.ts — fila única de la página "vender con
  * nosotros" (CHECK `become_seller_fila_unica` garantiza id = 1). Calco de
  * `settings.repository.ts` (singleton hermano) para la lectura; la
- * escritura es la PRIMERA ruta de update de esta tabla (US-44).
+ * escritura es la PRIMERA ruta de update de esta tabla.
  */
 
 import type { Prisma } from '../../generated/prisma/client/client';
@@ -26,7 +26,7 @@ export interface UpdateBecomeSellerInput {
 
 /**
  * Actualiza la fila fija (id = 1). NUNCA crea: la CHECK
- * `become_seller_fila_unica` garantiza que existe una y solo una (CA-3).
+ * `become_seller_fila_unica` garantiza que existe una y solo una.
  * `null` si la base no está sembrada (P2025), misma convención que
  * `setUserActive` (users.repository.ts:341-355).
  */

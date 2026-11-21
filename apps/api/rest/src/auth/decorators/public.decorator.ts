@@ -3,7 +3,7 @@ import { SetMetadata } from '@nestjs/common';
 /**
  * Clave de metadata que `JwtAuthGuard` busca con `Reflector.getAllAndOverride`
  * (handler primero, clase después). Se exporta junto al decorador para que no
- * exista un string suelto repetido en el guard (design.md, Decisión B).
+ * exista un string suelto repetido en el guard.
  */
 export const IS_PUBLIC_KEY = 'isPublic';
 

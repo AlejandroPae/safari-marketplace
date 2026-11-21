@@ -7,8 +7,8 @@ import { ConversationsService } from './conversations.service.js';
 import { CreateConversationDto } from './dto/create-conversation.dto.js';
 import { GetConversationsDto } from './dto/get-conversations.dto.js';
 
-// La visibilidad depende de quién llama (US-56): todas las rutas leen
-// @CurrentUser. Los decoradores de autorización no cambian (R-6).
+// La visibilidad depende de quién llama: todas las rutas leen @CurrentUser.
+// Los decoradores de autorización solo filtran por rol.
 @Controller('conversations')
 export class ConversationsController {
   constructor(private readonly conversationsService: ConversationsService) {}

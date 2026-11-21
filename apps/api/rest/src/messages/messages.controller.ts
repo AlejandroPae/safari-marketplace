@@ -7,7 +7,7 @@ import { GetConversationsDto } from '#src/conversations/dto/get-conversations.dt
 import { CreateMessageDto } from './dto/create-message.dto.js';
 import { MessagesService } from './messages.service.js';
 
-// `:id`/`:param` son la conversación (US-56): antes se ignoraban.
+// `:id`/`:param` son la conversación.
 @Controller('messages/conversations')
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
@@ -32,7 +32,7 @@ export class MessagesController {
 }
 
 /**
- * `POST /messages/seen/:id` (US-64): el admin marca leída una CONVERSACIÓN.
+ * `POST /messages/seen/:id`: el admin marca leída una CONVERSACIÓN.
  * Manda el id desnudo como cuerpo (`1`); se ignora y cuenta el de la ruta.
  * `main.ts` monta un parser JSON no estricto solo para esta ruta, porque el
  * estricto rechaza un primitivo con 400 antes de llegar aquí.

@@ -38,7 +38,7 @@ import {
 /**
  * Solicitud → claves en el orden del tipo del admin
  * (`FlashSaleProductsRequest`), más `shop_id` y `language`. `request_status`
- * es el booleano que pinta el admin: `status === 'approved'` (DA-5).
+ * es el booleano que pinta el admin: `status === 'approved'`.
  * `deleted_at` es constante: no hay borrado lógico. El detalle añade
  * `products` (el mismo array), que es lo que precarga el formulario de
  * edición (`initialValues.products`).
@@ -72,7 +72,7 @@ function readError(error: unknown): never {
   throw new InternalServerErrorException(getUserFriendlyMessage(error));
 }
 
-/** Entero positivo seguro, o `null` (guarda de US-31 antes del driver). */
+/** Entero positivo seguro, o `null` (guarda de id antes del driver). */
 function toId(raw: unknown): number | null {
   const text = typeof raw === 'number' ? String(raw) : raw;
   if (typeof text !== 'string' || !/^[1-9]\d*$/.test(text)) return null;
@@ -141,7 +141,7 @@ function toWriteInput(
 @Injectable()
 export class FlashSaleRequestsService {
   /**
-   * Dueño de la tienda o su staff (precedente `products.service.ts`, US-66).
+   * Dueño de la tienda o su staff (precedente `products.service.ts`).
    * El super admin no se consulta.
    */
   private async assertShopAccess(
@@ -309,7 +309,7 @@ export class FlashSaleRequestsService {
   }
 
   /**
-   * Aprueba (US-98, solo super admin por el guard): los productos que faltan
+   * Aprueba (solo super admin por el guard): los productos que faltan
    * entran en la venta. Ya aprobada ⇒ 409; inexistente o id inválido ⇒ 404.
    */
   async approve(rawId: unknown) {
@@ -323,8 +323,8 @@ export class FlashSaleRequestsService {
   }
 
   /**
-   * Rechaza (US-98, solo super admin por el guard): si estaba aprobada,
-   * retira de la venta lo que metió esa aprobación (DA-6). Ya rechazada ⇒
+   * Rechaza (solo super admin por el guard): si estaba aprobada, retira de
+   * la venta lo que metió esa aprobación. Ya rechazada ⇒
    * 409; inexistente o id inválido ⇒ 404.
    */
   async disapprove(rawId: unknown) {

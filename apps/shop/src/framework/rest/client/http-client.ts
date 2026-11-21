@@ -161,7 +161,7 @@ function toHttpError(error: AxiosError): HttpError {
   );
 }
 
-// ── Dirección de la API (US-102) ─────────────────────────────────────────
+// ── Dirección de la API ──────────────────────────────────────────────────
 // El navegador habla con la API por un prefijo relativo del mismo origen; el
 // reverse proxy (o el `rewrites()` de `next dev`) lo manda a la API. Es igual
 // en todos los entornos, así que puede quedar escrito en el build.
@@ -180,7 +180,7 @@ function apiBaseUrl(): string {
   if (typeof window !== 'undefined') return BROWSER_API_PREFIX;
   const url = process.env.API_INTERNAL_URL;
   if (!url) {
-    // HttpError (US-104): para quien llama es "no se llegó a la API", como un
+    // HttpError: para quien llama es "no se llegó a la API", como un
     // ECONNREFUSED; el build sin API lo tolera igual que la red caída.
     const error = new HttpError(
       'API_INTERNAL_URL is not defined: set it to the API address the server can reach (e.g. http://localhost:9001/api)',
@@ -241,7 +241,7 @@ Axios.interceptors.response.use(
 
     // Limpieza de sesión: solo en el navegador (Router no existe en SSR) y
     // solo si la petición llevaba token y la API lo rechaza: la sesión caducó
-    // o no vale (US-71). Un 403 es un usuario autenticado sin permiso para
+    // o no vale. Un 403 es un usuario autenticado sin permiso para
     // ESA ruta y un 401 sin token es un anónimo: ninguno de los dos cierra la
     // sesión ni saca al usuario de la página.
     if (

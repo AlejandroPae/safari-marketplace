@@ -5,14 +5,14 @@
  * se limita a este archivo para no tocar la config del build.
  */
 /**
- * Tests unitarios de las escrituras de `TypesService` (US-27a):
+ * Tests unitarios de las escrituras de `TypesService`:
  * `create`/`update`/`remove`.
  *
  * Mismo arnés que `products.service.spec.ts:36-43`: se mockea SOLO el
  * acceso a datos (`createType`/`updateType`/`deleteType`, y también
  * `findTypeBySlug` — necesario para poder llamar a `getTypeBySlug` sin
  * tocar Postgres y comparar el `Object.keys()` de las 3 escrituras contra
- * el de la lectura, CA-1) y se dejan REALES las 5 clases de error de
+ * el de la lectura) y se dejan REALES las 5 clases de error de
  * dominio y `toWriteHttpException` (vía `domain-error.mapper.ts`, tampoco
  * mockeado), para que la traducción a HTTP se pruebe de verdad.
  */
@@ -86,7 +86,7 @@ function updateDto(input: Partial<UpdateTypeDto>): UpdateTypeDto {
   return input as unknown as UpdateTypeDto;
 }
 
-describe('TypesService.create (US-27a)', () => {
+describe('TypesService.create', () => {
   let service: TypesService;
 
   beforeEach(() => {
@@ -94,7 +94,7 @@ describe('TypesService.create (US-27a)', () => {
     service = new TypesService();
   });
 
-  it('proyecta el DTO campo a campo: omite `settings`/`banners` ausentes e ignora `promotional_sliders` (R-5)', async () => {
+  it('proyecta el DTO campo a campo: omite `settings`/`banners` ausentes e ignora `promotional_sliders`', async () => {
     createTypeMock.mockResolvedValue(makeTypeRecord());
 
     await service.create(
@@ -194,7 +194,7 @@ describe('TypesService.create (US-27a)', () => {
   });
 });
 
-describe('TypesService.update (US-27a)', () => {
+describe('TypesService.update', () => {
   let service: TypesService;
 
   beforeEach(() => {
@@ -221,10 +221,10 @@ describe('TypesService.update (US-27a)', () => {
     },
   );
 
-  // Inverso de CA-4 (CA-2, US-31): un id grande pero seguro atraviesa la
+  // Inverso del corte de id inválido: un id grande pero seguro atraviesa la
   // guarda y el 404 lo decide la fila inexistente, no el guard. Se pone rojo
   // si alguien adelanta el corte (p. ej. `|| id > 1e6`).
-  it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente (CA-2, US-31)', async () => {
+  it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente', async () => {
     updateTypeMock.mockRejectedValue(
       new RecordNotFoundError('types', 123456789012345),
     );
@@ -277,7 +277,7 @@ describe('TypesService.update (US-27a)', () => {
   });
 });
 
-describe('TypesService.remove (US-27a)', () => {
+describe('TypesService.remove', () => {
   let service: TypesService;
 
   beforeEach(() => {
@@ -304,7 +304,7 @@ describe('TypesService.remove (US-27a)', () => {
     },
   );
 
-  it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente (CA-2, US-31)', async () => {
+  it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente', async () => {
     deleteTypeMock.mockRejectedValue(
       new RecordNotFoundError('types', 123456789012345),
     );
@@ -354,7 +354,7 @@ describe('TypesService.remove (US-27a)', () => {
   });
 });
 
-describe('Contrato de 9 claves — create/update/remove igual a getTypeBySlug (CA-1)', () => {
+describe('Contrato de 9 claves — create/update/remove igual a getTypeBySlug', () => {
   let service: TypesService;
 
   beforeEach(() => {

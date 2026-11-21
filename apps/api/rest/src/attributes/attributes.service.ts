@@ -27,8 +27,8 @@ import { Attribute } from './entities/attribute.entity.js';
 
 /**
  * `AttributeRecord` → la forma de `attributes.json`, con el orden de claves
- * del mock en los DOS niveles (US-50, D-1). `type` es constante todo `null`
- * (no hay `type_id`); `translated_languages` es constante (D-6); el mock no
+ * del mock en los DOS niveles. `type` es constante todo `null` (no hay
+ * `type_id`); `translated_languages` es constante; el mock no
  * trae timestamps y no se emiten.
  */
 function toAttributeDto(record: AttributeRecord): Attribute {
@@ -102,7 +102,7 @@ export class AttributesService {
 
   /**
    * ARRAY sin paginar, como el mock (`attributeClient.all` lo espera así).
-   * `search=shop_id:N` filtra por tienda (V-1) y `name:X` por nombre; el
+   * `search=shop_id:N` filtra por tienda y `name:X` por nombre; el
    * token `type.slug` se ignora: no hay `type`.
    */
   async findAll({ search, shop_id }: GetAttributesArgs = {}): Promise<
@@ -125,7 +125,7 @@ export class AttributesService {
     }
   }
 
-  /** Por id o por slug, como el mock; inexistente ⇒ 404 (V-2). */
+  /** Por id o por slug, como el mock; inexistente ⇒ 404. */
   async findOne(param: string): Promise<Attribute> {
     let record: AttributeRecord | null;
     try {
@@ -159,7 +159,7 @@ export class AttributesService {
     }
   }
 
-  /** Devuelve el atributo borrado con sus valores (V-3: el mock daba un string). */
+  /** Devuelve el atributo borrado con sus valores (el mock daba un string). */
   async remove(id: number): Promise<Attribute> {
     assertId(id);
     try {

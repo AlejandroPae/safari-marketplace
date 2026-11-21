@@ -1,7 +1,7 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
  * 10 cupones del mock, ids 10→1, todos aprobados y vencidos; tienda 1 → 6,
- * tienda 2 → 2, tienda 3 → 2). US-52.
+ * tienda 2 → 2, tienda 3 → 2).
  *
  * Las escrituras usan el centinela `zz-coupon-` en el código. Los cupones
  * del seed no se modifican.
@@ -87,7 +87,7 @@ describe('listCoupons / findCouponByCode — seed', () => {
       'original',
       'id',
     ]);
-    // US-68: el seed desplaza +5 años las fechas del mock (2024-03-28 en coupons.json).
+    // El seed desplaza +5 años las fechas del mock (2024-03-28 en coupons.json).
     expect(c?.expireAt.toISOString()).toBe('2029-03-28T05:46:42.000Z');
     expect(await findCouponByCode('4off')).toBeNull();
     expect(await findCouponById(999_999)).toBeNull();
@@ -129,7 +129,7 @@ describe('createCoupon', () => {
     await expect(
       createCoupon({ ...base, code: '4OFF' })
     ).rejects.toBeInstanceOf(SlugConflictError);
-    // US-67: el texto nombra el campo real, no un slug.
+    // El texto nombra el campo real, no un slug.
     await expect(createCoupon({ ...base, code: '4OFF' })).rejects.toThrow(
       'Ya existe un registro de `coupons` con el mismo valor en `code`.'
     );
@@ -176,7 +176,7 @@ describe('updateCoupon / setCouponApproval / deleteCoupon', () => {
       const future = new Date(Date.now() + 60_000);
       _setNowProvider(() => future);
 
-      // `image: null` llega así desde el DTO (precedente tags, DD-5): se ignora.
+      // `image: null` llega así desde el DTO (precedente tags): se ignora.
       const updated = await updateCoupon(created.id, {
         amount: 8,
         image: null as unknown as Prisma.InputJsonValue,

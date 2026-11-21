@@ -11,7 +11,7 @@ import {
 // React 19 retiró, y no tiene versión nueva. Su fork react-quill-new monta
 // Quill 2, con el que no funcionan los dos plugins del editor (emoji y
 // color-picker son de Quill 1). Este envoltorio monta Quill 1 sobre un ref y
-// replica lo que el admin usaba de react-quill (US-83): el DOM
+// replica lo que el admin usaba de react-quill: el DOM
 // `div.quill > toolbar + área`, el valor HTML controlado, `onChange(html)`,
 // `onBlur`, `readOnly` y la instancia de Quill por `ref`. Como en react-quill,
 // `modules`, `formats` y `theme` se leen una sola vez, al montar.

@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * US-101, Decisión B: en `/me`, `shops` lleva las tiendas propias y después
+ * En `/me`, `shops` lleva las tiendas propias y después
  * las de staff, sin duplicados. Se mockea solo el acceso a datos.
  */
 import 'reflect-metadata';
@@ -58,7 +58,7 @@ const user = (shops: ShopRecord[]): UserWithRelations =>
     shops,
   }) as unknown as UserWithRelations;
 
-describe('AuthService.me — shops de dueño y de staff (US-101)', () => {
+describe('AuthService.me — shops de dueño y de staff', () => {
   const service = new AuthService({} as JwtService);
 
   beforeEach(() => vi.clearAllMocks());

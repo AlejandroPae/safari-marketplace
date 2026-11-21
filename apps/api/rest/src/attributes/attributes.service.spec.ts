@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `AttributesService` (US-50). Mismo arnés que
+ * Tests unitarios de `AttributesService`. Mismo arnés que
  * `tags.service.spec.ts`: solo se mockea el acceso a datos.
  */
 import 'reflect-metadata';
@@ -83,7 +83,7 @@ describe('AttributesService', () => {
     );
   });
 
-  it('filtra por shop_id desde search o desde la query, e ignora type.slug (V-1)', async () => {
+  it('filtra por shop_id desde search o desde la query, e ignora type.slug', async () => {
     listMock.mockResolvedValue([]);
     await service.findAll({ search: 'type.slug:x;name:col;shop_id:11' });
     await service.findAll({ shop_id: '7' as unknown as number });
@@ -98,7 +98,7 @@ describe('AttributesService', () => {
     expect(listMock).not.toHaveBeenCalled();
   });
 
-  it('findOne delega id o slug; inexistente ⇒ 404 (V-2)', async () => {
+  it('findOne delega id o slug; inexistente ⇒ 404', async () => {
     findMock.mockResolvedValueOnce(makeRecord());
     expect((await service.findOne('color-OMG')).id).toBe(10);
     findMock.mockResolvedValueOnce(null);

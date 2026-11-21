@@ -44,9 +44,9 @@ function isInForce(record: CouponRecord): boolean {
 
 /**
  * `CouponRecord` → la forma del mock de cupones, con sus 16 claves en su
- * orden (US-52, D-1). `is_valid` se calcula en cada lectura (V-1);
+ * orden. `is_valid` se calcula en cada lectura;
  * `target`/`is_approve` salen como `1`/`0`, igual que el mock;
- * `translated_languages` es constante (D-6). Sin timestamps: el mock no los trae.
+ * `translated_languages` es constante. Sin timestamps: el mock no los trae.
  */
 export function toCouponDto(record: CouponRecord): Coupon {
   return {
@@ -111,10 +111,10 @@ function toCouponInput(dto: UpdateCouponDto): UpdateCouponInput {
 @Injectable()
 export class CouponsService {
   /**
-   * Propiedad por tienda (DD29-4, precedente `products.service.ts`):
+   * Propiedad por tienda (precedente `products.service.ts`):
    * `super_admin` pasa sin consultar. Un cupón global (`shopId null`) es solo
    * suyo. Para el resto, la tienda debe ser del usuario o tenerlo como staff
-   * (fila en `shop_staff`, US-66 Ampliación; se consulta solo si no es
+   * (fila en `shop_staff`; se consulta solo si no es
    * dueño); una tienda inexistente NO es 403: se deja pasar para que el
    * repositorio dé el 400.
    */
@@ -195,7 +195,7 @@ export class CouponsService {
 
   /**
    * Lista paginada en `id DESC` (ignora `orderBy`, como el mock). `shop_id` y
-   * `search=code:<texto>` se combinan con AND (V-4). Defaults `page=1`,
+   * `search=code:<texto>` se combinan con AND. Defaults `page=1`,
    * `limit=12`; `paginate()` recibe el `limit` crudo, así `per_page` sigue
    * saliendo como string cuando llega por query, y la url es la del mock.
    */
@@ -230,7 +230,7 @@ export class CouponsService {
     }
   }
 
-  /** Por código exacto, como el mock; inexistente ⇒ 404 (V-5). */
+  /** Por código exacto, como el mock; inexistente ⇒ 404. */
   async getCoupon(param: string): Promise<Coupon> {
     let record: CouponRecord | null;
     try {
@@ -263,7 +263,7 @@ export class CouponsService {
     }
   }
 
-  /** Devuelve el cupón borrado (V-6: el mock daba un string). */
+  /** Devuelve el cupón borrado (el mock daba un string). */
   async remove(id: number, user: CurrentUserPayload): Promise<Coupon> {
     assertId(id);
     if (!user.permissions.includes('super_admin')) {
@@ -277,7 +277,7 @@ export class CouponsService {
   }
 
   /**
-   * Verificación real del checkout (V-3). Válido ⇔ existe, está aprobado,
+   * Verificación real del checkout. Válido ⇔ existe, está aprobado,
    * vigente y `sub_total >= minimum_cart_amount`. `sub_total` ausente o no
    * numérico cuenta como 0. Si falla, 200 con `is_valid: false` y la clave de
    * traducción que el shop pinta; sin `coupon`.
@@ -303,7 +303,7 @@ export class CouponsService {
     return { is_valid: true, coupon: toCouponDto(record) };
   }
 
-  /** Persiste la moderación (V-7: `is_approve` sale `1`/`0`, como la lista). */
+  /** Persiste la moderación (`is_approve` sale `1`/`0`, como la lista). */
   async setApproval(id: unknown, isApprove: boolean): Promise<Coupon> {
     const couponId = Number(id);
     assertId(couponId);

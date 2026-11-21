@@ -1,7 +1,7 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
  * 5 términos, ids 8..12, deduplicados por slug desde 10 filas del mock).
- * Lectura, escritura y moderación (US-47).
+ * Lectura, escritura y moderación.
  *
  * Centinela `zz-terms-` en el slug. La moderación del seed (id 10) se
  * restaura en `afterAll`: otras corridas asertan `is_approved = true` en las 5.

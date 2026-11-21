@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `TaxesService` (US-49). Mismo arnés que
+ * Tests unitarios de `TaxesService`. Mismo arnés que
  * `tags.service.spec.ts`: solo se mockea el acceso a datos.
  */
 import 'reflect-metadata';
@@ -71,7 +71,7 @@ describe('TaxesService', () => {
     );
   });
 
-  it('devuelve un array sin paginar y filtra por search=name:X (V-1)', async () => {
+  it('devuelve un array sin paginar y filtra por search=name:X', async () => {
     listMock.mockResolvedValue([]);
     await service.findAll({ search: 'name:IVA' });
     await service.findAll({});

@@ -1,6 +1,6 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
- * 10 favoritos de customer@demo.com, id 2, en el orden 945 → 104). US-53.
+ * 10 favoritos de customer@demo.com, id 2, en el orden 945 → 104).
  *
  * Las escrituras usan las listas del admin (3) y del dueño (1), que el seed
  * deja vacías; `beforeAll`/`afterAll` las vacían. La lista del cliente no se

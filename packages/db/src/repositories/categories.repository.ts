@@ -58,12 +58,12 @@ export interface CategoryTreeNode extends CategoryRecord {
 
 export interface ListCategoriesInput {
   typeSlug?: string;
-  /** Búsqueda parcial por nombre, case-insensitive (Decisión G). */
+  /** Búsqueda parcial por nombre, case-insensitive (`search=name:<v>` del admin). */
   name?: string;
   /**
    * `true` (default): solo raíces en el top level, cada una con su
    * subárbol. `false`: los 198 nodos planos en el top level, cada uno
-   * con su propio subárbol (Decisión D — semántica de `parent=all`).
+   * con su propio subárbol (lo que pide `parent=all` en la query).
    */
   rootsOnly?: boolean;
   /** 1-based. Default 1. */
@@ -81,13 +81,13 @@ type CategoryPayload = Prisma.CategoryGetPayload<{
 }>;
 
 // ---------------------------------------------------------------------------
-// Ensamblador — puro, síncrono, sin `prisma`: se prueba sin base (Decisión A)
+// Ensamblador — puro, síncrono, sin `prisma`: se prueba sin base
 // ---------------------------------------------------------------------------
 
 /**
  * `recs.get(rec.parentId)` — la madre PLANA (un CategoryRecord, sin
- * `parent` ni `children` propios), que es lo que la Decisión C necesita
- * para armar la forma `E` del `parent` de un descendiente.
+ * `parent` ni `children` propios), que es lo que hace falta para armar
+ * la forma `E` del `parent` de un descendiente, igual en todos los niveles.
  */
 function _immediate(
   rec: CategoryRecord,
@@ -109,7 +109,7 @@ function _assembleTree(rows: CategoryPayload[]): Map<number, CategoryTreeNode> {
     // para que tampoco reaparezca como hija o madre de otro nodo vía `kids`/
     // `recs`. Hoy solo alcanzable por el TOCTOU de `deleteType` (cuenta
     // dependientes y responde 409), pero es la misma forma que reventó en
-    // `products` (C-1, US-27b). Invisible para `tsc`: Prisma tipa la relación
+    // `products`. Invisible para `tsc`: Prisma tipa la relación
     // como no nula.
     if (row.type === null) continue;
     const rec = _toCategoryRecord(row);
@@ -207,7 +207,7 @@ export async function getCategoryTree(
 
 /**
  * Listado paginado. `rootsOnly` decide qué nodos van al top level
- * (Decisión D); el subárbol y la cadena ascendente de cada nodo son
+ * (`parent=null` frente a `parent=all`); el subárbol y la cadena ascendente de cada nodo son
  * idénticos en los dos modos, porque el set completo ya está cargado y
  * ensamblado antes de decidir el top level.
  */
@@ -258,13 +258,13 @@ export async function findCategoryByIdOrSlug(
 }
 
 // ---------------------------------------------------------------------------
-// Escritura (admin) — CA-1, CA-2, CA-3. Único agregado jerárquico del
-// catálogo: cuatro reglas de la arista madre→hija que el DDL no puede
-// expresar (design.md, DD28-3) se validan aquí, en código, antes del write.
+// Escritura (admin). Único agregado jerárquico del catálogo: cuatro reglas
+// de la arista madre→hija que el DDL no puede expresar se validan aquí, en
+// código, antes del write.
 // ---------------------------------------------------------------------------
 
 /**
- * Call site de `ExistingSlugLookup` (design.md DD28-8): la tabla nunca llega
+ * Call site de `ExistingSlugLookup`: la tabla nunca llega
  * al SQL compartido, `generateSlug` solo recibe esta función.
  */
 const categorySlugs: ExistingSlugLookup = async (prefix) =>
@@ -282,7 +282,7 @@ export interface CreateCategoryInput {
   details?: string | null;
   /** el admin manda `''` cuando no elige icono. */
   icon?: string | null;
-  /** `jsonb`; `null` se trata como ausente (DD-5, US-27b). */
+  /** `jsonb`; `null` se trata como ausente. */
   image?: Prisma.InputJsonValue;
   /** `null` = raíz. */
   parentId?: number | null;
@@ -292,27 +292,26 @@ export interface CreateCategoryInput {
   language?: string;
 }
 
-/** `slug` inmutable por tipo (CA-2); `typeId` SÍ mutable (DD28-5). */
+/** `slug` inmutable por tipo; `typeId` SÍ mutable (ver regla 7). */
 export type UpdateCategoryInput = Partial<Omit<CreateCategoryInput, 'slug'>>;
 
 const MAX_ANCESTOR_HOPS = 32;
 
 /**
- * Regla 1 de DD28-3: forma entera de `type_id` y de `parent`. MUST correr
- * ANTES del dispatch `parentId != null` en create/update — `NaN != null` es
- * `true`, así que sin este orden `{"parent":"abc"}` llegaría a
+ * Regla 1 de la arista madre→hija: forma entera de `type_id` y de `parent`.
+ * MUST correr ANTES del dispatch `parentId != null` en create/update —
+ * `NaN != null` es `true`, así que sin este orden `{"parent":"abc"}` llegaría a
  * `_assertParentEdge(NaN, …)` y de ahí a `BigInt(NaN)` (RangeError sin
- * `.code`, HTTP 500 — ver design.md, Data Flow).
+ * `.code`, HTTP 500).
  *
- * `Number.isSafeInteger` (no `Number.isInteger`) — corrección de un `GATE:
- * FAIL` posterior a PR#2. `Number.isInteger` es `true` para `1e21` o
- * `9223372036854775808`: ambos pasan la guarda, llegan a
- * `prisma.category.findUnique({ where: { id } })`, Prisma intenta
+ * `Number.isSafeInteger` (no `Number.isInteger`): `Number.isInteger` es
+ * `true` para `1e21` o `9223372036854775808`: ambos pasan la guarda,
+ * llegan a `prisma.category.findUnique({ where: { id } })`, Prisma intenta
  * `BigInt(1e21)`/coerciona un valor fuera del rango de un `bigint` de
  * Postgres, y el driver lanza `invalid input syntax for type bigint` /
  * `Value out of range` — un error SIN `.code` de Prisma reconocible, que
  * `translateCatalogWriteError` devuelve intacto y degrada a HTTP 500
- * (viola la decisión 6 del épico y `specs/category-tree-api/spec.md:71`,
+ * (viola `specs/category-tree-api/spec.md:71`,
  * "responden 400, nunca 500"). `Number.MAX_SAFE_INTEGER` (2^53-1) es una
  * cota conservadora muy por debajo del máximo real de `bigint` (2^63-1,
  * `db/schema.sql`), así que ningún id/type_id/parent_id real del catálogo
@@ -322,10 +321,9 @@ const MAX_ANCESTOR_HOPS = 32;
  * (`0`, negativo) SÍ es representable como `bigint` sin que el driver
  * reviente — no reproduce el defecto de este fix — y ya resuelve en un 400
  * correcto más abajo (`_assertParentEdge`/`P2003` para una fila que no
- * existe). Añadir `<= 0` aquí sería una regla nueva, no autorizada por la
- * tabla cerrada de 7 reglas de `design.md`/`spec.md` (regla 1 es solo forma
- * ENTERA, no rango de negocio); se deja fuera para no expandir el alcance
- * de esta corrección más allá del defecto reportado.
+ * existe). Añadir `<= 0` aquí sería una regla nueva, fuera de la tabla
+ * cerrada de 7 reglas de la spec (regla 1 es solo forma ENTERA, no rango de
+ * negocio); se deja fuera a propósito.
  */
 function _assertIntegerRef(
   value: number | null | undefined,
@@ -341,7 +339,7 @@ function _assertIntegerRef(
  * orden. Al final, solo cuando `childId !== null` (es decir, únicamente
  * desde `updateCategory`), dispara la guarda de ciclo (reglas 5/6)
  * arrancando en `_id(parent.parentId)` — la madre ya está en la mano, así
- * que no hace falta un segundo round trip (DD28-4).
+ * que no hace falta un segundo round trip.
  */
 async function _assertParentEdge(
   parentId: number,
@@ -377,13 +375,12 @@ async function _assertParentEdge(
 }
 
 /**
- * Reglas 5/6 de DD28-3: ascenso iterativo desde `startFrom` (=
+ * Reglas 5/6 de la arista madre→hija: ascenso iterativo desde `startFrom` (=
  * `_id(parent.parentId)`, ya sondeado por `_assertParentEdge`), tope
  * defensivo de 32 saltos. **`_id()` en cada valor leído de Prisma es
  * obligatorio**: sin él, `cursor === id` es `bigint === number`, siempre
- * `false`, y la guarda de ciclo nunca dispara (design.md, DD28-3 "Regla
- * normativa transversal" — el único test que atrapa ese fallo es el A→B→A
- * de integración, ningún test de tipos lo delata).
+ * `false`, y la guarda de ciclo nunca dispara (el único test que atrapa ese
+ * fallo es el A→B→A de integración, ningún test de tipos lo delata).
  */
 async function _assertNoAncestorCycle(
   id: number,
@@ -414,7 +411,7 @@ async function _assertNoAncestorCycle(
 }
 
 /**
- * Regla 7 de DD28-5: cambiar el `type_id` de un nodo con hijas de otro
+ * Regla 7 de la arista madre→hija: cambiar el `type_id` de un nodo con hijas de otro
  * `type_id` (tras el cambio) queda prohibido. Consecuencia observable
  * declarada: en un nodo CON hijas, cualquier cambio de type da 400 siempre;
  * `type_id` solo es mutable de hecho en una categoría hoja.
@@ -436,17 +433,17 @@ async function _assertChildrenShareType(
 }
 
 /**
- * Re-fetch tras escribir (DD28-2): `_assembleTree(_loadFlat())` completo,
+ * Re-fetch tras escribir: `_assembleTree(_loadFlat())` completo,
  * nunca `findCategoryByIdOrSlug` — esa función cae al barrido por slug si
  * el id ya no existe, ambigüedad innecesaria en una ruta que solo conoce
  * ids. `null` si la fila desapareció entre el write y el re-fetch (carrera
- * declarada, DD28-2).
+ * declarada).
  */
 async function _loadNode(id: number): Promise<CategoryTreeNode | null> {
   return _assembleTree(await _loadFlat()).get(id) ?? null;
 }
 
-/** Crea una categoría raíz o hija. El slug lo calcula `generateSlug` (DD28-8). */
+/** Crea una categoría raíz o hija. El slug lo calcula `generateSlug`. */
 export async function createCategory(
   input: CreateCategoryInput
 ): Promise<CategoryTreeNode> {
@@ -480,7 +477,7 @@ export async function createCategory(
     });
     createdId = _id(row.id);
   } catch (error) {
-    // Sin `uniqueField: 'slug'` a propósito (gate corrective, finding 1):
+    // Sin `uniqueField: 'slug'` a propósito:
     // bajo Prisma 7 + adapter-pg, un `P2003` llega sin `meta.field_name`, y
     // `translateCatalogWriteError` cae al `uniqueField` del contexto para
     // CUALQUIER violación de FK — no solo la de `slug`. Con
@@ -507,8 +504,8 @@ export async function createCategory(
  * Actualiza una categoría: campos, madre y/o type. El `slug` es inmutable a
  * nivel de tipo (`UpdateCategoryInput` lo omite); si llega `name`, se valida
  * con `normalizeSlug` y se descarta el resultado — solo por su efecto
- * lateral `EmptySlugError` (DD28-8, precedente `updateType`). `updatedAt` lo
- * fija `updatedAt: now()` desde `clock.ts` (US-32); ya no hay trigger de
+ * lateral `EmptySlugError` (precedente `updateType`). `updatedAt` lo
+ * fija `updatedAt: now()` desde `clock.ts`; ya no hay trigger de
  * base de datos.
  */
 export async function updateCategory(
@@ -554,7 +551,7 @@ export async function updateCategory(
     });
   } catch (error) {
     // Ver el comentario equivalente en `createCategory`: sin `uniqueField`
-    // fijo (gate corrective, finding 1) — un `P2003` (madre borrada por una
+    // fijo — un `P2003` (madre borrada por una
     // carrera entre la guarda y el write, o `type_id` inexistente) ya no se
     // atribuye a `slug`.
     throw translateCatalogWriteError(error, {
@@ -573,9 +570,9 @@ export async function updateCategory(
 /**
  * Borra una categoría. `_loadNode` corre ANTES del `DELETE`: es a la vez la
  * comprobación de existencia del `find-then-delete` y el snapshot que se
- * devuelve (DD28-1). `ON DELETE SET NULL` re-enraíza a las hijas en la base
+ * devuelve. `ON DELETE SET NULL` re-enraíza a las hijas en la base
  * y `category_product` se desenlaza en CASCADE — cero código de
- * re-enraizado (D28-6). **Divergencia declarada**: `children` en la
+ * re-enraizado. **Divergencia declarada**: `children` en la
  * respuesta refleja el árbol PRE-borrado (`parent_id` antiguo); el admin
  * ignora el body del `DELETE`.
  */

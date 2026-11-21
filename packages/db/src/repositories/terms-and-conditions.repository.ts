@@ -1,5 +1,5 @@
 /**
- * terms-and-conditions.repository.ts — términos y condiciones (US-47).
+ * terms-and-conditions.repository.ts — términos y condiciones.
  *
  * Misma forma que `faqs.repository.ts` (tipo y emisor derivados de la tienda,
  * vía `resolveContentIssuer`) más la cola de moderación: `setTermsApproval`
@@ -139,7 +139,7 @@ export async function createTermsAndConditions(
   }
 }
 
-/** El `slug` es inmutable; `updatedAt: now()` explícito (US-32). */
+/** El `slug` es inmutable; `updatedAt: now()` explícito. */
 export async function updateTermsAndConditions(
   id: number,
   input: UpdateTermsAndConditionsInput

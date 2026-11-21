@@ -4,7 +4,7 @@
 /* En la v3, space-y-3 más el mt-3 de prev/next daban mt-3 a todos los hijos, y
    el selector de space-x-3 pisaba el margin-right de rc-pagination. El space-*
    de la v4 va en :where() y usa margin-bottom/-end: se copia la regla de la v3
-   para que la paginación se vea igual (US-86). */
+   para que la paginación se vea igual. */
 .rc-pagination {
   @apply flex flex-wrap items-center *:mt-3;
 }

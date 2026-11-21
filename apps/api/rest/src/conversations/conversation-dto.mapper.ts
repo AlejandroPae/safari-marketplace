@@ -9,16 +9,16 @@ import { toShopDto } from '#src/shops/shops.service.js';
 import { Message } from '#src/messages/entities/message.entity.js';
 import { Conversation } from './entities/conversation.entity.js';
 
-/** Visibilidad (US-56): super_admin ve todo; el resto, lo suyo y lo de sus tiendas. */
+/** Visibilidad: super_admin ve todo; el resto, lo suyo y lo de sus tiendas. */
 export function toViewer(user: CurrentUserPayload): ConversationViewer {
   return { userId: user.sub, seeAll: user.permissions.includes('super_admin') };
 }
 
 /**
- * `unseen` para quien consulta (US-64; reemplaza la regla provisional de
- * US-56). `0` si no hay mensajes, si el último es suyo o si lo leyó: su
- * `lastSeenAt` es igual o posterior al `created_at` del último mensaje. `1`
- * en cualquier otro caso. Las dos marcas salen de `now()` de `clock.ts`.
+ * `unseen` para quien consulta. `0` si no hay mensajes, si el último es
+ * suyo o si lo leyó: su `lastSeenAt` es igual o posterior al `created_at`
+ * del último mensaje. `1` en cualquier otro caso. Las dos marcas salen de
+ * `now()` de `clock.ts`.
  */
 function unseen(record: ConversationDetailRecord, viewerId: number): number {
   const latest = record.latestMessage;
@@ -32,9 +32,9 @@ function unseen(record: ConversationDetailRecord, viewerId: number): number {
 }
 
 /**
- * Forma de `conversations.json` sin `__typename` (V-3): ids como STRING,
+ * Forma de `conversations.json` sin `__typename`: ids como STRING,
  * igual que el mock y los tipos del admin; `unseen` como número; `shop` con
- * `toShopDto` (V-6); `latest_message` calculado (V-1, V-2), ids string.
+ * `toShopDto`; `latest_message` calculado, ids string.
  */
 export function toConversationDto(
   record: ConversationDetailRecord,

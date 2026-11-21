@@ -1,5 +1,5 @@
 /**
- * reviews.repository.ts — reseñas de producto (US-54).
+ * reviews.repository.ts — reseñas de producto.
  *
  * Cada lectura devuelve `ReviewDetailRecord`: la fila más su autor
  * (`UserRecord`), su producto hidratado (`ProductRecord`, mismo include y
@@ -207,7 +207,7 @@ export async function createReview(
   }
 }
 
-/** Solo `rating`, `comment` y `photos`; fija `updatedAt: now()` (US-32). */
+/** Solo `rating`, `comment` y `photos`; fija `updatedAt: now()`. */
 export async function updateReview(
   id: number,
   input: UpdateReviewInput

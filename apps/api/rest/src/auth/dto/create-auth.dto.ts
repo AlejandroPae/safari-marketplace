@@ -2,10 +2,10 @@ import { PartialType, PickType } from '@nestjs/swagger';
 import { CoreMutationOutput } from '#src/common/dto/core-mutation-output.dto.js';
 import { User } from '#src/users/entities/user.entity.js';
 
-// snake_case (Decisión I, design.md): los tres frontends comparan
+// snake_case: los tres frontends comparan
 // `permissions[]` contra estos strings, no contra los del Laravel
 // original ('Super admin', ...). El segundo enum `Permission`, en
-// `users/dto/create-user.dto.ts`, es deuda heredada de US-25 y no se toca.
+// `users/dto/create-user.dto.ts`, es deuda heredada y no se toca.
 enum Permission {
   SUPER_ADMIN = 'super_admin',
   STORE_OWNER = 'store_owner',

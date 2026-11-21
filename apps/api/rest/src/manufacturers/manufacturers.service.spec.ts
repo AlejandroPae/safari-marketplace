@@ -5,15 +5,15 @@
  * se limita a este archivo para no tocar la config del build.
  */
 /**
- * Tests unitarios de las escrituras de `ManufacturersService` (US-27b):
+ * Tests unitarios de las escrituras de `ManufacturersService`:
  * `create`/`update`/`remove`.
  *
  * Mismo arnés que `tags.service.spec.ts:1-19` / `types.service.spec.ts:1-88`:
  * se mockea SOLO el acceso a datos (`createManufacturer`/`updateManufacturer`/
  * `deleteManufacturer`, `findManufacturerBySlug` — necesario para comparar el
- * `Object.keys()` de las 3 escrituras contra el de la lectura, CA-1 — y
- * `listTypes`, que las escrituras necesitan para resolver el `type` embebido,
- * design.md DD-7) y se dejan REALES las 5 clases de error de dominio y
+ * `Object.keys()` de las 3 escrituras contra el de la lectura — y
+ * `listTypes`, que las escrituras necesitan para resolver el `type`
+ * embebido) y se dejan REALES las 5 clases de error de dominio y
  * `toWriteHttpException` (vía `domain-error.mapper.ts`, tampoco mockeado),
  * para que la traducción a HTTP se pruebe de verdad.
  */
@@ -99,7 +99,7 @@ function makeTypeRecord(overrides: Partial<TypeRecord> = {}): TypeRecord {
 /**
  * `ValidationPipe` corre sin `whitelist`; en runtime el body puede traer
  * claves sin columna (`socials`, `cover_image`, `language`, `shop_id`) que
- * sobreviven hasta el servicio (`main.ts:9`, decisión 5 del épico). Este
+ * sobreviven hasta el servicio (`main.ts:9`). Este
  * cast reproduce esa realidad para poder ejercer el servicio directamente
  * con un payload que incluye esas claves fantasma.
  */
@@ -120,7 +120,7 @@ beforeEach(() => {
   listTypesMock.mockResolvedValue([]);
 });
 
-describe('ManufacturersService.create (US-27b)', () => {
+describe('ManufacturersService.create', () => {
   let service: ManufacturersService;
 
   beforeEach(() => {
@@ -128,7 +128,7 @@ describe('ManufacturersService.create (US-27b)', () => {
     service = new ManufacturersService();
   });
 
-  it('proyecta el DTO campo a campo: omite `description`/`website`/`image`/`type_id`/`is_approved` ausentes e ignora `socials`/`cover_image`/`language`/`shop_id` (B-4, V-1/V-2/V-3)', async () => {
+  it('proyecta el DTO campo a campo: omite `description`/`website`/`image`/`type_id`/`is_approved` ausentes e ignora `socials`/`cover_image`/`language`/`shop_id`', async () => {
     createManufacturerMock.mockResolvedValue(makeManufacturerRecord());
 
     await service.create(
@@ -195,7 +195,7 @@ describe('ManufacturersService.create (US-27b)', () => {
     });
   });
 
-  it('resuelve `type` con UN `listTypes()` secuencial, después de la escritura (design.md DD-7, nunca `Promise.all`)', async () => {
+  it('resuelve `type` con UN `listTypes()` secuencial, después de la escritura (nunca `Promise.all`: un 503 de `listTypes()` taparía el error de la escritura)', async () => {
     const callOrder: string[] = [];
     createManufacturerMock.mockImplementation(async () => {
       callOrder.push('createManufacturer');
@@ -322,7 +322,7 @@ describe('ManufacturersService.create (US-27b)', () => {
   });
 });
 
-describe('ManufacturersService.update (US-27b)', () => {
+describe('ManufacturersService.update', () => {
   let service: ManufacturersService;
 
   beforeEach(() => {
@@ -349,10 +349,10 @@ describe('ManufacturersService.update (US-27b)', () => {
     },
   );
 
-  // Inverso de CA-4 (CA-2, US-31): un id grande pero seguro atraviesa la
+  // Inverso del corte de id inválido: un id grande pero seguro atraviesa la
   // guarda y el 404 lo decide la fila inexistente, no el guard. Se pone rojo
   // si alguien adelanta el corte (p. ej. `|| id > 1e6`).
-  it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente (CA-2, US-31)', async () => {
+  it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente', async () => {
     updateManufacturerMock.mockRejectedValue(
       new RecordNotFoundError('manufacturers', 123456789012345),
     );
@@ -398,14 +398,15 @@ describe('ManufacturersService.update (US-27b)', () => {
   });
 
   /**
-   * Prueba unitaria de B-4 sobre el payload EXACTO del toggle de aprobación
-   * (`manufacturer-list.tsx:134-142`, design.md DD-1/DD-9): 5 claves, ninguna
+   * Prueba unitaria de la regla "clave ausente del DTO ⇏ `data` de Prisma"
+   * sobre el payload EXACTO del toggle de aprobación
+   * (`manufacturer-list.tsx:134-142`): 5 claves, ninguna
    * de las cuales es `description`/`website`/`image`. El input que llega al
    * repositorio mockeado MUST omitir esas 3 claves por completo — no
    * `undefined`, AUSENTES — probando que el servicio nunca proyecta "ausente
    * del DTO" como `null`/`undefined` explícito.
    */
-  it('B-4: el payload de 5 claves del toggle de aprobación omite `description`/`website`/`image` del input al repositorio (nunca las proyecta)', async () => {
+  it('el payload de 5 claves del toggle de aprobación omite `description`/`website`/`image` del input al repositorio (nunca las proyecta)', async () => {
     updateManufacturerMock.mockResolvedValue(
       makeManufacturerRecord({ isApproved: false }),
     );
@@ -432,7 +433,7 @@ describe('ManufacturersService.update (US-27b)', () => {
     expect('image' in calledWith).toBe(false);
   });
 
-  it('`is_approved` se coerciona con `Boolean(...)` (DD-6) — `true`/`false` reales', async () => {
+  it('`is_approved` se coerciona con `Boolean(...)` — `true`/`false` reales', async () => {
     updateManufacturerMock.mockResolvedValue(makeManufacturerRecord());
 
     await service.update(20, updateDto({ is_approved: true }));
@@ -505,7 +506,7 @@ describe('ManufacturersService.update (US-27b)', () => {
   });
 });
 
-describe('ManufacturersService.remove (US-27b)', () => {
+describe('ManufacturersService.remove', () => {
   let service: ManufacturersService;
 
   beforeEach(() => {
@@ -532,7 +533,7 @@ describe('ManufacturersService.remove (US-27b)', () => {
     },
   );
 
-  it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente (CA-2, US-31)', async () => {
+  it('id 123456789012345 (seguro) → llega al repositorio; el 404 lo da la fila inexistente', async () => {
     deleteManufacturerMock.mockRejectedValue(
       new RecordNotFoundError('manufacturers', 123456789012345),
     );
@@ -570,7 +571,7 @@ describe('ManufacturersService.remove (US-27b)', () => {
   });
 });
 
-describe('Contrato de 13 claves — create/update/remove igual a getManufacturesBySlug (CA-1)', () => {
+describe('Contrato de 13 claves — create/update/remove igual a getManufacturesBySlug', () => {
   let service: ManufacturersService;
 
   beforeEach(() => {
@@ -602,8 +603,7 @@ describe('Contrato de 13 claves — create/update/remove igual a getManufactures
 
     const expectedKeys = Object.keys(readResult);
     expect(expectedKeys).toHaveLength(13);
-    // Comparación de ORDEN exacto — nunca `.sort()` (jq no está instalado,
-    // design.md nota sobre `node -e`, aquí equivalente con `toEqual`).
+    // Comparación de ORDEN exacto con `toEqual` — nunca `.sort()`.
     expect(Object.keys(createResult)).toEqual(expectedKeys);
     expect(Object.keys(updateResult)).toEqual(expectedKeys);
     expect(Object.keys(removeResult)).toEqual(expectedKeys);

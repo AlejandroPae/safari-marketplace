@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `CouponsService` (US-52). Mismo arnés que
+ * Tests unitarios de `CouponsService`. Mismo arnés que
  * `attributes.service.spec.ts`: solo se mockea el acceso a datos. El reloj
  * es el real de `@safari/db` y se fija con `_setNowProvider`.
  */
@@ -79,7 +79,7 @@ const OWNER_USER: CurrentUserPayload = {
   iat: 0,
   exp: 0,
 };
-/** Staff de la tienda 1 por fila en `shop_staff` (US-66, Ampliación). */
+/** Staff de la tienda 1 por fila en `shop_staff`. */
 const STAFF_USER: CurrentUserPayload = {
   sub: STAFF,
   email: 'customer@demo.com',
@@ -371,12 +371,12 @@ describe('CouponsService', () => {
   });
 
   /**
-   * US-66 (Ampliación, Decisión 2 cerrada): `assertCanManage` admite al staff
+   * `assertCanManage` admite al staff
    * de la tienda (fila en `shop_staff`), consultado solo si no es dueño.
    * `vi.resetAllMocks()` deja `isShopStaff` en `undefined` (falsy) para el
    * resto de casos, que siguen significando «sin fila».
    */
-  describe('staff de la tienda (US-66, Ampliación)', () => {
+  describe('staff de la tienda', () => {
     const DTO = {
       code: 'zz-coupon-staff',
       type: 'fixed',

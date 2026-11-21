@@ -24,14 +24,14 @@ import {
 export class AbusiveReportsController {
   constructor(private reportService: AbusiveReportService) {}
 
-  // Moderación (toda aprobación es ADMIN_ONLY, design.md Decisión B).
+  // Moderación (toda aprobación es ADMIN_ONLY).
   @Permissions(...ADMIN_ONLY)
   @Get()
   async findAll() {
     return this.reportService.findAllReports();
   }
 
-  // Rechazar los reportes de un objeto (US-65): el botón «Decline» del admin.
+  // Rechazar los reportes de un objeto: el botón «Decline» del admin.
   // Antes de las rutas con `:id`, por convención del repo.
   @Permissions(...ADMIN_ONLY)
   @Post('reject')

@@ -1,5 +1,5 @@
 /**
- * withdraws.repository.ts — solicitudes de retiro de las tiendas (US-62).
+ * withdraws.repository.ts — solicitudes de retiro de las tiendas.
  *
  * Un retiro es de una tienda; quién puede verlo o pedirlo (super admin todo,
  * dueño solo lo de sus tiendas) es regla de la API, que aquí llega como el
@@ -143,7 +143,7 @@ export async function createWithdraw(
   }
 }
 
-/** Cambia el estado. `updatedAt: now()` explícito (US-32). Inexistente ⇒ `RecordNotFoundError`. */
+/** Cambia el estado. `updatedAt: now()` explícito. Inexistente ⇒ `RecordNotFoundError`. */
 export async function updateWithdrawStatus(
   id: number,
   status: string

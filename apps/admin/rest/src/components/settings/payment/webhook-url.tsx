@@ -42,7 +42,7 @@ const WebHookURL = ({ gateway }: WebHookURLProps) => {
     paymongo: <PaymongoIcon className="h-4 w-auto" />,
     flutterwave: <FlutterwaveIcon className="h-4 w-auto" />,
   };
-  // La pasarela necesita una URL absoluta (D-7, US-102). `window` no existe
+  // La pasarela necesita una URL absoluta. `window` no existe
   // al prerenderizar: el origen se lee en un efecto, ya en el navegador.
   const [origin, setOrigin] = useState('');
   useEffect(() => {

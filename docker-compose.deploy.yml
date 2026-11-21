@@ -1,7 +1,7 @@
-# Stack de despliegue (US-111): el que Dokploy levanta en el VPS.
+# Stack de despliegue: el que Dokploy levanta en el VPS.
 #
 # Es independiente del docker-compose.yml de desarrollo:
-#   - usa las imágenes que el CI publica en Docker Hub (US-110), sin `build:`;
+#   - usa las imágenes que el CI publica en Docker Hub, sin `build:`;
 #   - no publica puertos en el host: todo entra por Traefik, que enruta según
 #     los dominios del panel (tienda -> proxy:3003, admin -> proxy:3002). Al
 #     desplegar, Dokploy conecta solo `proxy` (el servicio con dominio) a
@@ -19,7 +19,7 @@
 # Plantilla: deploy.variables.example. Guía: docs/dokploy/README.md.
 
 x-imagen: &imagen
-  # Las cinco imágenes llevan la misma etiqueta: la del commit (US-110).
+  # Las cinco imágenes llevan la misma etiqueta: la del commit.
   pull_policy: always
 
 services:
@@ -79,7 +79,7 @@ services:
       retries: 3
       start_period: 30s
 
-  # Balanceador de la API (US-107): la misma imagen que `proxy`, con su otra
+  # Balanceador de la API: la misma imagen que `proxy`, con su otra
   # configuración. Sin depends_on, a propósito (ver docker-compose.yml).
   api-lb:
     <<: *imagen
@@ -99,7 +99,7 @@ services:
         condition: service_started
     environment:
       API_INTERNAL_URL: http://api-lb:9001/api
-      # La URL pública: next-auth y el dominio de /sitemap.xml (US-108).
+      # La URL pública: next-auth y el dominio de /sitemap.xml.
       NEXTAUTH_URL: ${SHOP_URL:?Falta SHOP_URL}
       NEXTAUTH_URL_INTERNAL: http://127.0.0.1:3000
       SECRET: ${SHOP_SECRET:?Falta SHOP_SECRET (cadena larga y aleatoria)}
@@ -119,7 +119,7 @@ services:
       api:
         condition: service_healthy
     environment:
-      # Enlaces «ver en la tienda» (US-103).
+      # Enlaces «ver en la tienda».
       SHOP_URL: ${SHOP_URL:?Falta SHOP_URL}
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/en/login"]

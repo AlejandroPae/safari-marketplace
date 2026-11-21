@@ -1,8 +1,8 @@
 import { Logger } from '@nestjs/common';
 
 /**
- * Único lector de `PASSWORD_RESET_TTL_MINUTES`/`OTP_CODE_TTL_MINUTES`
- * (Decisión F, design.md). Mismo motivo de lectura diferida y memoizada que
+ * Único lector de `PASSWORD_RESET_TTL_MINUTES`/`OTP_CODE_TTL_MINUTES`.
+ * Mismo motivo de lectura diferida y memoizada que
  * `jwt-options.ts`: `ConfigModule.forRoot()` puebla `process.env` DESPUÉS de
  * evaluar los `require` de los módulos hijos, así que un `process.env.X`
  * leído al importar `auth.service.ts` sería `undefined`. El primer

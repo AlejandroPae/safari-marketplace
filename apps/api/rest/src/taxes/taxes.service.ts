@@ -24,7 +24,7 @@ import { Tax } from './entities/tax.entity.js';
 
 /**
  * `TaxRecord` → las 12 claves de `taxes.json` en SU orden, que no es el de
- * la entidad: la geografía va antes que `rate` y `name` (US-49, CA-3). Se
+ * la entidad: la geografía va antes que `rate` y `name`. Se
  * escribe a mano a propósito; derivarlo del record rompería los bytes.
  */
 function toTaxDto(record: TaxRecord): Tax {
@@ -111,7 +111,7 @@ export class TaxesService {
   /**
    * ARRAY completo, sin paginar, como el mock: el admin de `/settings` pide
    * `limit=999` y espera un array. `search=name:X` (página `/taxes` del
-   * admin) filtra de verdad (V-1); antes se ignoraba.
+   * admin) filtra de verdad; antes se ignoraba.
    */
   async findAll({ search }: GetTaxesDto = {}): Promise<Tax[]> {
     const tokens = parseSearch(search);
@@ -122,7 +122,7 @@ export class TaxesService {
     }
   }
 
-  /** Por id; inexistente o id mal formado ⇒ 404 (V-2). */
+  /** Por id; inexistente o id mal formado ⇒ 404. */
   async findOne(id: number): Promise<Tax> {
     assertId(id);
     let record: TaxRecord | null;
@@ -148,7 +148,7 @@ export class TaxesService {
     }
   }
 
-  /** Devuelve la clase borrada (V-3: el mock devolvía un string). */
+  /** Devuelve la clase borrada (el mock devolvía un string). */
   async remove(id: number): Promise<Tax> {
     assertId(id);
     try {

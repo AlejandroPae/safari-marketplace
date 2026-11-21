@@ -2,7 +2,7 @@
  * tags.repository.ts — etiquetas de productos.
  *
  * Las escrituras (`createTag`/`updateTag`/`deleteTag`) replican el patrón de
- * `types.repository.ts:58-182` (design.md, US-27b) con dos diferencias reales:
+ * `types.repository.ts:58-182` con dos diferencias reales:
  * `type_id` es una FK saliente de verdad (`db/schema.sql:302`, `ON DELETE
  * SET NULL`), así que `InvalidReferenceError` sí es alcanzable por HTTP; y
  * `deleteTag` NO cuenta dependientes — `product_tag.tag_id` es `ON DELETE
@@ -36,7 +36,7 @@ export interface ListTagsInput {
  * Listado paginado. `{ items, total }` para `buildPaginator`.
  *
  * `orderBy: { id: 'desc' }` preserva el orden del mock (`62,61,...,53`) —
- * Decisión D en design.md: los tags scrapeados quedan al frente.
+ * los tags scrapeados quedan al frente.
  */
 export async function listTags(input: ListTagsInput = {}): Promise<{
   items: TagRecord[];
@@ -71,11 +71,11 @@ export async function findTagBySlug(slug: string): Promise<TagRecord | null> {
 }
 
 // ---------------------------------------------------------------------------
-// Escritura (admin) — CA-1, CA-2, CA-3
+// Escritura (admin)
 // ---------------------------------------------------------------------------
 
 /**
- * Call site de `ExistingSlugLookup` (design.md, DD-1): la tabla nunca llega
+ * Call site de `ExistingSlugLookup`: la tabla nunca llega
  * al SQL compartido, `generateSlug` solo recibe esta función.
  */
 const tagSlugs: ExistingSlugLookup = async (prefix) =>
@@ -92,7 +92,7 @@ export interface CreateTagInput {
   slug?: string | null;
   details?: string | null;
   icon?: string | null;
-  /** `jsonb` nullable; sin `| null` — `image: null` se trata como ausente (DD-5). */
+  /** `jsonb` nullable; sin `| null` — `image: null` se trata como ausente. */
   image?: Prisma.InputJsonValue;
   /** FK a `types`; `null` limpia la referencia. */
   typeId?: number | null;
@@ -101,19 +101,19 @@ export interface CreateTagInput {
 }
 
 /**
- * `Partial<>` de todo salvo `slug` (inmutable en update, DD-1): TODO campo
+ * `Partial<>` de todo salvo `slug` (inmutable en update): TODO campo
  * del update es opcional, y una clave ausente del input MUST NOT llegar al
- * `data` de Prisma (B-4) — el spread condicional de abajo es el mecanismo.
+ * `data` de Prisma — el spread condicional de abajo es el mecanismo.
  */
 export type UpdateTagInput = Partial<Omit<CreateTagInput, 'slug'>>;
 
 /**
- * Guarda de dominio compartida por `createTag`/`updateTag` (DD-2): un
+ * Guarda de dominio compartida por `createTag`/`updateTag`: un
  * `type_id` mal formado (`"abc"`, `NaN`, no entero) da 400 con el campo
  * correcto SIN tocar Postgres. `null` es legal (limpia la FK); `undefined`
  * ni siquiera llega aquí porque el spread condicional lo filtra antes.
  *
- * `Number.isSafeInteger` (no `Number.isInteger`, US-31): `Number.isInteger`
+ * `Number.isSafeInteger` (no `Number.isInteger`): `Number.isInteger`
  * es `true` para `1e21`, que llega a Postgres como `bigint` y revienta en
  * `invalid input syntax for type bigint` — un error SIN `.code` de Prisma
  * que `translateCatalogWriteError` no reconoce y degrada a 500. Precedente
@@ -123,7 +123,7 @@ export type UpdateTagInput = Partial<Omit<CreateTagInput, 'slug'>>;
  * representable como `bigint` (el driver no revienta) y ya resuelve en 400
  * correcto más abajo vía `P2003` → `InvalidReferenceError` — no reproduce el
  * defecto de este fix. Añadir `<= 0` aquí sería una regla de negocio nueva
- * no autorizada (D31-2 de `design.md`).
+ * no autorizada.
  */
 function _assertValidTypeId(typeId: number | null | undefined): void {
   if (typeId != null && !Number.isSafeInteger(typeId)) {
@@ -169,7 +169,7 @@ export async function createTag(input: CreateTagInput): Promise<TagRecord> {
  * `tags.name` es `text NOT NULL` donde `''` es legal para Postgres, así que
  * sin esta guarda la fila quedaría silenciosamente corrupta. `updatedAt: now()`
  * se fija explícito, como en el resto de tablas de la política de reloj
- * único (`db/schema.sql:540-550`, US-32) — ninguna tabla tiene ya trigger
+ * único (`db/schema.sql:540-550`) — ninguna tabla tiene ya trigger
  * `updated_at`.
  */
 export async function updateTag(
@@ -204,10 +204,10 @@ export async function updateTag(
 }
 
 /**
- * Borra un tag. A diferencia de `deleteType` (R-1, cuenta dependientes),
+ * Borra un tag. A diferencia de `deleteType` (que cuenta dependientes),
  * `product_tag.tag_id` es `ON DELETE CASCADE` hacia `tags`
  * (`db/schema.sql:433`): Postgres se lleva las filas pivote solas, el
- * repositorio NO las toca. No hay 409 en ninguna ruta de esta US (D27b-3).
+ * repositorio NO las toca. Ninguna ruta de borrado devuelve 409.
  * `find-then-delete`, precedente `deleteScrapedProduct`
  * (`products.repository.ts:400-413`).
  */

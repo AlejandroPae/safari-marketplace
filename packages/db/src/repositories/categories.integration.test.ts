@@ -6,8 +6,8 @@
  * Los describes de LECTURA (sin modificar) van primero y afirman conteos
  * exactos del seed — `toBe(198)`, `toBe(83)`, `toBe(53)`, `toBe(10)` — que
  * corren antes de que exista ninguna fila centinela. Los describes de
- * ESCRITURA (US-28) van al final, operan 100% sobre un centinela propio
- * `zz-categories-` en `slug`/`name` (design.md, DD28-8) y cada `it` borra
+ * ESCRITURA van al final, operan 100% sobre un centinela propio
+ * `zz-categories-` en `slug`/`name` y cada `it` borra
  * lo que crea, además de la red del `beforeAll`/`afterAll` de abajo.
  */
 
@@ -67,7 +67,7 @@ describe('listCategories — conteos del seed', () => {
     expect(total).toBe(83);
   });
 
-  it('rootsOnly false → 198 nodos planos (D-4)', async () => {
+  it('rootsOnly false → 198 nodos planos', async () => {
     const { total } = await listCategories({ rootsOnly: false, limit: 1000 });
     expect(total).toBe(198);
   });
@@ -121,7 +121,7 @@ describe('listCategories — no hay bisnietos', () => {
   });
 });
 
-describe('listCategories — cadena ascendente (D-2)', () => {
+describe('listCategories — cadena ascendente', () => {
   it('169: parent.id 163, parent.parent.id 124, parent.parent.parent null; ancestros sin children', async () => {
     const { items } = await listCategories({ rootsOnly: false, limit: 1000 });
     const node169 = items.find((n) => n.id === 169);
@@ -133,7 +133,7 @@ describe('listCategories — cadena ascendente (D-2)', () => {
   });
 });
 
-describe('listCategories — aciclidad (R-1)', () => {
+describe('listCategories — aciclidad', () => {
   it('JSON.stringify del listado completo sin paginar no lanza', async () => {
     const { items } = await listCategories({ rootsOnly: false, limit: 1000 });
     expect(() => JSON.stringify(items)).not.toThrow();
@@ -172,7 +172,7 @@ describe('listCategories — typeSlug + paginación', () => {
   });
 });
 
-describe('listCategories — name (Decisión G)', () => {
+describe('listCategories — name', () => {
   it("name 'egg' case-insensitive → total > 0 y todo item con 'egg' en el nombre", async () => {
     const { items, total } = await listCategories({
       name: 'egg',
@@ -208,7 +208,7 @@ describe('findCategoryByIdOrSlug', () => {
   });
 });
 
-describe('getCategoryTree — compatibilidad (R-4)', () => {
+describe('getCategoryTree — compatibilidad', () => {
   it('83 raíces, todas con parentId null, y alguna con children.length > 0', async () => {
     const tree = await getCategoryTree();
     expect(tree).toHaveLength(83);
@@ -218,10 +218,10 @@ describe('getCategoryTree — compatibilidad (R-4)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Escrituras (US-28) — centinela zz-categories-, describes al final.
+// Escrituras — centinela zz-categories-, describes al final.
 // ---------------------------------------------------------------------------
 
-describe('createCategory — CA-1, centinela zz-categories-', () => {
+describe('createCategory — centinela zz-categories-', () => {
   it('crea una raíz y sobrevive a una relectura por slug (_loadNode)', async () => {
     const created = await createCategory({
       name: `${SENTINEL_PREFIX}raiz`,
@@ -281,12 +281,12 @@ describe('createCategory — CA-1, centinela zz-categories-', () => {
   });
 });
 
-describe('updateCategory — CA-2, slug inmutable, updatedAt explícito', () => {
+describe('updateCategory — slug inmutable, updatedAt explícito', () => {
   afterEach(() => {
     _setNowProvider(() => new Date());
   });
 
-  it('updated_at sale de clock.ts y cumple updated_at >= created_at (CA-2 de US-32)', async () => {
+  it('updated_at sale de clock.ts y cumple updated_at >= created_at', async () => {
     const created = await createCategory({
       name: `${SENTINEL_PREFIX}Reloj`,
       slug: `${SENTINEL_PREFIX}reloj`,
@@ -301,18 +301,18 @@ describe('updateCategory — CA-2, slug inmutable, updatedAt explícito', () => 
 
     // (a) ruta olvidada: sin `updatedAt` el valor sería el del INSERT y FALLA.
     expect(updated.updatedAt.getTime()).toBe(future.getTime());
-    // (b) el invariante de CA-2.
+    // (b) el invariante updated_at >= created_at.
     expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(
       updated.createdAt.getTime()
     );
-    // (c) createdAt NO es mockeable (D-5, no-goal declarado).
+    // (c) createdAt NO es mockeable, a propósito.
     expect(updated.createdAt.getTime()).toBeLessThan(future.getTime());
 
     await deleteCategory(created.id);
   });
 
   it('renombrar no cambia el slug; updated_at avanza (monotonía entre dos PUT sucesivos)', async () => {
-    // `updateCategory` fija `updatedAt: now()` desde `clock.ts` (US-32); ya
+    // `updateCategory` fija `updatedAt: now()` desde `clock.ts`; ya
     // no hay trigger de base de datos. Este `it` sigue comparando
     // update-vs-update por monotonía (independiente de `_setNowProvider`).
     const created = await createCategory({
@@ -331,8 +331,7 @@ describe('updateCategory — CA-2, slug inmutable, updatedAt explícito', () => 
       name: `${SENTINEL_PREFIX}Renombrada Otra Vez`,
     });
     expect(secondUpdate.slug).toBe(`${SENTINEL_PREFIX}original`);
-    // `toBeGreaterThan`, NUNCA `toBeGreaterThanOrEqual` (gate corrective,
-    // finding 2): con `>=`, el fallo exacto que este test existe para cazar
+    // `toBeGreaterThan`, NUNCA `toBeGreaterThanOrEqual`: con `>=`, el fallo exacto que este test existe para cazar
     // — una ruta de `update` que olvide fijar `updatedAt: now()`, dejando
     // `updated_at` congelado en su valor de INSERT — produce una IGUALDAD
     // exacta y el test PASA igual. El spec (`category-tree-api/spec.md:30-
@@ -388,17 +387,15 @@ describe('updateCategory — CA-2, slug inmutable, updatedAt explícito', () => 
     await deleteCategory(b.id);
   });
 
-  // Las dos siguientes cierran W-2 del gate adversarial post-PR#3: ningún
+  // Las dos siguientes son red de regresión: ningún
   // `it` anterior de este describe renombra una HIJA (todos renombran
   // raíces) ni pasa `parentId: null` explícito, así que la mutación
   // `...(input.parentId !== undefined && { parentId: input.parentId })` →
   // `parentId: input.parentId ?? null` sobrevivía a las 162 pruebas: bajo
   // esa mutación, CUALQUIER `PUT` sin `parent` en el body (`input.parentId
   // === undefined`) re-enraizaría en silencio a la categoría a la raíz,
-  // porque `undefined ?? null` es `null`. El comportamiento embarcado
-  // siempre fue correcto (confirmado en vivo por el gate); lo que faltaba
-  // era la red de regresión.
-  it('renombrar una HIJA sin enviar `parent` conserva su `parentId` intacto (W-2 — sin este test, `parentId: input.parentId ?? null` pasa el gate en verde)', async () => {
+  // porque `undefined ?? null` es `null`.
+  it('renombrar una HIJA sin enviar `parent` conserva su `parentId` intacto (sin este test, `parentId: input.parentId ?? null` pasa en verde)', async () => {
     const parent = await createCategory({
       name: `${SENTINEL_PREFIX}Madre W2`,
       slug: `${SENTINEL_PREFIX}madre-w2`,
@@ -412,7 +409,7 @@ describe('updateCategory — CA-2, slug inmutable, updatedAt explícito', () => 
     });
 
     // Sin `parent` en el input — `input.parentId` es `undefined`, nunca
-    // `null`. Bajo la mutación de W-2, `undefined ?? null` colapsa a
+    // `null`. Bajo esa mutación, `undefined ?? null` colapsa a
     // `null` y este `expect` iría a `null`, no a `parent.id`.
     const renamed = await updateCategory(child.id, {
       name: `${SENTINEL_PREFIX}Hija W2 Renombrada`,
@@ -455,7 +452,7 @@ describe('updateCategory — CA-2, slug inmutable, updatedAt explícito', () => 
   });
 });
 
-describe('Las siete reglas de la arista madre→hija — 400 (InvalidReferenceError), nunca 500 (DD28-3)', () => {
+describe('Las siete reglas de la arista madre→hija — 400 (InvalidReferenceError), nunca 500', () => {
   it('regla 1 (type_id): forma no entera en create → InvalidReferenceError, nunca BigInt(NaN)', async () => {
     await expect(
       createCategory({
@@ -475,7 +472,7 @@ describe('Las siete reglas de la arista madre→hija — 400 (InvalidReferenceEr
     ).rejects.toBeInstanceOf(InvalidReferenceError);
   });
 
-  it('regla 1 (parent fuera de rango): `Number.isInteger` deja pasar `1e21`; `Number.isSafeInteger` lo atrapa antes del driver (GATE: FAIL post-PR#2)', async () => {
+  it('regla 1 (parent fuera de rango): `Number.isInteger` deja pasar `1e21`; `Number.isSafeInteger` lo atrapa antes del driver', async () => {
     // 1e21 y 2^63 son enteros para `Number.isInteger` (no tienen parte
     // decimal), pero exceden Number.MAX_SAFE_INTEGER Y el rango de un
     // `bigint` de Postgres (2^63-1). Sin `Number.isSafeInteger`, este valor
@@ -537,7 +534,7 @@ describe('Las siete reglas de la arista madre→hija — 400 (InvalidReferenceEr
     await deleteCategory(node.id);
   });
 
-  it('reglas 5/6: ciclo A→B→A en update → InvalidReferenceError (única red que atrapa un `_id()` faltante, DD28-4)', async () => {
+  it('reglas 5/6: ciclo A→B→A en update → InvalidReferenceError (única red que atrapa un `_id()` faltante)', async () => {
     const a = await createCategory({
       name: `${SENTINEL_PREFIX}Ciclo A`,
       slug: `${SENTINEL_PREFIX}ciclo-a`,
@@ -561,7 +558,7 @@ describe('Las siete reglas de la arista madre→hija — 400 (InvalidReferenceEr
     await deleteCategory(a.id);
   });
 
-  it('regla 7: cambiar type_id en un nodo CON hijas → 400; la misma operación en una hoja → 200 (DD28-5)', async () => {
+  it('regla 7: cambiar type_id en un nodo CON hijas → 400; la misma operación en una hoja → 200', async () => {
     const parentWithChild = await createCategory({
       name: `${SENTINEL_PREFIX}Con Hijas`,
       slug: `${SENTINEL_PREFIX}con-hijas`,
@@ -592,16 +589,16 @@ describe('Las siete reglas de la arista madre→hija — 400 (InvalidReferenceEr
   });
 });
 
-describe('FK type_id inexistente (P2003) — InvalidReferenceError con field distinto de `slug` (gate corrective, finding 3)', () => {
+describe('FK type_id inexistente (P2003) — InvalidReferenceError con field distinto de `slug`', () => {
   // `_assertIntegerRef` solo valida FORMA entera de `type_id`, nunca su
-  // EXISTENCIA (design.md no lo pide — la tabla de errores lo deja al FK
-  // `categories_type_id_fkey`, alcanzable por POST y PUT). Este es el camino
-  // que expuso el finding 1: bajo Prisma 7 + adapter-pg, `P2003` llega SIN
-  // `meta.field_name`, y `translateCatalogWriteError` (`domain-errors.ts:150-156`)
-  // caía al `uniqueField` fijo del `catch` — `'slug'` — culpando al campo
-  // equivocado. Tras quitar `uniqueField: 'slug'` de ambos catches, el campo
-  // cae al `'desconocida'` genérico y honesto de la casa (precedente
-  // `createTag`), nunca `slug`.
+  // EXISTENCIA (la tabla de errores lo deja al FK
+  // `categories_type_id_fkey`, alcanzable por POST y PUT). Bajo Prisma 7 +
+  // adapter-pg, `P2003` llega SIN `meta.field_name`, y
+  // `translateCatalogWriteError` (`domain-errors.ts:150-156`) cae al
+  // `uniqueField` del `catch`: con un `'slug'` fijo culparía al campo
+  // equivocado. Como ninguno de los dos catches lo fija, el campo cae al
+  // `'desconocida'` genérico y honesto de la casa (precedente `createTag`),
+  // nunca `slug`.
   it('createCategory con type_id inexistente → InvalidReferenceError, el mensaje NO culpa a `slug`', async () => {
     let error: unknown;
     try {
@@ -624,7 +621,7 @@ describe('FK type_id inexistente (P2003) — InvalidReferenceError con field dis
   });
 });
 
-describe('deleteCategory — CA-3, snapshot pre-borrado y re-enraizado por la base', () => {
+describe('deleteCategory — snapshot pre-borrado y re-enraizado por la base', () => {
   it('borra una madre centinela con hijas: el snapshot trae la hija con su parent_id previo; la base ya re-enraizó', async () => {
     const parent = await createCategory({
       name: `${SENTINEL_PREFIX}Borrar Madre`,
@@ -660,7 +657,7 @@ describe('deleteCategory — CA-3, snapshot pre-borrado y re-enraizado por la ba
   });
 });
 
-describe('CA-4 — profundidad 4 servida de extremo a extremo (confirmación empírica de D28-7)', () => {
+describe('profundidad 4 servida de extremo a extremo (confirmación empírica)', () => {
   it('cadena centinela raíz→hija→nieta→bisnieta, 100% centinela, se sirve anidada a 4 niveles', async () => {
     const raiz = await createCategory({
       name: `${SENTINEL_PREFIX}Raiz4`,
@@ -679,7 +676,8 @@ describe('CA-4 — profundidad 4 servida de extremo a extremo (confirmación emp
       typeId: TYPE_A,
       parentId: hija.id,
     });
-    // Si esto lanzara 400 en vez de crear, D28-7 se desmentiría — no se asume,
+    // Si esto lanzara 400 en vez de crear, la profundidad 4 no se soportaría —
+    // no se asume,
     // se ejercita: la ausencia de `rejects` ya es la evidencia.
     const bisnieta = await createCategory({
       name: `${SENTINEL_PREFIX}Bisnieta4`,
@@ -706,7 +704,7 @@ describe('CA-4 — profundidad 4 servida de extremo a extremo (confirmación emp
   });
 });
 
-describe('cierre de la suite (R28-2)', () => {
+describe('cierre de la suite', () => {
   it('ningún test de escritura dejó basura: prisma.category.count() vuelve a 198', async () => {
     expect(await prisma.category.count()).toBe(198);
   });

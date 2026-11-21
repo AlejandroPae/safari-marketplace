@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `RefundPoliciesService` (US-48). Mismo arnés que
+ * Tests unitarios de `RefundPoliciesService`. Mismo arnés que
  * `tags.service.spec.ts`: solo se mockea el acceso a datos; las clases de
  * error de dominio y `toWriteHttpException` son reales.
  */
@@ -89,7 +89,7 @@ describe('RefundPoliciesService', () => {
       expect(Object.keys(page.data[0])).toEqual(MOCK_KEYS);
     });
 
-    it('traduce la query del shop a target y status con AND (V-1)', async () => {
+    it('traduce la query del shop a target y status con AND', async () => {
       listMock.mockResolvedValue({ items: [], total: 0 });
       await service.findAllRefundPolicies(
         query({
@@ -127,7 +127,7 @@ describe('RefundPoliciesService', () => {
   });
 
   describe('getRefundPolicy', () => {
-    it('por slug; inexistente ⇒ 404 (V-3)', async () => {
+    it('por slug; inexistente ⇒ 404', async () => {
       findMock.mockResolvedValueOnce(makeRecord());
       expect(
         Object.keys(await service.getRefundPolicy('customer-return-policy')),

@@ -1,6 +1,6 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
- * 19 FAQ, 5 globales y 2 por cada tienda 1..7). Lectura y escritura (US-47).
+ * 19 FAQ, 5 globales y 2 por cada tienda 1..7). Lectura y escritura.
  *
  * Las escrituras usan el centinela `zz-faqs-` en el título, que `generateSlug`
  * lleva al slug. Las lecturas van ANTES que las escrituras: asertan conteos

@@ -1,8 +1,8 @@
-# CI (US-11): el mismo gate que en local, `just check` (US-10), en cada Pull
+# CI: el mismo gate que en local, `just check`, en cada Pull
 # Request y en cada push a main. El workflow no reimplementa ningún paso: solo
 # prepara las herramientas y llama recetas del justfile.
 #
-# Cada paso de `check` y cada build es un step propio (US-109): `just check <id>`
+# Cada paso de `check` y cada build es un step propio: `just check <id>`
 # corre ese paso de la misma lista que usa `just check` en local. GitHub corta en
 # el primer step rojo, como el corte local, y `just check resumen` escribe al
 # final la tabla de la corrida (pasos, duración y pruebas).
@@ -25,7 +25,7 @@ permissions:
   contents: read
 
 # En un PR, un push nuevo cancela la corrida anterior de esa rama. En main no se
-# cancela nada (US-110): cada commit tiene que terminar y publicar sus imágenes.
+# cancela nada: cada commit tiene que terminar y publicar sus imágenes.
 # Con el SHA en el grupo, cada commit de main es su propio grupo. Con
 # cancel-in-progress: false no bastaría, porque GitHub igual cancela las
 # corridas pendientes que se acumulan detrás de la que está corriendo.
@@ -36,7 +36,7 @@ concurrency:
 jobs:
   check:
     name: Calidad · lint, tipos, pruebas y builds
-    # Fija, no `ubuntu-latest`: esa etiqueta cambia de imagen sin aviso (US-109).
+    # Fija, no `ubuntu-latest`: esa etiqueta cambia de imagen sin aviso.
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     env:
@@ -134,7 +134,7 @@ jobs:
         if: always()
         run: just check resumen
 
-  # Imágenes de la API, la tienda y el admin (US-110), más db-init y proxy (US-111). Se construyen siempre,
+  # Imágenes de la API, la tienda y el admin, más db-init y proxy. Se construyen siempre,
   # para detectar un Dockerfile roto antes del merge, y se publican en Docker
   # Hub solo desde main (push, o workflow_dispatch sobre main), con la etiqueta
   # sha-<7 primeros del commit>. Sin `latest`: el despliegue apunta a un SHA.
@@ -147,7 +147,7 @@ jobs:
     env:
       # Publicar: push a main, o dispatch sobre main. Nunca en pull_request.
       PUBLICAR: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
-      # En un fork no se publica: no tiene las credenciales del dueño (US-110 D-6).
+      # En un fork no se publica: no tiene las credenciales del dueño.
       ES_FORK: ${{ github.event.repository.fork }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -163,7 +163,7 @@ jobs:
           if [ "$PUBLICAR" = true ] && [ "$ES_FORK" = true ]; then
             echo "SUBIR=false" >> "$GITHUB_ENV"
             echo "::notice::Repositorio fork: se construyen las imágenes, pero no se publican."
-            echo "> Repositorio fork: las imágenes se construyeron, pero no se publicaron (US-110 D-6)." >> "$GITHUB_STEP_SUMMARY"
+            echo "> Repositorio fork: las imágenes se construyeron, pero no se publicaron." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "SUBIR=$PUBLICAR" >> "$GITHUB_ENV"
           fi
@@ -248,7 +248,7 @@ jobs:
             type=gha,scope=shop
           cache-to: ${{ env.SUBIR == 'true' && 'type=gha,mode=max,scope=admin' || '' }}
 
-      # db-init y proxy (US-111): el esquema, el seed y los Caddyfiles viajan
+      # db-init y proxy: el esquema, el seed y los Caddyfiles viajan
       # dentro de estas dos imágenes, porque en Dokploy un montaje relativo del
       # repo no sobrevive al git clone de cada despliegue. Son pequeñas y no
       # necesitan caché.

@@ -37,8 +37,8 @@ const USER_MODEL_TYPE = 'Marvel\\Database\\Models\\User';
 
 /**
  * Rol que se muestra del creador: su permiso más alto. El mock solo prueba
- * `"Super admin"`. Los textos de los otros tres los propuso US-51 y el dueño
- * los confirmó el 2026-10-22: no son un hueco por rellenar.
+ * `"Super admin"`. Los textos de los otros tres los confirmó el dueño del
+ * proyecto el 2026-10-22: no son un hueco por rellenar.
  */
 const ROLE_LABELS: [string, string][] = [
   ['super_admin', 'Super admin'],
@@ -82,7 +82,7 @@ function toEmbeddedUser(user: UserRecord) {
 
 /**
  * `StoreNoticeDetailRecord` → las 18 claves de `store-notices.json`, en su
- * orden, para el usuario `viewerId`: `is_read` es SU lectura (V-5), no un
+ * orden, para el usuario `viewerId`: `is_read` es SU lectura, no un
  * valor global. `deleted_at` es constante `null` (no hay soft delete).
  */
 function toStoreNoticeDto(
@@ -197,7 +197,7 @@ export class StoreNoticesService {
   }
 
   /**
-   * Filtros reales con AND (V-4): `notice` (texto), `users.id` (destinatario),
+   * Filtros reales con AND: `notice` (texto), `users.id` (destinatario),
    * `shops.slug` y `shop_id` (tienda destinataria). El mock los pasaba a Fuse
    * sobre `notice` y cualquier otra clave daba `[]`. `orderBy=updated_at`,
    * que pide la barra superior del admin, sí se respeta.
@@ -245,7 +245,7 @@ export class StoreNoticesService {
     return { data, ...paginate(result.total, page, limit, data.length, url) };
   }
 
-  /** Por id, como el mock; inexistente o id mal formado ⇒ 404 (V-7). */
+  /** Por id, como el mock; inexistente o id mal formado ⇒ 404. */
   async getStoreNotice(param: string, viewerId: number): Promise<StoreNotice> {
     const id = Number(param);
     assertId(id);
@@ -289,7 +289,7 @@ export class StoreNoticesService {
     }
   }
 
-  /** Devuelve el aviso borrado (V-7: el mock devolvía un string). */
+  /** Devuelve el aviso borrado (el mock devolvía un string). */
   async remove(id: number, userId: number): Promise<StoreNotice> {
     assertId(id);
     try {
@@ -300,7 +300,7 @@ export class StoreNoticesService {
   }
 
   /**
-   * `POST /store-notices/read` (V-6): la ruta que el admin ya llamaba y daba
+   * `POST /store-notices/read`: la ruta que el admin ya llamaba y daba
    * 404. Marca el aviso como leído para el usuario del token y lo devuelve
    * proyectado para él.
    */

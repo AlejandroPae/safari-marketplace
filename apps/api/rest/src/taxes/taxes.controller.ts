@@ -28,7 +28,7 @@ export class TaxesController {
     return this.taxesService.create(createTaxDto);
   }
 
-  // Referencia sin PII; romperla rompe el carrito anónimo (cierre del usuario, proposal.md).
+  // Referencia sin PII; romperla rompe el carrito anónimo.
   @Public()
   @Get()
   findAll(@Query() getTaxesDto: GetTaxesDto) {

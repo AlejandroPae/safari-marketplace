@@ -1,6 +1,6 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`: 10
- * estados, ids 1-10, con el 7 «Delivered» en el serial 11). US-57.
+ * estados, ids 1-10, con el 7 «Delivered» en el serial 11).
  *
  * Las escrituras crean filas nuevas (id > 10) y `afterAll` las borra; los 10
  * sembrados no se tocan.

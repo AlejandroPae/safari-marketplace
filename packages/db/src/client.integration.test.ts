@@ -1,6 +1,6 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`).
- * `setPrismaLogSink` (US-17): los errores que Prisma registra pasan por el
+ * `setPrismaLogSink`: los errores que Prisma registra pasan por el
  * sink que pone el consumidor, en vez de imprimirse por su cuenta.
  */
 

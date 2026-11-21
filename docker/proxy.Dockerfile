@@ -1,4 +1,4 @@
-# Imagen de Caddy con las dos configuraciones del stack (US-111): el reverse
+# Imagen de Caddy con las dos configuraciones del stack: el reverse
 # proxy de la tienda y el admin (docker/Caddyfile, el comando por defecto) y
 # el balanceador de la API (docker/api-lb.Caddyfile, que el compose elige con
 # `command`). Mismo motivo que db-init.Dockerfile: en Dokploy, un montaje

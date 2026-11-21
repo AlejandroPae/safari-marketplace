@@ -29,9 +29,9 @@ function toOrderProductDto(line: OrderProductRecord) {
 }
 
 /**
- * `OrderDetailRecord` → las claves del mock de órdenes, en su orden (US-58).
- * Padre: termina en `children`, sin `shop` ni `wallet_point` (V-6). Hija:
- * termina en `shop`, proyectada con `toShopDto` (V-7/V-8), sin `children`.
+ * `OrderDetailRecord` → las claves del mock de órdenes, en su orden.
+ * Padre: termina en `children`, sin `shop` ni `wallet_point`. Hija:
+ * termina en `shop`, proyectada con `toShopDto`, sin `children`.
  * `customer` es el snapshot de la compra, verbatim. `cancelled_*` salen como
  * string con 2 decimales, como en el mock.
  */

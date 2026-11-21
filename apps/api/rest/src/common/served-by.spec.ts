@@ -3,7 +3,7 @@
  * La referencia de arriba es necesaria porque tsconfig.json fija
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
-/** Tests del middleware X-Served-By (US-107). */
+/** Tests del middleware X-Served-By. */
 import { hostname } from 'node:os';
 import express from 'express';
 import request from 'supertest';

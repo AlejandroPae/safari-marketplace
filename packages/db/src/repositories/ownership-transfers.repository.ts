@@ -1,13 +1,13 @@
 /**
- * ownership-transfers.repository.ts — transferencias de propiedad de tienda (US-63).
+ * ownership-transfers.repository.ts — transferencias de propiedad de tienda.
  *
  * Dos escrituras distintas:
  *   · la SOLICITUD (`createOwnershipTransfer`): nace `pending` y no toca
  *     `shops`. Aprobarla por `updateOwnershipTransfer` tampoco: no hay flujo
- *     de aprobación con efecto (NO incluye de la US).
+ *     de aprobación con efecto.
  *   · la TRANSFERENCIA (`transferShopOwnership`): en una transacción cambia
  *     `shops.owner_id` e inserta la fila `approved`. Es la única escritura del
- *     repo sobre `owner_id`; `updateShop` lo sigue excluyendo (DD30-2).
+ *     repo sobre `owner_id`; `updateShop` lo excluye.
  *
  * `transaction_identifier` es `YYYY-MM-DD-NNNN` (día UTC de `now()`,
  * secuencial por día). Se calcula dentro de la transacción y, si otra se
@@ -274,7 +274,7 @@ export async function createOwnershipTransfer(
   }
 }
 
-/** Cambia `status` y/o `message`; fija `updatedAt: now()` (US-32). No toca `shops`. */
+/** Cambia `status` y/o `message`; fija `updatedAt: now()`. No toca `shops`. */
 export async function updateOwnershipTransfer(
   id: number,
   input: UpdateOwnershipTransferInput

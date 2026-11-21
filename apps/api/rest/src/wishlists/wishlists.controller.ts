@@ -16,7 +16,7 @@ import { CreateWishlistDto } from './dto/create-wishlists.dto.js';
 import { GetWishlistDto } from './dto/get-wishlists.dto.js';
 import { WishlistsService } from './wishlists.service.js';
 
-// La lista es por usuario (US-53): toda ruta lee `@CurrentUser`. `:id` es
+// La lista es por usuario: toda ruta lee `@CurrentUser`. `:id` es
 // siempre un id de PRODUCTO (no hay id de pivote); así llama el shop a DELETE.
 @Controller('wishlists')
 export class WishlistsController {

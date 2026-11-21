@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config';
 
 /**
- * `fileParallelism: false` (DD29-10, US-29). Sin este archivo el default de
+ * `fileParallelism: false`. Sin este archivo el default de
  * vitest corre los `*.integration.test.ts` en paralelo contra el MISMO
  * Postgres: cualquier fila centinela viva de un archivo es visible para los
  * conteos absolutos de otro (`categories.integration.test.ts`,
@@ -12,7 +12,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     fileParallelism: false,
-    // En CI, `just check` pide los conteos en JSON para el resumen (US-109).
+    // En CI, `just check` pide los conteos en JSON para el resumen.
     ...(process.env.VITEST_JSON_OUT && {
       reporters: ['default', 'json'],
       outputFile: { json: process.env.VITEST_JSON_OUT },

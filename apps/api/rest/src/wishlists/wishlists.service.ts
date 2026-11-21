@@ -33,7 +33,7 @@ function readError(error: unknown): never {
   throw new InternalServerErrorException(getUserFriendlyMessage(error));
 }
 
-/** Guarda de id de US-31 antes de tocar el driver. Los ids son de producto. */
+/** Guarda de id antes del driver (`1e21` sería un 500). Los ids son de producto. */
 function toProductId(value: unknown): number {
   const id = Number(value);
   if (!Number.isSafeInteger(id) || id <= 0) {
@@ -45,16 +45,16 @@ function toProductId(value: unknown): number {
 }
 
 /**
- * Lista de deseos del usuario que llama (US-53). Antes era un estado global
- * en memoria; ahora cada usuario tiene la suya en el pivote `wishlists`. Las
+ * Lista de deseos del usuario que llama: cada usuario tiene la suya en el
+ * pivote `wishlists`. Las
  * filas se proyectan con `toProductDto`, el contrato de 20 claves de
- * `/products` (V-2). `my-wishlists` reutiliza este servicio con su url.
+ * `/products`. `my-wishlists` reutiliza este servicio con su url.
  */
 @Injectable()
 export class WishlistsService {
   /**
    * Defaults `page=1`/`limit=30` como el mock; `paginate()` recibe el
-   * `limit` crudo. `orderBy`, `sortedBy` y `search` se ignoran (V-6): el
+   * `limit` crudo. `orderBy`, `sortedBy` y `search` se ignoran: el
    * orden es siempre el más reciente primero.
    */
   async findAll(
@@ -105,7 +105,7 @@ export class WishlistsService {
     }
   }
 
-  /** Quita el producto y lo devuelve; 404 si no estaba (V-5). */
+  /** Quita el producto y lo devuelve; 404 si no estaba. */
   async remove(userId: number, rawId: unknown): Promise<Product> {
     const productId = toProductId(rawId);
     try {
@@ -118,7 +118,7 @@ export class WishlistsService {
   /**
    * Devuelve el booleano DESNUDO con el estado nuevo, como el mock (el shop
    * ignora la respuesta y escribe `!inWishlist` en su caché). Por usuario y
-   * persistido (V-3).
+   * persistido.
    */
   async toggle(
     userId: number,
@@ -132,7 +132,7 @@ export class WishlistsService {
     }
   }
 
-  /** `true`/`false` para el usuario que llama (V-4: antes, cuerpo vacío). */
+  /** `true`/`false` para el usuario que llama (antes, cuerpo vacío). */
   async isInWishlist(userId: number, rawId: unknown): Promise<boolean> {
     const productId = toProductId(rawId);
     try {

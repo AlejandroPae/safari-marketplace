@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `AbusiveReportService` (US-54). Solo se mockea el
+ * Tests unitarios de `AbusiveReportService`. Solo se mockea el
  * acceso a datos.
  */
 import 'reflect-metadata';
@@ -150,7 +150,7 @@ describe('AbusiveReportService', () => {
     });
 
     it.each(['Question', 'Marvel\\Database\\Models\\Question'])(
-      'reporta una pregunta con model_type %s (US-55) y emite el FQCN',
+      'reporta una pregunta con model_type %s y emite el FQCN',
       async (modelType) => {
         createMock.mockResolvedValue(
           makeReport({ modelType: 'Question', modelId: 68 }),
@@ -227,7 +227,7 @@ describe('AbusiveReportService', () => {
     await expect(service.delete(3)).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  describe('reject (US-65)', () => {
+  describe('reject', () => {
     it('sin model_type vale Review (lo que manda el admin hoy) y responde con el FQCN y el conteo', async () => {
       rejectMock.mockResolvedValue(1);
       expect(await service.reject({ model_id: 1 })).toEqual({

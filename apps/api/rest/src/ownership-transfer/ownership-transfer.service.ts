@@ -51,7 +51,7 @@ function toOwnerDto(u: OwnershipTransferOwnerRecord): Record<string, unknown> {
 
 /**
  * Las 11 claves de `ownership-transfer.json`, en su orden. Sin
- * `created_at`/`updated_at` ni `shop`: el mock no los trae (D-3).
+ * `created_at`/`updated_at` ni `shop`: el mock no los trae.
  * `balance_info` sale tal cual de la columna `json`.
  */
 function toTransferDto(t: OwnershipTransferDetailRecord): OwnershipTransfer {
@@ -91,7 +91,7 @@ function toRouteId(value: unknown): number {
   return id;
 }
 
-/** `shop_id`/`vendor_id` de query o body: inválido ⇒ 400 (US-31). */
+/** `shop_id`/`vendor_id` de query o body: inválido ⇒ 400. */
 function toBodyId(field: string, value: unknown): number {
   const id = Number(value);
   if (!Number.isSafeInteger(id) || id <= 0) {
@@ -103,9 +103,9 @@ function toBodyId(field: string, value: unknown): number {
 @Injectable()
 export class OwnershipTransferService {
   /**
-   * Lista (US-63). El super admin ve todo; el dueño, solo las filas donde es
-   * el dueño anterior o el nuevo. La url apunta a este recurso (V-7: el mock
-   * tenía la de refund-policies); `paginate()` recibe el `limit` crudo.
+   * Lista. El super admin ve todo; el dueño, solo las filas donde es el dueño
+   * anterior o el nuevo. La url apunta a este recurso (el mock tenía la de
+   * refund-policies); `paginate()` recibe el `limit` crudo.
    */
   async findAll(
     { search, limit, page, shop_id }: GetOwnershipTransferDto,

@@ -156,7 +156,7 @@ export const Routes = {
         : `/${language}/products/${slug}/translate`;
     },
   },
-  // US-103: `undefined` hasta que `useShopUrl()` cargue la URL de la tienda.
+  // `undefined` hasta que `useShopUrl()` cargue la URL de la tienda.
   visitStore: (slug: string) => shopUrl(`/${slug}`),
   vendorRequestForFlashSale: {
     ...routesFactory('/flash-sale/vendor-request'),

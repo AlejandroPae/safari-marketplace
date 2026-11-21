@@ -35,7 +35,7 @@ function LoginForm() {
 
   const guestCheckout = settings?.guestCheckout;
 
-  // US-70: el botón de Google solo si el servidor registró el proveedor.
+  // El botón de Google solo si el servidor registró el proveedor.
   // Hasta que llega la respuesta (o si falla) no se renderiza.
   const [googleEnabled, setGoogleEnabled] = useState(false);
   useEffect(() => {

@@ -52,15 +52,15 @@ function isSuperAdmin(user: CurrentUserPayload): boolean {
   return user.permissions.includes('super_admin');
 }
 
-/** Dueño cuyas tiendas acotan el staff (US-42); el super admin no acota. */
+/** Dueño cuyas tiendas acotan el staff; el super admin no acota. */
 function managedBy(user: CurrentUserPayload): number | undefined {
   return isSuperAdmin(user) ? undefined : user.sub;
 }
 
 /**
- * Id opcional de query o body (US-42). Ausente o `''` ⇒ `undefined`; un
- * entero positivo seguro ⇒ el número; cualquier otra cosa ⇒ `null` (la
- * guarda de US-31: nunca llega a `BigInt`).
+ * Id opcional de query o body. Ausente o `''` ⇒ `undefined`; un entero
+ * positivo seguro ⇒ el número; cualquier otra cosa ⇒ `null` (guarda de id:
+ * nunca llega a `BigInt`).
  */
 function parseOptionalId(raw: unknown): number | null | undefined {
   if (raw === undefined || raw === null || raw === '') return undefined;
@@ -73,13 +73,13 @@ function parseOptionalId(raw: unknown): number | null | undefined {
  * `ShopRecord` (camelCase, `@safari/db`) → proyección de 16 claves
  * snake_case que ya publicaba `shops.json`. `owner`, `orders_count` y
  * `notifications` son constantes: no hay columna que los respalde
- * (V-4/V-5/V-6). `products_count` es el `productsCount` filtrado que ya
- * calculó el repositorio (Decisión E, design.md) — `?? 0` para
+ * `products_count` es el `productsCount` filtrado que ya calculó el
+ * repositorio — `?? 0` para
  * `findOrCreateShopBySlug` (scraper), que no lo calcula. Se castea a
  * `Shop`, igual que `toProductDto` — la entidad declara campos que este
  * listado no emite (`staffs`, `balance`, `distance`, `lat`, `lng`).
  */
-// Exportada para `auth.service.ts` (D-9 del proposal de US-22): `/me`
+// Exportada para `auth.service.ts`: `/me`
 // traduce `UserWithRelations.shops` con esta misma función en vez de
 // duplicar el shape de tienda.
 export function toShopDto(record: ShopRecord): Shop {
@@ -105,7 +105,7 @@ export function toShopDto(record: ShopRecord): Shop {
 
 /**
  * `ShopNearRecord` → proyección de las 14 claves EN ORDEN de
- * `near-shop.json` (US-5 Decision E) — NO reutiliza `toShopDto`: le faltan
+ * `near-shop.json` — NO reutiliza `toShopDto`: le faltan
  * `orders_count`/`products_count`/`owner` y trae `distance`, obligatoria
  * (`near-shop.tsx:38-41` la renderiza). `distance` se emite **number**
  * (`record.distanceKm`), no el `string` que declara la entidad: el
@@ -133,13 +133,13 @@ function toNearShopDto(record: ShopNearRecord): Shop {
 @Injectable()
 export class ShopsService {
   /**
-   * `owner_id` SIEMPRE del token (`user.sub`, D30-3), nunca del body.
-   * `is_active` explícito por rol (D30-6): `store_owner` entra a la cola de
+   * `owner_id` SIEMPRE del token (`user.sub`), nunca del body.
+   * `is_active` explícito por rol: `store_owner` entra a la cola de
    * moderación (`false`); `super_admin` nace activa (`true`) — ninguno de
-   * los dos se apoya en el `DEFAULT true` del DDL. Input campo a campo
-   * (`R30-7`): nunca `...createShopDto`. `logo`/`cover_image`/`address`/
-   * `settings` con `!= null` (DD30-4): un `null` explícito es un no-op
-   * declarado, no un valor a persistir.
+   * los dos se apoya en el `DEFAULT true` del DDL. Input campo a campo:
+   * nunca `...createShopDto`. `logo`/`cover_image`/`address`/`settings`
+   * con `!= null`: un `null` explícito es un no-op declarado, no un valor
+   * a persistir.
    */
   async create(
     createShopDto: CreateShopDto,
@@ -181,7 +181,7 @@ export class ShopsService {
     const tokens = parseSearch(search);
     const input: ListShopsInput = {
       name: tokens.name,
-      // V-15: search=is_active:1 → filtro exacto por columna, reemplaza el
+      // search=is_active:1 → filtro exacto por columna, reemplaza el
       // fuse difuso del mock. Ausente → el repositorio aplica su default
       // (isActive: true), igual que hoy.
       ...(tokens.is_active !== undefined && {
@@ -210,9 +210,9 @@ export class ShopsService {
   }
 
   /**
-   * Calca `getShops` (I): reutiliza `ListShopsInput.isActive`, cero código
+   * Calca `getShops`: reutiliza `ListShopsInput.isActive`, cero código
    * nuevo en el repositorio. `isActive: false` es el filtro base, fijo — el
-   * search solo aporta `name` (B-7: filtro exacto, ya no `fuse` difuso
+   * search solo aporta `name` (filtro exacto, ya no `fuse` difuso
    * sobre `name`/`type.slug`/`is_active`).
    */
   async getNewShops({
@@ -249,9 +249,9 @@ export class ShopsService {
   }
 
   /**
-   * Staff de tienda desde `shop_staff` (US-42). Mismo `paginate()` de antes
-   * (nunca `buildPaginator`), mismo key-set y mismo tipo de `per_page` (el
-   * `limit` crudo, sin coerción): solo cambia de dónde sale `data`.
+   * Staff de tienda desde `shop_staff`. Usa `paginate()` (nunca
+   * `buildPaginator`), con el key-set y el tipo de `per_page` del mock (el
+   * `limit` crudo, sin coerción).
    *
    * Acotado por quien llama, sin tocar el guard: el super admin ve el staff
    * de cualquier tienda y un dueño solo el de las suyas. Una tienda ajena o
@@ -313,10 +313,10 @@ export class ShopsService {
   }
 
   /**
-   * Cercanía real por haversine (B-1: ya no ignora `lat`/`lng` devolviendo
+   * Cercanía real por haversine (ya no ignora `lat`/`lng` devolviendo
    * 6 tiendas fijas). `Number('undefined')`/`Number('abc')` → `NaN`; el
    * guard vive en `listShopsNear` (repositorio) y responde `[]` con 200,
-   * no 400 (B-4) — la tienda dispara esta ruta con `undefined/undefined`
+   * no 400 — la tienda dispara esta ruta con `undefined/undefined`
    * en cada carga de `/shops` sin guard `enabled`.
    */
   async getNearByShop(lat: string, lng: string): Promise<Shop[]> {
@@ -332,13 +332,13 @@ export class ShopsService {
   }
 
   /**
-   * Nivel A primero, siempre (`DD30-3`): la guarda numérica es lo que evita
+   * Nivel A primero, siempre: la guarda numérica es lo que evita
    * que un `"abc"` llegue a `BigInt(NaN)` (500). `findShopOwnerById(id) ===
    * null` tras esa guarda solo puede significar «la tienda no existe» → 404
    * (nunca 403) — el paso 1 ya eliminó la otra causa de `null`.
    * `super_admin` salta el 403 pero nunca el 404 (un rol no cambia el
-   * status de una misma petición). Input campo a campo (`R30-7`): nunca
-   * `...updateShopDto`; excluye `slug`/`owner_id`/`is_active` (`DD30-2`) —
+   * status de una misma petición). Input campo a campo: nunca
+   * `...updateShopDto`; excluye `slug`/`owner_id`/`is_active` —
    * si el `PUT` los aceptara, un `store_owner` se auto-aprobaría esquivando
    * `approve-shop` (`ADMIN_ONLY`).
    */
@@ -409,7 +409,7 @@ export class ShopsService {
   }
 
   /**
-   * `POST /staffs` (US-42): el formulario «Add staff» del admin manda
+   * `POST /staffs`: el formulario «Add staff» del admin manda
    * `{ name, email, password, shop_id }` y da de alta un usuario nuevo como
    * staff de esa tienda (permiso `customer`, como el registro).
    *
@@ -472,21 +472,21 @@ export class ShopsService {
   }
 
   /**
-   * `PUT /staffs/:id` sigue sin escribir nada (`DD30-8`): el pivote
-   * `shop_staff` no tiene columnas que editar y el admin no llama a esta
-   * ruta. Llenarla sería inventar un contrato (US-42).
+   * `PUT /staffs/:id` no escribe nada: el pivote `shop_staff` no tiene
+   * columnas que editar y el admin no llama a esta ruta. Llenarla sería
+   * inventar un contrato.
    */
   updateStaff(): null {
     return null;
   }
 
   /**
-   * `DELETE /staffs/:id` (US-42): el admin manda solo el id del usuario. Se
+   * `DELETE /staffs/:id`: el admin manda solo el id del usuario. Se
    * borran sus filas de `shop_staff` en las tiendas que gestiona quien
    * llama: todas si es super admin y las suyas si es dueño. `?shop_id`
    * opcional acota a una tienda. El usuario no se borra.
    *
-   * - `id` o `shop_id` inválidos: 404 (guarda de US-31).
+   * - `id` o `shop_id` inválidos: 404 (guarda de id).
    * - Un dueño con `shop_id` de una tienda ajena: 403.
    * - Nada que retirar: 404.
    */
@@ -547,14 +547,14 @@ export class ShopsService {
   }
 
   /**
-   * Frontera numérica y semántica de `@Body('id')` sin tipar (`DD30-3`):
+   * Frontera numérica y semántica de `@Body('id')` sin tipar:
    * `typeof` estrecha ANTES de `Number(...)`, así que `{"id": true}`
    * (`Number(true) === 1`) o `{"id": null}`/`{"id": []}`/`{"id": {}}` nunca
    * llegan a evaluarse como número — sin el estrechamiento, `{"id": true}`
    * moderaría la tienda 1. `Number.isSafeInteger` (nunca `Number.isInteger`,
    * que deja pasar `1e21` hasta el driver) y `<= 0` cierran `{"id": 0}`/
    * `{"id": ""}`. Fuera de esa guarda, `setShopActive` no lleva ninguna
-   * propia (`DD30-1`); su `P2025` se traduce a 404 vía
+   * propia; su `P2025` se traduce a 404 vía
    * `toWriteHttpException`.
    */
   private async _setActive(rawId: unknown, isActive: boolean): Promise<Shop> {

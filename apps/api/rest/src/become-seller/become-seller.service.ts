@@ -50,8 +50,8 @@ function _isCommissionList(
 }
 
 /**
- * SEGUNDO endpoint migrado del mock JSON a Postgres (US-44, tras `settings`
- * en US-32). Contrato HTTP intacto: `POST|GET /api/became-seller`
+ * Endpoint servido desde Postgres en lugar del mock JSON (como `settings`).
+ * Contrato HTTP intacto: `POST|GET /api/became-seller`
  * (pasado), `@Public()` sin guard (`become-seller.controller.ts`).
  *
  * El envoltorio `{ page_options: { id, page_options, language, created_at,
@@ -59,7 +59,7 @@ function _isCommissionList(
  * manda el comentario de `db/schema.sql:479-484` — porque la capa de datos
  * (`@safari/db`) devuelve camelCase y la API sigue publicando snake_case
  * (`config.yaml`). El literal de orden fijo hace que el orden de claves del
- * cuerpo coincida con el del mock por construcción (D-2).
+ * cuerpo coincida con el del mock por construcción.
  */
 @Injectable()
 export class BecomeSellerService {
@@ -84,7 +84,7 @@ export class BecomeSellerService {
 
   // El controller no cablea esta ruta (`become-seller.controller.ts:13-21`);
   // se conserva por si un consumidor futuro la agrega — calco exacto de
-  // `settings.service.ts:49-59` (D-6).
+  // `settings.service.ts:49-59`.
   update(_id: number, _updateBecomeSellerDto: UpdateBecomeSellerDto) {
     return this.findAll();
   }

@@ -6,7 +6,7 @@
  */
 /**
  * Tests unitarios del mapeo de errores de base en los 2 endpoints de shops
- * migrados en US-5 (`getNewShops`, `getNearByShop`).
+ * que leen de Postgres (`getNewShops`, `getNearByShop`).
  *
  * Cierra el MUST "Errores de conexión a Postgres" de la spec
  * `derived-catalog-api` para el lado de shops: ambos métodos replican el
@@ -49,7 +49,7 @@ vi.mock('@safari/db', async (importOriginal) => ({
   // El barrel es seguro de cargar sin DATABASE_URL (cliente lazy vía Proxy);
   // se conservan reales las clases de error de dominio y `toWriteHttpException`
   // (via `domain-error.mapper.ts`, tampoco mockeado) — solo se mockea el
-  // acceso a datos de las 4 escrituras de US-30 (PR#4, task 4.1).
+  // acceso a datos de las 4 escrituras de shops.
   ...(await importOriginal<typeof import('@safari/db')>()),
   listShops: vi.fn(),
   listShopsNear: vi.fn(),
@@ -137,7 +137,7 @@ function rawQuery(
   return query as unknown as GetShopsDto;
 }
 
-describe('endpoints derivados de shops — mapeo de errores de base (US-5)', () => {
+describe('endpoints derivados de shops — mapeo de errores de base', () => {
   let service: ShopsService;
 
   beforeEach(() => {
@@ -215,7 +215,7 @@ describe('endpoints derivados de shops — mapeo de errores de base (US-5)', () 
       }
     });
 
-    // Guarda de B-4: `lat`/`lng` no finitos NO deben propagarse como error.
+    // Guarda: `lat`/`lng` no finitos NO deben propagarse como error.
     // La tienda dispara `/near-by-shop/undefined/undefined` en cada carga de
     // `/shops` (useQuery sin `enabled`), así que un 4xx/5xx aquí rompería la
     // página entera. El guard real vive en el repositorio; esto asegura que
@@ -232,7 +232,7 @@ describe('endpoints derivados de shops — mapeo de errores de base (US-5)', () 
 });
 
 /**
- * Tests unitarios de las escrituras de `ShopsService` (US-30, PR#4):
+ * Tests unitarios de las escrituras de `ShopsService`:
  * `create`/`update`/`approveShop`/`disapproveShop`/`createStaff`/
  * `updateStaff`/`getStaffs`.
  *
@@ -242,7 +242,7 @@ describe('endpoints derivados de shops — mapeo de errores de base (US-5)', () 
  * (`domain-error.mapper.ts`, tampoco mockeado), para que la traducción a HTTP
  * se pruebe de verdad.
  */
-describe('ShopsService.create (US-30)', () => {
+describe('ShopsService.create', () => {
   let service: ShopsService;
 
   beforeEach(() => {
@@ -250,7 +250,7 @@ describe('ShopsService.create (US-30)', () => {
     service = new ShopsService();
   });
 
-  it('ownerId sale SIEMPRE de user.sub, nunca del body — un `owner_id` inyectado en el body se ignora (D30-3)', async () => {
+  it('ownerId sale SIEMPRE de user.sub, nunca del body — un `owner_id` inyectado en el body se ignora', async () => {
     createShopMock.mockResolvedValue(makeShopRecord({ ownerId: 1 }));
 
     await service.create(
@@ -264,7 +264,7 @@ describe('ShopsService.create (US-30)', () => {
     expect('owner_id' in input).toBe(false);
   });
 
-  it('`is_active` por rol: store_owner → false (cola de moderación), super_admin → true (D30-6)', async () => {
+  it('`is_active` por rol: store_owner → false (cola de moderación), super_admin → true', async () => {
     createShopMock.mockResolvedValue(makeShopRecord({ isActive: false }));
     await service.create(
       createDto({ name: 'Tienda Prueba' }),
@@ -366,7 +366,7 @@ describe('ShopsService.create (US-30)', () => {
   });
 });
 
-describe('ShopsService.update (US-30)', () => {
+describe('ShopsService.update', () => {
   let service: ShopsService;
 
   beforeEach(() => {
@@ -375,7 +375,7 @@ describe('ShopsService.update (US-30)', () => {
     service = new ShopsService();
   });
 
-  it('id no entero (`NaN`) → 404 sin llamar a `findShopOwnerById` ni a `updateShop` (guarda numérica primero, DD30-3)', async () => {
+  it('id no entero (`NaN`) → 404 sin llamar a `findShopOwnerById` ni a `updateShop` (guarda numérica primero)', async () => {
     expect.assertions(4);
     try {
       await service.update(Number.NaN, updateDto({ name: 'x' }), makeUser());
@@ -400,7 +400,7 @@ describe('ShopsService.update (US-30)', () => {
     }
   });
 
-  it('tienda inexistente (`findShopOwnerById` → `null`) → 404, NUNCA 403 — ni siquiera para `super_admin` (404 antes que 403, DD30-3)', async () => {
+  it('tienda inexistente (`findShopOwnerById` → `null`) → 404, NUNCA 403 — ni siquiera para `super_admin` (404 antes que 403)', async () => {
     findShopOwnerByIdMock.mockResolvedValue(null);
 
     expect.assertions(2);
@@ -457,7 +457,7 @@ describe('ShopsService.update (US-30)', () => {
     expect(updateShopMock).toHaveBeenCalledTimes(1);
   });
 
-  it('proyecta `UpdateShopInput` campo a campo, ignora `balance`/`categories`, NUNCA envía `slug` (inmutable, DD30-2)', async () => {
+  it('proyecta `UpdateShopInput` campo a campo, ignora `balance`/`categories`, NUNCA envía `slug` (inmutable)', async () => {
     findShopOwnerByIdMock.mockResolvedValue(1);
     updateShopMock.mockResolvedValue(makeShopRecord({ ownerId: 1 }));
 
@@ -492,7 +492,7 @@ describe('ShopsService.update (US-30)', () => {
   });
 
   /**
-   * DD30-2 — el test de seguridad que importa: `main.ts:9` registra
+   * El test de seguridad que importa: `main.ts:9` registra
    * `ValidationPipe` sin `whitelist`, así que el DTO no filtra nada en
    * runtime; la ÚNICA defensa es que `update()` construye `UpdateShopInput`
    * campo a campo y JAMÁS lee `is_active`/`owner_id` del body. Un
@@ -505,7 +505,7 @@ describe('ShopsService.update (US-30)', () => {
     ['true', true],
     ['1 (coerción laxa)', 1],
   ])(
-    'DD30-2: un `PUT` de `store_owner` con `is_active: %s` en el body NUNCA llega al input de `updateShop`',
+    'un `PUT` de `store_owner` con `is_active: %s` en el body NUNCA llega al input de `updateShop`',
     async (_label, isActiveValue) => {
       findShopOwnerByIdMock.mockResolvedValue(1);
       updateShopMock.mockResolvedValue(makeShopRecord({ ownerId: 1 }));
@@ -571,13 +571,13 @@ describe('ShopsService.update (US-30)', () => {
 });
 
 /**
- * Frontera numérica y semántica de `@Body('id')` sin tipar (DD30-3): este es
- * el caso "id no entero" del carry-forward de PR#2 (NO se cubrió en
- * `packages/db` — su precondición documentada es un id ya entero). Se ejerce
+ * Frontera numérica y semántica de `@Body('id')` sin tipar: el caso "id no
+ * entero" no se cubre en `packages/db`, cuya precondición documentada es un
+ * id ya entero. Se ejerce
  * directamente sobre `approveShop`/`disapproveShop`, que reciben el `rawId`
  * tal cual llega del `@Body('id')` sin tipar del controller.
  */
-describe("ShopsService.approveShop / disapproveShop — frontera numérica de `@Body('id')` (DD30-3)", () => {
+describe("ShopsService.approveShop / disapproveShop — frontera numérica de `@Body('id')`", () => {
   let service: ShopsService;
 
   beforeEach(() => {

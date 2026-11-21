@@ -1,7 +1,7 @@
 /**
- * attributes.repository.ts — atributos de producto y sus valores (US-50).
+ * attributes.repository.ts — atributos de producto y sus valores.
  *
- * Primer agregado padre-hijo del Épico 46. Dos órdenes distintos que el
+ * Agregado padre-hijo. Dos órdenes distintos que el
  * contrato fija: atributos `id DESC` (el del mock), valores `id ASC` dentro
  * de cada padre. Por eso todo `include` de `values` lleva su `orderBy`
  * explícito, y `_toAttributeRecord` no reordena.

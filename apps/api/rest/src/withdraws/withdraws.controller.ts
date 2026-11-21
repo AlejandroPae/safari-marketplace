@@ -51,7 +51,7 @@ export class WithdrawsController {
     return this.withdrawsService.findOne(+id, user);
   }
 
-  // Solo super admin (V-5): persistiendo, un dueño podría autoaprobarse.
+  // Solo super admin: persistiendo, un dueño podría autoaprobarse.
   @Permissions(...ADMIN_ONLY)
   @Post(':id/approve')
   approveWithdraw(

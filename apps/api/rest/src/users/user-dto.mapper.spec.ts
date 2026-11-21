@@ -5,7 +5,7 @@
  * se limita a este archivo para no tocar la config del build.
  */
 /**
- * Gate portante de PR2 (US-25, extracción del mapper): prueba que
+ * Red de la extracción del mapper: prueba que
  * `toUserDto`/`toProfileDto`/`toPermissionDto`, movidas verbatim desde
  * `auth.service.ts`, siguen emitiendo exactamente el mismo shape.
  *
@@ -51,7 +51,7 @@ function buildFixture(): UserWithRelations {
   };
 }
 
-describe('user-dto.mapper (US-25 PR2 — extracción pura, cero cambio observable)', () => {
+describe('user-dto.mapper (extracción pura, cero cambio observable)', () => {
   describe('toUserDto', () => {
     it('emite las 15 claves en el orden exacto que publicaba /me', () => {
       const dto = toUserDto(buildFixture());

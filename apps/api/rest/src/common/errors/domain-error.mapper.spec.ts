@@ -5,21 +5,22 @@
  * se limita a este archivo para no tocar la config del build.
  */
 /**
- * Tests unitarios de `domain-error.mapper.ts` (US-27a, spec
+ * Tests unitarios de `domain-error.mapper.ts` (spec
  * `catalog-write-foundations`).
  *
  * Los cinco códigos de catálogo se prueban DIRECTAMENTE aquí, no por HTTP:
  * `types` solo puede producir `EmptySlug`/`RecordNotFound`/`DependentRows`
- * en esta US (`InvalidReference` necesita una FK saliente que `types` no
- * tiene; `SlugConflict` solo aparece en una carrera no determinista). Esa
- * cobertura completa es lo que hace alcanzable la CA-7 de US-27b.
+ * (`InvalidReference` necesita una FK saliente que `types` no tiene;
+ * `SlugConflict` solo aparece en una carrera no determinista). Con la tabla
+ * completa cubierta, los demás agregados del catálogo reutilizan el
+ * mapeador sin modificarlo.
  *
  * Sin `vi.mock`: se importa el barrel real de `@safari/db` (seguro de
  * cargar sin `DATABASE_URL` por el cliente lazy vía Proxy, `client.ts:39-45`)
  * y las 5 clases de error se construyen de verdad. Los errores "de Prisma"
  * de este spec se construyen ESTRUCTURALMENTE (`name`/`code`/`message`), no
- * con `new PrismaClientKnownRequestError`: D-1 prohíbe importar
- * `@prisma/client` en la API, y los predicados del mapeador (y de
+ * con `new PrismaClientKnownRequestError`: la API no importa
+ * `@prisma/client` (Prisma vive solo en `@safari/db`), y los predicados del mapeador (y de
  * `errors.ts`) son estructurales, así que la fixture es fiel.
  */
 import 'reflect-metadata';
@@ -40,7 +41,7 @@ import {
 } from '@safari/db';
 import { mapDomainError, toWriteHttpException } from './domain-error.mapper.js';
 
-describe('mapDomainError — tabla cerrada de 5 códigos (CA-4, CA-7)', () => {
+describe('mapDomainError — tabla cerrada de 5 códigos', () => {
   it('EmptySlug → 400', () => {
     const result = mapDomainError(new EmptySlugError('types', '!!!'));
 
@@ -73,7 +74,7 @@ describe('mapDomainError — tabla cerrada de 5 códigos (CA-4, CA-7)', () => {
     expect(result?.getStatus()).toBe(409);
   });
 
-  it('SlugConflict → 409; el mensaje nombra el campo y dice «slug» una sola vez (US-67)', () => {
+  it('SlugConflict → 409; el mensaje nombra el campo y dice «slug» una sola vez', () => {
     const result = mapDomainError(new SlugConflictError('types', 'slug'));
 
     expect(result).toBeInstanceOf(ConflictException);
@@ -86,7 +87,7 @@ describe('mapDomainError — tabla cerrada de 5 códigos (CA-4, CA-7)', () => {
     expect(result?.message.match(/slug/g)).toHaveLength(1);
   });
 
-  it('SlugConflict de varias columnas → 409 con la lista de campos y sin «slug» (US-67)', () => {
+  it('SlugConflict de varias columnas → 409 con la lista de campos y sin «slug»', () => {
     const result = mapDomainError(
       new SlugConflictError('reviews', 'user_id, product_id, order_id'),
     );
@@ -103,7 +104,7 @@ describe('mapDomainError — tabla cerrada de 5 códigos (CA-4, CA-7)', () => {
   });
 });
 
-describe('toWriteHttpException — cadena de fallback corregida (B1)', () => {
+describe('toWriteHttpException — cadena de fallback corregida', () => {
   it('un error de dominio pasa por mapDomainError, nunca llega a 500/503', () => {
     const result = toWriteHttpException(new RecordNotFoundError('types', 1));
 
@@ -136,7 +137,7 @@ describe('toWriteHttpException — cadena de fallback corregida (B1)', () => {
   });
 
   /**
-   * Hallazgo C-1 de `sdd-verify`. Esta fixture NO es sintética: es la forma
+   * Esta fixture NO es sintética: es la forma
    * EXACTA que Prisma 7 + `@prisma/adapter-pg` produce con el contenedor
    * `safari-postgres` apagado, capturada apagándolo de verdad. Importa porque
    * ni el `code` es un `P1xxx` ni el `message` contiene ninguno de los
@@ -145,7 +146,7 @@ describe('toWriteHttpException — cadena de fallback corregida (B1)', () => {
    * rutas de escritura, mientras las de lectura (con la cadena vieja) sí
    * devolvían 503 en la misma ventana.
    */
-  it('base caída real (ECONNREFUSED en `code`, no en `message`) → 503 — C-1', () => {
+  it('base caída real (ECONNREFUSED en `code`, no en `message`) → 503', () => {
     const result = toWriteHttpException({
       name: 'PrismaClientKnownRequestError',
       code: 'ECONNREFUSED',
@@ -157,7 +158,7 @@ describe('toWriteHttpException — cadena de fallback corregida (B1)', () => {
   });
 
   /**
-   * Regression tripwire de B1: un `PrismaClientKnownRequestError` con
+   * Regression tripwire: un `PrismaClientKnownRequestError` con
    * `code: 'P2011'` (violación NOT NULL, ninguno de los 5 códigos de
    * catálogo) MUST caer al 500 literal, NO al 503 — porque no es un fallo de
    * conexión, es un dato inválido. La caracterización de abajo prueba que

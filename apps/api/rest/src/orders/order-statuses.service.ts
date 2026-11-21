@@ -62,7 +62,7 @@ function readError(error: unknown): never {
   throw new InternalServerErrorException(getUserFriendlyMessage(error));
 }
 
-/** Guarda de id de ruta (US-31): `abc`, `1e21` o `0` ⇒ 404 sin tocar la base. */
+/** Guarda de id de ruta: `abc`, `1e21` o `0` ⇒ 404 sin tocar la base. */
 function assertId(id: number): void {
   if (!Number.isSafeInteger(id) || id <= 0) {
     throw new NotFoundException(`No existe un estado de pedido con id ${id}.`);
@@ -75,13 +75,13 @@ function toSerial(raw: unknown): number | undefined {
 }
 
 /**
- * El catálogo de estados, separado de `OrdersService` (US-57): compartirlo
+ * El catálogo de estados, separado de `OrdersService`: compartirlo
  * hacía que `PUT`/`DELETE /order-status/:id` actuaran sobre órdenes.
  */
 @Injectable()
 export class OrderStatusesService {
   /**
-   * `search=name:<texto>` o texto libre filtra por subcadena (V-4); `slug:`
+   * `search=name:<texto>` o texto libre filtra por subcadena; `slug:`
    * se ignora como en el mock. La url conserva el literal `search=undefined`.
    */
   async findAll({
@@ -120,7 +120,7 @@ export class OrderStatusesService {
     return { data, ...paginate(result.total, page, limit, data.length, url) };
   }
 
-  /** Por slug; `language` se ignora como en el mock. Inexistente ⇒ 404 (V-3). */
+  /** Por slug; `language` se ignora como en el mock. Inexistente ⇒ 404. */
   async findOne(slug: string): Promise<OrderStatus> {
     let record: OrderStatusRecord | null;
     try {
@@ -150,7 +150,7 @@ export class OrderStatusesService {
     }
   }
 
-  /** Si llega `name`, el repositorio regenera el slug (CA-3). */
+  /** Si llega `name`, el repositorio regenera el slug. */
   async update(id: number, dto: UpdateOrderStatusDto): Promise<OrderStatus> {
     assertId(id);
     try {
@@ -166,7 +166,7 @@ export class OrderStatusesService {
     }
   }
 
-  /** Devuelve el estado borrado (V-2: el mock devolvía un string de orden). */
+  /** Devuelve el estado borrado (el mock devolvía un string de orden). */
   async remove(id: number): Promise<OrderStatus> {
     assertId(id);
     try {

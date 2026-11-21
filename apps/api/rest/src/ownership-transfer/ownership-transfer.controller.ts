@@ -34,7 +34,7 @@ import {
 export class OwnershipTransferController {
   constructor(private ownershipTransferService: OwnershipTransferService) {}
 
-  // Las escrituras son solo de super admin (V-5): persistiendo, un dueño
+  // Las escrituras son solo de super admin: persistiendo, un dueño
   // podría reasignarse tiendas.
   @Permissions(...ADMIN_ONLY)
   @Post()

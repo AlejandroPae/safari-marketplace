@@ -29,13 +29,13 @@ import { findTypeBySlug } from './types.repository';
 
 const TEST_STORE = 'TestStore-integration';
 
-// Centinela de las escrituras del admin (US-29, DD29-10): prefijo de slug
+// Centinela de las escrituras del admin: prefijo de slug
 // propio, nunca `sourceStore` — `source_store` es NULL en todo producto del
 // admin, así que `TEST_STORE` no alcanza estas filas.
 const SENTINEL_PREFIX = 'zz-products-';
 
 // Fixtures resueltas contra filas SEMBRADAS (nunca creadas por esta suite),
-// mismo patrón que `manufacturerFix`/`tagFix` más abajo (US-2): un type, un
+// mismo patrón que `manufacturerFix`/`tagFix` más abajo: un type, un
 // shop y dos categorías/tags existentes del seed para los describes de
 // escritura.
 let SENTINEL_TYPE_ID: number;
@@ -49,8 +49,8 @@ let SENTINEL_TAG_B: number;
 // EADDRINUSE, timeout) deja filas de prueba vivas y la siguiente pasada
 // cuenta 12 donde asserta 11. Con esto los conteos absolutos dejan de
 // depender de que la corrida anterior terminara bien. Se pliega aquí,
-// dentro del `beforeAll` EXISTENTE, la limpieza del centinela de US-29
-// (DD29-10): un segundo `beforeAll`/`afterAll` no tiene ningún riesgo de
+// dentro del `beforeAll` EXISTENTE, la limpieza del centinela
+// `zz-products-`: un segundo `beforeAll`/`afterAll` no tiene ningún riesgo de
 // orden, pero un cleanup repartido en dos hooks sí duplica lógica sin
 // necesidad.
 beforeAll(async () => {
@@ -161,14 +161,14 @@ describe('listProducts', () => {
 });
 
 // ---------------------------------------------------------------------------
-// US-5: orderBy tipado (desempate id asc), maxQuantity, opt-out del default
-// de vitrina. Cifras exactas verificadas contra el seed enriquecido
-// (design.md, "Resultados esperados"). Colocado ANTES de los bloques que
-// crean fixtures vía upsertScrapedProduct (US-2 más abajo): esos fixtures
+// orderBy tipado (desempate id asc), maxQuantity, opt-out del default de
+// vitrina. Cifras exactas verificadas contra el seed enriquecido. Colocado
+// ANTES de los bloques que crean fixtures vía upsertScrapedProduct (filtros
+// adicionales, más abajo): esos fixtures
 // quedan con quantity 0 por defecto y contaminarían el total === 11 de
 // maxQuantity si se contaran productos de prueba con stock bajo.
 // ---------------------------------------------------------------------------
-describe('listProducts — orderBy (US-5)', () => {
+describe('listProducts — orderBy', () => {
   it("orderBy: 'ratings' → ids en el orden del ranking curado, desempate id asc", async () => {
     const { items } = await listProducts({ orderBy: 'ratings', limit: 10 });
     expect(items.map((p) => p.id)).toEqual([4, 1, 3, 2, 5, 25, 6, 7, 8, 9]);
@@ -194,7 +194,7 @@ describe('listProducts — orderBy (US-5)', () => {
   });
 });
 
-describe('listProducts — maxQuantity (US-5)', () => {
+describe('listProducts — maxQuantity', () => {
   it('maxQuantity:9 con applyStorefrontDefaults:false → total 11, todo item con quantity <= 9', async () => {
     const { items, total } = await listProducts({
       maxQuantity: 9,
@@ -209,7 +209,7 @@ describe('listProducts — maxQuantity (US-5)', () => {
   });
 });
 
-describe('listProducts — applyStorefrontDefaults opt-out (US-5 Decision C)', () => {
+describe('listProducts — applyStorefrontDefaults opt-out', () => {
   it('opt-out + status:draft → total 1, id 454 (el default seguiría ocultándolo)', async () => {
     const { items, total } = await listProducts({
       applyStorefrontDefaults: false,
@@ -235,7 +235,7 @@ describe('listProducts — applyStorefrontDefaults opt-out (US-5 Decision C)', (
 });
 
 // ---------------------------------------------------------------------------
-// Filtros de US-2 (migración de /api/products): shopId, manufacturerSlug,
+// Filtros adicionales de /api/products: shopId, manufacturerSlug,
 // tagSlug. El seed no vincula ningún producto a manufacturer/tag
 // (`manufacturer_id`/`product_tag` vacíos — ver db/generate-seed.mjs), así
 // que para manufacturerSlug/tagSlug hace falta una fixture: un slug "LIBRE"
@@ -243,7 +243,7 @@ describe('listProducts — applyStorefrontDefaults opt-out (US-5 Decision C)', (
 // dar total 1. Son dos slugs DISTINTOS, no la misma consulta con dos
 // resultados esperados.
 // ---------------------------------------------------------------------------
-describe('listProducts — filtros adicionales de US-2', () => {
+describe('listProducts — filtros adicionales', () => {
   it('filtra por shopId: todo item devuelto pertenece a ese shop', async () => {
     const [sample] = (await listProducts({ limit: 1 })).items;
     const { items, total } = await listProducts({ shopId: sample.shopId });
@@ -280,7 +280,7 @@ describe('listProducts — filtros adicionales de US-2', () => {
       await upsertScrapedProduct({
         sourceStore: TEST_STORE,
         sourceProductId: 'sku-us2-manufacturer-tag',
-        name: 'Producto con manufacturer y tag (US-2)',
+        name: 'Producto con manufacturer y tag',
         slug: 'producto-us2-manufacturer-tag-test',
         typeId: gadget.id,
         shopId: shopSample.shopId,
@@ -315,7 +315,7 @@ describe('listProducts — filtros adicionales de US-2', () => {
 });
 
 describe('findProductBySlug', () => {
-  it('trae el detalle con relaciones y related del mismo type, INCLUYENDO el propio producto (D-1)', async () => {
+  it('trae el detalle con relaciones y related del mismo type, INCLUYENDO el propio producto', async () => {
     const [sample] = (await listProducts({ limit: 1 })).items;
     const detail = await findProductBySlug(sample.slug);
     expect(detail).not.toBeNull();
@@ -324,7 +324,7 @@ describe('findProductBySlug', () => {
     const ids = detail?.relatedProducts.map((r) => r.id) ?? [];
     expect(ids.length).toBeGreaterThan(0);
     expect(ids.length).toBeLessThanOrEqual(20);
-    expect(ids).toContain(sample.id); // D-1: auto-inclusión
+    expect(ids).toContain(sample.id); // auto-inclusión
     expect([...ids].sort((a, b) => a - b)).toEqual(ids); // orden ascendente
     for (const rel of detail?.relatedProducts ?? []) {
       expect(rel.type.slug).toBe(sample.type.slug);
@@ -341,7 +341,7 @@ describe('upsertScrapedProduct', () => {
     _setNowProvider(() => new Date());
   });
 
-  it('el segundo upsert (rama update) fija updatedAt desde clock.ts (CA-2 de US-32)', async () => {
+  it('el segundo upsert (rama update) fija updatedAt desde clock.ts', async () => {
     const gadget = await findTypeBySlug('gadget');
     const [shopSample] = (await listProducts({ limit: 1 })).items;
     expect(gadget).not.toBeNull();
@@ -369,11 +369,11 @@ describe('upsertScrapedProduct', () => {
     // (a) ruta olvidada: sin `updatedAt` en la rama `update:` el valor
     // seguiría siendo el del INSERT original y esta aserción FALLARÍA.
     expect(updated.updatedAt.getTime()).toBe(future.getTime());
-    // (b) el invariante de CA-2.
+    // (b) el invariante updated_at >= created_at.
     expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(
       updated.createdAt.getTime()
     );
-    // (c) createdAt NO es mockeable (D-5, no-goal declarado).
+    // (c) createdAt NO es mockeable, a propósito.
     expect(updated.createdAt.getTime()).toBeLessThan(future.getTime());
   });
 
@@ -444,15 +444,15 @@ describe('lecturas auxiliares', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Escrituras del admin (US-29) — centinela `zz-products-`, describes AL
+// Escrituras del admin — centinela `zz-products-`, describes AL
 // FINAL: vitest ejecuta los describe en orden de archivo, y estas filas no
 // deben contaminar ningún conteo absoluto afirmado arriba. Cada `it` borra
-// lo que crea, además de la red del `beforeAll`/`afterAll` de arriba
-// (DD29-10). Camino feliz solamente — la batería hostil (5 guardas, 3 FK +
-// 2 pivotes inexistentes, no-enteros/no-finitos, 404) vive en PR#2.
+// lo que crea, además de la red del `beforeAll`/`afterAll` de arriba.
+// Camino feliz solamente — la batería hostil (5 guardas, 3 FK + 2 pivotes
+// inexistentes, no-enteros/no-finitos, 404) vive más abajo.
 // ---------------------------------------------------------------------------
 
-describe('createProduct — CA-1, centinela zz-products-', () => {
+describe('createProduct — centinela zz-products-', () => {
   it("crea un 'simple': min/max derivados = price, sin pivotes", async () => {
     const created = await createProduct({
       name: `${SENTINEL_PREFIX}simple`,
@@ -501,12 +501,12 @@ describe('createProduct — CA-1, centinela zz-products-', () => {
   });
 });
 
-describe('updateProduct — CA-2, pivotes en los 3 estados, slug invariante, updatedAt explícito', () => {
+describe('updateProduct — pivotes en los 3 estados, slug invariante, updatedAt explícito', () => {
   afterEach(() => {
     _setNowProvider(() => new Date());
   });
 
-  it('updated_at sale de clock.ts y cumple updated_at >= created_at (CA-2 de US-32)', async () => {
+  it('updated_at sale de clock.ts y cumple updated_at >= created_at', async () => {
     const created = await createProduct({
       name: `${SENTINEL_PREFIX}reloj`,
       slug: `${SENTINEL_PREFIX}reloj`,
@@ -523,11 +523,11 @@ describe('updateProduct — CA-2, pivotes en los 3 estados, slug invariante, upd
 
     // (a) ruta olvidada: sin `updatedAt` el valor sería el del INSERT y FALLA.
     expect(updated.updatedAt.getTime()).toBe(future.getTime());
-    // (b) el invariante de CA-2.
+    // (b) el invariante updated_at >= created_at.
     expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(
       updated.createdAt.getTime()
     );
-    // (c) createdAt NO es mockeable (D-5, no-goal declarado).
+    // (c) createdAt NO es mockeable, a propósito.
     expect(updated.createdAt.getTime()).toBeLessThan(future.getTime());
 
     await deleteProduct(created.id);
@@ -597,7 +597,7 @@ describe('updateProduct — CA-2, pivotes en los 3 estados, slug invariante, upd
   });
 
   it('name cambia, slug invariante, updatedAt monótono entre dos PUT sucesivos', async () => {
-    // `updateProduct` fija `updatedAt: now()` desde `clock.ts` (US-32); ya no
+    // `updateProduct` fija `updatedAt: now()` desde `clock.ts`; ya no
     // hay trigger de base de datos. Hasta 2026-09-14, `created.updatedAt`
     // (reloj de Node) y `updated.updatedAt` (reloj de Postgres vía trigger)
     // divergían ~150-450ms medidos en este entorno, así que la comparación
@@ -634,7 +634,7 @@ describe('updateProduct — CA-2, pivotes en los 3 estados, slug invariante, upd
   });
 });
 
-describe('deleteProduct — CA-3, snapshot pre-borrado', () => {
+describe('deleteProduct — snapshot pre-borrado', () => {
   it('borra y devuelve el snapshot pre-borrado; los pivotes constan; un GET posterior es null', async () => {
     const created = await createProduct({
       name: `${SENTINEL_PREFIX}borrar`,
@@ -657,9 +657,8 @@ describe('deleteProduct — CA-3, snapshot pre-borrado', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Batería hostil de integración (US-29, PR#2) — centinela `zz-products-`,
-// misma red de limpieza del `beforeAll`/`afterAll` de arriba. Prueba CA-4
-// («nunca 500»): las 5 guardas CHECK/IN, las 3 FK + 2 pivotes inexistentes,
+// Batería hostil de integración — centinela `zz-products-`, misma red de
+// limpieza del `beforeAll`/`afterAll` de arriba. Prueba el «nunca 500»: las 5 guardas CHECK/IN, las 3 FK + 2 pivotes inexistentes,
 // la frontera numérica (no enteros / no finitos) y los 404 de
 // `updateProduct`/`deleteProduct`. Todo vía el repositorio (no HTTP): un 500
 // aquí se manifiesta como una excepción NO instancia de las clases de
@@ -668,8 +667,8 @@ describe('deleteProduct — CA-3, snapshot pre-borrado', () => {
 // `.rejects.toThrow()` a secas.
 // ---------------------------------------------------------------------------
 
-describe('Las cinco guardas CHECK/IN — 400, nunca 500 (Herencia 2, DD29-1/DD29-2/DD29-9)', () => {
-  it('regla 1: sale_price >= price → InvalidSalePriceError (heredada y adaptada, DD29-9)', async () => {
+describe('Las cinco guardas CHECK/IN — 400, nunca 500', () => {
+  it('regla 1: sale_price >= price → InvalidSalePriceError (heredada y adaptada)', async () => {
     await expect(
       createProduct({
         name: `${SENTINEL_PREFIX}rebaja-invalida`,
@@ -694,7 +693,7 @@ describe('Las cinco guardas CHECK/IN — 400, nunca 500 (Herencia 2, DD29-1/DD29
     ).rejects.toBeInstanceOf(MissingPriceError);
   });
 
-  it("regla 3: product_type fuera de IN ('simple','variable') → InvalidReferenceError (nueva, DD29-2)", async () => {
+  it("regla 3: product_type fuera de IN ('simple','variable') → InvalidReferenceError (nueva)", async () => {
     await expect(
       createProduct({
         name: `${SENTINEL_PREFIX}type-invalido`,
@@ -707,7 +706,7 @@ describe('Las cinco guardas CHECK/IN — 400, nunca 500 (Herencia 2, DD29-1/DD29
     ).rejects.toBeInstanceOf(InvalidReferenceError);
   });
 
-  it("regla 4: status fuera de IN ('publish','draft') → InvalidReferenceError (nueva, DD29-2)", async () => {
+  it("regla 4: status fuera de IN ('publish','draft') → InvalidReferenceError (nueva)", async () => {
     await expect(
       createProduct({
         name: `${SENTINEL_PREFIX}status-invalido`,
@@ -720,16 +719,15 @@ describe('Las cinco guardas CHECK/IN — 400, nunca 500 (Herencia 2, DD29-1/DD29
     ).rejects.toBeInstanceOf(InvalidReferenceError);
   });
 
-  // regla 5 (products_procedencia_completa): SIN test de runtime, a propósito
-  // (design.md, tabla de las cinco guardas, fila 5). `CreateProductInput` no
-  // declara `sourceStore`/`sourceProductId` en absoluto — el input del admin
-  // no tiene forma de expresar la violación. `num_nonnulls(source_store,
+  // regla 5 (products_procedencia_completa): SIN test de runtime, a
+  // propósito. `CreateProductInput` no declara `sourceStore`/`sourceProductId`
+  // en absoluto — el input del admin no tiene forma de expresar la violación. `num_nonnulls(source_store,
   // source_product_id)` es SIEMPRE 0 para estas filas, nunca ∈ (0,2):
   // inalcanzable por construcción del tipo, no por una guarda de código que
   // pudiera tener un bug. Documentado aquí en vez de simulado.
 });
 
-describe('Las tres FK salientes y los dos pivotes inexistentes → InvalidReferenceError, nunca 500 (DD29-4, DD29-6)', () => {
+describe('Las tres FK salientes y los dos pivotes inexistentes → InvalidReferenceError, nunca 500', () => {
   it('type_id inexistente → InvalidReferenceError vía P2003/translateCatalogWriteError', async () => {
     await expect(
       createProduct({
@@ -767,7 +765,7 @@ describe('Las tres FK salientes y los dos pivotes inexistentes → InvalidRefere
     ).rejects.toBeInstanceOf(InvalidReferenceError);
   });
 
-  it('categoryIds con id inexistente → InvalidReferenceError vía la sonda _assertPivotIdsExist, NO vía P2003 (pregunta empírica de DD29-6, cerrada)', async () => {
+  it('categoryIds con id inexistente → InvalidReferenceError vía la sonda _assertPivotIdsExist, NO vía P2003', async () => {
     let error: unknown;
     try {
       await createProduct({
@@ -782,15 +780,15 @@ describe('Las tres FK salientes y los dos pivotes inexistentes → InvalidRefere
       error = e;
     }
     expect(error).toBeInstanceOf(InvalidReferenceError);
-    // La sonda `count` (DD29-6) lanza `InvalidReferenceError('products',
+    // La sonda `count` lanza `InvalidReferenceError('products',
     // 'categories[]')` SIN un tercer argumento `value` — el mensaje es el
     // literal exacto de abajo. Un P2003 traducido por
     // `translateCatalogWriteError` llevaría en cambio `meta.field_name` (si
-    // Prisma 7 + adapter-pg lo emite para una fila pivote — lo que este
-    // design marcaba como no verificado) o el `'desconocida'` genérico de
+    // Prisma 7 + adapter-pg lo emite para una fila pivote, algo no
+    // verificado) o el `'desconocida'` genérico de
     // respaldo; ninguno de los dos produce este literal. El mensaje
     // observado confirma que la sonda es la que disparó, no el `catch` del
-    // `create` anidado — cierra la pregunta empírica de DD29-6.
+    // `create` anidado.
     expect((error as Error).message).toBe(
       '`products.categories[]` referencia un registro inexistente.'
     );
@@ -824,7 +822,7 @@ describe('Las tres FK salientes y los dos pivotes inexistentes → InvalidRefere
   });
 });
 
-describe('Frontera numérica: no-enteros y no-finitos → InvalidReferenceError, nunca 500/RangeError sin traducir (DD29-3)', () => {
+describe('Frontera numérica: no-enteros y no-finitos → InvalidReferenceError, nunca 500/RangeError sin traducir', () => {
   it('type_id/shop_id/manufacturer_id y ids de pivote no enteros ("abc", 1e21) → InvalidReferenceError', async () => {
     await expect(
       createProduct({
@@ -941,7 +939,7 @@ describe('Frontera numérica: no-enteros y no-finitos → InvalidReferenceError,
   });
 });
 
-describe('404 en updateProduct/deleteProduct con id inexistente, y duplicados de pivote sin P2002 espurio (DD29-6, Herencia 2)', () => {
+describe('404 en updateProduct/deleteProduct con id inexistente, y duplicados de pivote sin P2002 espurio', () => {
   it('updateProduct(999999999, …) → RecordNotFoundError', async () => {
     await expect(
       updateProduct(999999999, { name: `${SENTINEL_PREFIX}fantasma` })
@@ -954,7 +952,7 @@ describe('404 en updateProduct/deleteProduct con id inexistente, y duplicados de
     );
   });
 
-  it('categoryIds/tagIds con ids duplicados no producen un P2002 espurio (uniq(), DD29-6)', async () => {
+  it('categoryIds/tagIds con ids duplicados no producen un P2002 espurio (uniq())', async () => {
     const created = await createProduct({
       name: `${SENTINEL_PREFIX}pivote-duplicado`,
       slug: `${SENTINEL_PREFIX}pivote-duplicado`,
@@ -983,14 +981,14 @@ describe('404 en updateProduct/deleteProduct con id inexistente, y duplicados de
   });
 });
 
-// US-69: la búsqueda por texto se escribe `contains` + `mode: insensitive`,
+// La búsqueda por texto se escribe `contains` + `mode: insensitive`,
 // que Prisma traduce a `ILIKE`. Los índices trigram van sobre la columna para
 // que ese ILIKE los pueda usar; el anterior, sobre lower(name), no se usaba ni
 // con el Seq Scan desactivado. Se fuerza `enable_seqscan = off` (solo dentro
 // de la transacción) porque lo que se protege es que el índice sea
 // APLICABLE: si el planificador lo prefiere depende del tamaño de la tabla y
 // de la pending list del GIN. No se asertan costes, que cambian por máquina.
-describe('índices trigram del ILIKE (US-69, CA-4)', () => {
+describe('índices trigram del ILIKE', () => {
   const planWithoutSeqScan = (sql: string) =>
     prisma.$transaction(async (tx) => {
       await tx.$executeRawUnsafe('SET LOCAL enable_seqscan = off');

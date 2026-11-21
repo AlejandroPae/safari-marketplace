@@ -6,7 +6,7 @@ import { CoreEntity } from '#src/common/entities/core.entity.js';
  * traen exactamente estas 4 claves (`become-seller.json`), no las de
  * `Attachment` (`id`/`created_at`/`updated_at` obligatorios + `thumbnail?`/
  * `original?`). Reutilizar `Attachment` inventaría dos campos obligatorios
- * que el dato no tiene y ocultaría `file_name` (D-6, `design.md`).
+ * que el dato no tiene y ocultaría `file_name`.
  */
 export class BecomeSellerImage {
   thumbnail: string;
@@ -53,7 +53,7 @@ export class BusinessPurposeItem {
 
 export class BecomeSellerGuidelineItem {
   title: string;
-  // Único `@ApiProperty` del change (D-7): sin `strictNullChecks` en
+  // Único `@ApiProperty` de estas entidades: sin `strictNullChecks` en
   // `tsconfig.json`, el plugin de Swagger reduce `string | null` a `string`
   // antes de leerlo, así que `nullable: true` no puede inferirse — y el
   // dato sí trae `link === null` (`guidelineItems[4]`).

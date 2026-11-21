@@ -1,5 +1,5 @@
 /**
- * orders.repository.ts — órdenes: lectura (US-58) y escritura (US-59).
+ * orders.repository.ts — órdenes: lectura y escritura.
  *
  * Padres e hijas viven en la misma tabla: el padre agrupa la compra y no
  * tiene tienda; cada hija es la parte de una tienda (`orders_padre_o_hija`).
@@ -151,7 +151,7 @@ export async function findOrderByIdOrTracking(
 }
 
 // ---------------------------------------------------------------------------
-// Escritura (US-59)
+// Escritura
 // ---------------------------------------------------------------------------
 
 /** Enums de la API (`orders/entities/order.entity.ts`); son los CHECK de `orders`. */
@@ -427,7 +427,7 @@ function _assertStatuses(input: {
  * solo a ella. Fija `updatedAt: now()`. Inexistente: `RecordNotFoundError`.
  *
  * No se llama `updateOrderStatus`: en el barrel ese nombre ya es del
- * catálogo de estados (`order-statuses.repository.ts`, US-57).
+ * catálogo de estados (`order-statuses.repository.ts`).
  */
 export async function setOrderStatus(
   id: number,
@@ -488,7 +488,7 @@ export async function markOrderPaid(
  *
  * Si el autor de una reseña de esta orden ya tiene otra reseña del mismo
  * producto sin orden, el SET NULL choca con `reviews_autor_producto_orden_key`
- * (US-58) y el borrado no se hace: `SlugConflictError` (409), sin borrar
+ * y el borrado no se hace: `SlugConflictError` (409), sin borrar
  * ninguna reseña.
  */
 export async function deleteOrder(id: number): Promise<OrderDetailRecord> {

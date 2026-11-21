@@ -1,6 +1,6 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
- * 5 políticas, 1 vendor y 4 customer, las 5 approved). US-48.
+ * 5 políticas, 1 vendor y 4 customer, las 5 approved).
  *
  * Centinela `zz-rpol-` en el slug. Lecturas del seed ANTES que escrituras.
  */

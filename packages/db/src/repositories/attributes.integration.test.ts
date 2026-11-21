@@ -1,6 +1,6 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
- * 8 atributos, ids 11,10,9,8,6,5,4,3, con 27 valores). US-50.
+ * 8 atributos, ids 11,10,9,8,6,5,4,3, con 27 valores).
  *
  * Las escrituras usan el centinela `zz-attr-` en el nombre (y por tanto en el
  * slug). La prueba de colisión de slug crea un «Color» sin centinela: su id se

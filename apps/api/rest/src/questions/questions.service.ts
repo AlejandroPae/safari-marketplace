@@ -51,7 +51,7 @@ function parsePositiveInt(value: unknown): number | null {
 export class QuestionService {
   /**
    * Filtros reales combinados con AND: `product_id` del query y
-   * `question:<texto>` (V-1), `shop_id:N` y `type.slug:<x>` desde `search`.
+   * `question:<texto>`, `shop_id:N` y `type.slug:<x>` desde `search`.
    * Las demás claves (y `answer`) se ignoran. Un número no válido devuelve la
    * lista vacía. Orden `id DESC`, defaults `page=1`/`limit=10`; la url
    * interpola `answer`, que casi siempre sale `undefined`, como el mock.
@@ -139,8 +139,8 @@ export class QuestionService {
   }
 
   /**
-   * Responder (V-5). `super_admin`, el dueño de la tienda de la pregunta o
-   * su staff (fila en `shop_staff`, US-66); si no, 403. El staff se consulta
+   * Responder. `super_admin`, el dueño de la tienda de la pregunta o
+   * su staff (fila en `shop_staff`); si no, 403. El staff se consulta
    * solo si no es dueño. Persiste `answer`, y `question` si llega (el
    * `ReplyQuestion` del admin envía los dos).
    */
@@ -200,7 +200,7 @@ export class QuestionService {
     }
   }
 
-  /** Solo para responder: el staff no borra preguntas ajenas (US-66, Decisión 3). */
+  /** Solo para responder: el staff no borra preguntas ajenas (no es moderar). */
   private async isStaff(
     record: QuestionDetailRecord,
     user: CurrentUserPayload,

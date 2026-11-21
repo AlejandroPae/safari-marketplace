@@ -1,13 +1,13 @@
 /**
- * slug.ts — generación de slug en servidor, genérica por firma (D27-13).
+ * slug.ts — generación de slug en servidor, genérica por firma.
  *
  * Ningún agregado se nombra aquí: `normalizeSlug`/`generateSlug` reciben el
  * texto a normalizar y una función de búsqueda (`ExistingSlugLookup`) que
  * el propio repositorio del agregado construye contra SU tabla. El nombre
  * de tabla nunca llega al SQL — la inyección es imposible por construcción,
- * no por escapado (ver design.md, Decisión 2).
+ * no por escapado.
  *
- * La normalización delega en `SELECT slugify($1)` (Decisión 1, Opción B):
+ * La normalización delega en `SELECT slugify($1)`:
  * Postgres ya es la fuente de verdad de esa regla (`db/schema.sql:39-61`) y
  * portarla a TypeScript abriría una segunda fuente de verdad que nadie
  * recordaría sincronizar. El texto viaja como parámetro `$1` del tagged
@@ -27,7 +27,7 @@ export interface SlugSource {
 /**
  * Trae todos los slugs de la tabla del agregado que empiezan por `prefix`.
  * El call site vive en el repositorio del agregado (p. ej.
- * `types.repository.ts`), nunca aquí — ver Decisión 2 del design.
+ * `types.repository.ts`), nunca aquí: así el nombre de tabla no llega al SQL.
  */
 export type ExistingSlugLookup = (prefix: string) => Promise<string[]>;
 

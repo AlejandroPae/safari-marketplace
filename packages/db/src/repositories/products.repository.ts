@@ -46,7 +46,7 @@ import { type ExistingSlugLookup, generateSlug, normalizeSlug } from '../slug';
 // Include compartido — todo listado/detalle carga las mismas relaciones,
 // porque el frontend de Pickbazar espera el producto "hidratado" (type,
 // shop, categories, tags, manufacturer embebidos). Exportado solo para otros
-// repositorios que devuelven `ProductRecord` (wishlists, US-53); no está en
+// repositorios que devuelven `ProductRecord` (wishlists); no está en
 // el barrel.
 // ---------------------------------------------------------------------------
 
@@ -56,7 +56,7 @@ export const PRODUCT_INCLUDE = {
   manufacturer: true,
   categories: { include: { category: true } },
   tags: { include: { tag: true } },
-  // `in_flash_sale` (US-96): cuántas filas de `flash_sale_products` tiene el
+  // `in_flash_sale`: cuántas filas de `flash_sale_products` tiene el
   // producto. Un `COUNT` correlacionado por fila, servido por el índice
   // `flash_sale_products_product_idx`.
   _count: { select: { flashSales: true } },
@@ -86,7 +86,7 @@ export interface ProductRecord {
   quantity: number;
   inStock: boolean;
   soldQuantity: number;
-  /** Está en alguna venta flash (`flash_sale_products`), sin mirar su vigencia (US-96). */
+  /** Está en alguna venta flash (`flash_sale_products`), sin mirar su vigencia. */
   inFlashSale: boolean;
   sku: string | null;
   unit: string;
@@ -116,7 +116,7 @@ export interface ProductRecord {
 }
 
 export interface ProductDetail extends ProductRecord {
-  /** Productos del mismo type (incluye el propio; ver D-1 en findProductBySlug). */
+  /** Productos del mismo type (incluye el propio; ver el `where` de findProductBySlug). */
   relatedProducts: ProductRecord[];
 }
 
@@ -129,7 +129,7 @@ export interface ListProductsInput {
   typeSlug?: string;
   categorySlug?: string;
   shopId?: number;
-  /** Búsqueda parcial por nombre, case-insensitive: `ILIKE`, que usa `products_nombre_ilike_trgm_idx` (US-69). */
+  /** Búsqueda parcial por nombre, case-insensitive: `ILIKE`, que usa `products_nombre_ilike_trgm_idx`. */
   name?: string;
   minPrice?: number;
   maxPrice?: number;
@@ -143,14 +143,14 @@ export interface ListProductsInput {
    * Criterio de orden. Ausente/`'id'` → `id asc` (hoy). `'ratings'` /
    * `'soldQuantity'` → desc por esa columna con desempate `id asc`
    * INCORPORADO: 1194/1200 filas empatan en `ratings = 0.00`, sin el
-   * desempate la cola del top-N no es determinista (US-5 Decision B).
+   * desempate la cola del top-N no es determinista.
    */
   orderBy?: 'id' | 'ratings' | 'soldQuantity';
   /**
    * Default `true`: aplica `status`/`visibility` de vitrina como hoy. En
    * `false`, esos dos filtros solo se aplican si el llamador los envía
    * explícitamente — para vistas de admin/inventario que el mock tampoco
-   * filtraba (US-5 Decision C). No debilita el default para nadie más.
+   * filtraba. No debilita el default para nadie más.
    */
   applyStorefrontDefaults?: boolean;
   /** 1-based. Default 1. */
@@ -200,8 +200,8 @@ function buildWhere(input: ListProductsInput): Prisma.ProductWhereInput {
 
   // El shop manda status/visibility en TODAS las consultas de catálogo; son
   // el default para que un caller distraído no liste borradores. Con
-  // `applyStorefrontDefaults: false` (vistas de admin/inventario, US-5
-  // Decision C) esos dos filtros SOLO se aplican si el llamador los envía.
+  // `applyStorefrontDefaults: false` (vistas de admin/inventario) esos dos
+  // filtros SOLO se aplican si el llamador los envía.
   const applyDefaults = input.applyStorefrontDefaults !== false;
 
   return {
@@ -241,7 +241,7 @@ function buildWhere(input: ListProductsInput): Prisma.ProductWhereInput {
 
 /**
  * Traduce `ListProductsInput.orderBy` al `orderBy` de Prisma, con el
- * desempate `id asc` INCORPORADO (US-5 Decision B) — no se delega al
+ * desempate `id asc` INCORPORADO — no se delega al
  * llamador porque se olvida.
  */
 function buildOrderBy(
@@ -279,7 +279,7 @@ export async function listProducts(input: ListProductsInput = {}): Promise<{
       // Orden estable = paginación estable. Default: el mock sirve los
       // productos en el orden del JSON, que coincide con id ascendente.
       // `orderBy: 'ratings'|'soldQuantity'` trae su propio desempate `id asc`
-      // (buildOrderBy, US-5 Decision B).
+      // (buildOrderBy).
       orderBy: buildOrderBy(input.orderBy),
       skip: (page - 1) * limit,
       take: limit,
@@ -297,7 +297,7 @@ export async function listProducts(input: ListProductsInput = {}): Promise<{
 /**
  * Detalle por slug, con relaciones cargadas y `relatedProducts` (mismo
  * type, hasta `relatedLimit`, SIN filtrar por `status`/`visibility` y sin
- * excluir el propio producto — ver D-1 en el `where` de abajo).
+ * excluir el propio producto — ver el comentario del `where` de abajo).
  * `null` si no existe.
  */
 export async function findProductBySlug(
@@ -315,10 +315,10 @@ export async function findProductBySlug(
   if (!record) return null;
 
   const related = await prisma.product.findMany({
-    // D-1 (US-3, ratificada): paridad byte a byte con el mock, que hacía
+    // Paridad byte a byte con el mock, que hacía
     // `products.filter(p => p.type.slug === product.type.slug).slice(0,20)`.
     // NO es un bug ni un olvido: el filtro por `status`/`visibility` y la
-    // exclusión del propio producto (`id: { not: row.id }`) se ELIMINARON a
+    // exclusión del propio producto (`id: { not: row.id }`) se omiten a
     // propósito. Ver openspec/specs/product-detail-api/spec.md antes de
     // "arreglarlo".
     where: { typeId: row.typeId },
@@ -457,10 +457,10 @@ export async function deleteScrapedProduct(
 }
 
 // ---------------------------------------------------------------------------
-// Escritura (admin) — CA-1, CA-2, CA-3 de `product-write-api` (US-29). Único
-// agregado del catálogo con pivotes propios (`category_product`/`product_tag`)
-// y con propiedad por tienda (la propiedad se valida en el servicio de Nest,
-// D29-1 — este repositorio no conoce "usuario actual").
+// Escritura (admin), spec `product-write-api`. Único agregado del catálogo
+// con pivotes propios (`category_product`/`product_tag`) y con propiedad por
+// tienda (la propiedad se valida en el servicio de Nest — este repositorio no
+// conoce "usuario actual").
 // ---------------------------------------------------------------------------
 
 /**
@@ -475,20 +475,20 @@ const productSlugs: ExistingSlugLookup = async (prefix) =>
     })
   ).map((r) => r.slug);
 
-/** `[...new Set(ids)]` — evita el `P2002` espurio de un pivote con ids repetidos (DD29-6). */
+/** `[...new Set(ids)]` — evita el `P2002` espurio de un pivote con ids repetidos. */
 function uniq<T>(values: T[]): T[] {
   return [...new Set(values)];
 }
 
 /**
- * B1 (DD29-3). Forma entera de las 3 FK salientes (`type_id`, `shop_id`,
+ * Forma entera de las 3 FK salientes (`type_id`, `shop_id`,
  * `manufacturer_id`) y de cada id de `categoryIds[]`/`tagIds[]`.
  * `Number.isSafeInteger` (no `isInteger`): un valor como `1e21` es entero
  * pero excede el rango de un `bigint` de Postgres y el driver lanza sin
  * `.code` reconocible — 500 en vez de 400 (precedente
- * `categories.repository.ts:305-317`). Reescrita local a propósito (`CA-7`
- * prohíbe una pieza compartida nueva): la de `categories` es
- * module-private y hardcodea su agregado. Sin `<= 0`: un id no positivo es
+ * `categories.repository.ts:305-317`). Reescrita local a propósito, sin abrir
+ * una pieza compartida nueva: la de `categories` es module-private y
+ * hardcodea su agregado. Sin `<= 0`: un id no positivo es
  * representable como `bigint` y ya resuelve en 400 vía `P2003`/la sonda de
  * existencia (mismo rationale que `categories.repository.ts:319-326`).
  */
@@ -502,7 +502,7 @@ function _assertIntegerRef(
 }
 
 /**
- * B2 (DD29-3). `price`/`salePrice`/`minPrice`/`maxPrice`: forma finita y
+ * `price`/`salePrice`/`minPrice`/`maxPrice`: forma finita y
  * dentro del rango de `numeric(12,2)` (`|v| >= 1e10` → 400). Sin la mitad
  * del rango, `{"price": 1e300}` produce un `numeric field overflow` de
  * Postgres sin `.code` → 500 — misma familia de defecto que
@@ -525,7 +525,7 @@ function _assertFiniteNumber(
   }
 }
 
-/** B3 (DD29-3). `quantity`: forma entera. */
+/** `quantity`: forma entera. */
 function _assertIntegerCount(value: number | undefined, field: string): void {
   if (value === undefined) return;
   if (!Number.isInteger(value)) {
@@ -541,10 +541,10 @@ const PRODUCT_TYPES = ['simple', 'variable'];
 const PRODUCT_STATUSES = ['publish', 'draft'];
 
 /**
- * `product_type IN ('simple','variable')` (DD29-2/DD29-8): el conjunto
+ * `product_type IN ('simple','variable')`: el conjunto
  * cerrado de 5 códigos no nombra "valor fuera de un IN", así que se
- * generaliza `InvalidReferenceError` a "argumento inválido" — precedente
- * literal `DD28-3` en `categories`. `undefined` (campo ausente, el
+ * generaliza `InvalidReferenceError` a "argumento inválido" — mismo
+ * precedente que las reglas de la arista madre→hija en `categories`. `undefined` (campo ausente, el
  * `DEFAULT 'simple'` de la columna aplica) no se valida: el default siempre
  * es válido.
  */
@@ -558,7 +558,7 @@ function _assertProductType(value: string | undefined): void {
   }
 }
 
-/** `status IN ('publish','draft')` (DD29-2). Mismo criterio que `_assertProductType`. */
+/** `status IN ('publish','draft')`. Mismo criterio que `_assertProductType`. */
 function _assertStatus(value: string | undefined): void {
   if (value !== undefined && !PRODUCT_STATUSES.includes(value)) {
     throw new InvalidReferenceError(
@@ -570,7 +570,7 @@ function _assertStatus(value: string | undefined): void {
 }
 
 /**
- * `products_rebaja_valida` heredada y ADAPTADA (DD29-9): el `disyunto
+ * `products_rebaja_valida` heredada y ADAPTADA: el `disyunto
  * price != null` es obligatorio porque, a diferencia de
  * `upsertScrapedProduct` (donde `price: number` es obligatorio), aquí un
  * `variable` legítimamente tiene `price === null` y `salePrice >= null`
@@ -591,7 +591,7 @@ function _assertPriceRules(
 }
 
 /**
- * Sonda de existencia de los ids de pivote, NORMATIVA (DD29-6): no se deja
+ * Sonda de existencia de los ids de pivote, NORMATIVA: no se deja
  * al `P2003` de un `create` anidado porque no está verificado que Prisma 7 +
  * `adapter-pg` lo emita para la fila pivote — si no lo hiciera, el 400 que
  * `spec/product-write-api/spec.md` exige para `categories: [999999]` se
@@ -619,10 +619,10 @@ async function _assertPivotIdsExist(
 }
 
 /**
- * Derivación de `price`/`minPrice`/`maxPrice` sobre el tipo EFECTIVO
- * (DD29-7). `simple`: los tres valen `price`, derivados, nunca leídos del
- * input — así una conversión `variable`→`simple` no arrastra un
- * `min_price` desalineado que ninguna guarda vería. `variable`: `price`
+ * Derivación de `price`/`minPrice`/`maxPrice` sobre el tipo EFECTIVO.
+ * `simple`: los tres valen `price`, derivados, nunca leídos del input —
+ * así una conversión `variable`→`simple` no arrastra un `min_price`
+ * desalineado que ninguna guarda vería. `variable`: `price`
  * queda `NULL` y se persisten los `min`/`max` que el admin ya calculó.
  */
 function _deriveProductPrices(
@@ -676,10 +676,10 @@ export interface CreateProductInput {
   tagIds?: number[];
 }
 
-/** `slug` inmutable por tipo (CA-2); `shopId` SÍ mutable (decisión de producto). */
+/** `slug` inmutable por tipo; `shopId` SÍ mutable (decisión de producto). */
 export type UpdateProductInput = Partial<Omit<CreateProductInput, 'slug'>>;
 
-/** Crea un producto del admin, con pivotes y las 5 guardas de DD29-2/DD29-3 pre-validadas. */
+/** Crea un producto del admin, con pivotes y las 5 guardas de dominio pre-validadas. */
 export async function createProduct(
   input: CreateProductInput
 ): Promise<ProductRecord> {
@@ -784,10 +784,10 @@ export async function createProduct(
 /**
  * Actualiza un producto: escalares, pivotes y (si el body mueve `shop_id`)
  * la fila cambia de tienda — la propiedad de ambos lados la valida el
- * servicio de Nest (D29-1), no este repositorio. `slug` es inmutable a
+ * servicio de Nest, no este repositorio. `slug` es inmutable a
  * nivel de tipo; si llega `name` se valida con `normalizeSlug` descartando
  * el resultado (solo su efecto lateral `EmptySlugError`). `updatedAt` lo
- * fija `updatedAt: now()` desde `clock.ts` (US-32); ya no hay trigger de
+ * fija `updatedAt: now()` desde `clock.ts`; ya no hay trigger de
  * base de datos.
  */
 export async function updateProduct(
@@ -917,7 +917,7 @@ export async function updateProduct(
     const record = _toProductRecord(row);
     if (!record) {
       // La fila se está borrando sola entre esta lectura y el write (FK
-      // NOT NULL + CASCADE): 404 es la respuesta honesta (DD29-5, mismo
+      // NOT NULL + CASCADE): 404 es la respuesta honesta (mismo
       // razonamiento que deleteProduct).
       throw new RecordNotFoundError('products', id);
     }
@@ -932,7 +932,7 @@ export async function updateProduct(
 /**
  * Borra un producto del admin. `findUnique + PRODUCT_INCLUDE` corre ANTES
  * del `DELETE`: es a la vez la comprobación de existencia y el snapshot
- * PRE-borrado que se devuelve (DD29-5, precedente `DD28-1`). Un `DELETE` no
+ * PRE-borrado que se devuelve (precedente `deleteCategory`). Un `DELETE` no
  * escribe `updated_at`, así que no hay ningún valor posterior con el que
  * divergir.
  */
@@ -962,7 +962,7 @@ export async function deleteProduct(id: number): Promise<ProductRecord> {
 
 /**
  * `shopId` actual de un producto, para la propiedad por tienda de
- * `update`/`remove` (D29-1, DD29-4). `null` si el producto no existe o si
+ * `update`/`remove`. `null` si el producto no existe o si
  * `id` no tiene forma entera segura. NUNCA lanza.
  */
 export async function findProductShopId(id: number): Promise<number | null> {
@@ -980,7 +980,7 @@ export async function findProductShopId(id: number): Promise<number | null> {
 
 /**
  * Las tres extienden `CatalogWriteError` (no `Error` a secas) con
- * `code = CATALOG_ERROR_CODES.InvalidReference` — DD29-1. Sin esto,
+ * `code = CATALOG_ERROR_CODES.InvalidReference`. Sin esto,
  * `isCatalogWriteError` (guard estructural por `code` contra los 5 valores
  * cerrados) no las reconoce, `mapDomainError` devuelve `null` y
  * `toWriteHttpException` degrada a HTTP 500 en vez de 400. Mismos mensajes,
@@ -1053,7 +1053,7 @@ function _isPresent<T>(value: T | null): value is T {
  * convención que los `_to*Record` de `records.ts`). Sin ese test, las guardas
  * de null de abajo son invisibles para `tsc` —Prisma tipa las relaciones como
  * no nulas— y un refactor podría borrarlas como código muerto sin que nada
- * se ponga rojo (hallazgo RV-1 de `sdd-verify` en US-27b).
+ * se ponga rojo.
  *
  * Devuelve `null` cuando `type` o `shop` llegan NULL: son FKs `NOT NULL` con
  * `ON DELETE CASCADE` (`db/schema.sql:331-332`), así que un NULL ahí no es un
@@ -1062,7 +1062,7 @@ function _isPresent<T>(value: T | null): value is T {
  * `tags`, abajo) y Postgres está borrando este producto en cascada. No hay
  * default sensato para un `shop`, y lanzar solo cambiaría el texto del 500;
  * descartar la fila es lo que la cascada va a hacer un instante después. Es
- * exactamente la ventana que abre `deleteShop` (US-30).
+ * exactamente la ventana que abre `deleteShop`.
  */
 export function _toProductRecord(row: ProductPayload): ProductRecord | null {
   if (row.type === null || row.shop === null) return null;
@@ -1111,10 +1111,9 @@ export function _toProductRecord(row: ProductPayload): ProductRecord | null {
     // `link.category`/`link.tag` pueden llegar NULL aunque la fila pivote
     // exista: Prisma resuelve el include anidado en dos consultas, así que si
     // el agregado se borra entre ambas, el enlace queda sin destino. La guarda
-    // de `manufacturer` (arriba) ya lo contemplaba; estas dos no, y el
-    // resultado era un `TypeError: Cannot read properties of null` reproducible
-    // al 8,3 % (hallazgo C-1 de `sdd-verify` en US-27b) — y un 500 real al
-    // borrar un tag mientras la tienda hace SSR de `/api/products`. Aquí SÍ se
+    // de `manufacturer` (arriba) cubre el mismo caso; sin estas dos, el
+    // resultado sería un `TypeError: Cannot read properties of null`
+    // reproducible al 8,3 % — y un 500 real al borrar un tag mientras la tienda hace SSR de `/api/products`. Aquí SÍ se
     // descarta solo el enlace, no el producto: ambos pivotes son `ON DELETE
     // CASCADE` hacia el tag/categoría, no hacia el producto (`schema.sql:427,
     // 433`), así que el producto sobrevive y solo pierde esa relación.

@@ -1,6 +1,6 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
- * 1 clase "Global", id 1, rate 2, con las fechas del mock). US-49.
+ * 1 clase "Global", id 1, rate 2, con las fechas del mock).
  *
  * Las escrituras usan el centinela `zz-tax-` en `name` (la tabla no tiene
  * slug). Lecturas del seed ANTES que escrituras.

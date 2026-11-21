@@ -28,7 +28,7 @@ export class ShippingsController {
     return this.shippingsService.create(createShippingDto);
   }
 
-  // Referencia sin PII; romperla rompe el carrito anónimo (cierre del usuario, proposal.md).
+  // Referencia sin PII; romperla rompe el carrito anónimo.
   @Public()
   @Get()
   findAll(@Query() query: GetShippingsDto) {

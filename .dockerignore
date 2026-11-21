@@ -1,4 +1,4 @@
-# Contexto de build de las imágenes (US-14): la raíz del repo.
+# Contexto de build de las imágenes: la raíz del repo.
 #
 # Lista blanca: se excluye todo y solo se readmite lo que una imagen
 # necesita. Así no entran en el contexto ni los node_modules locales (varios
@@ -10,7 +10,7 @@
 !apps/api/rest
 !packages/db
 
-# Tienda y admin (US-15): el workspace de yarn de apps/ entero para el
+# Tienda y admin: el workspace de yarn de apps/ entero para el
 # install (admin/graphql solo aporta su package.json: el lockfile lo pide) y
 # los colores de Tailwind que leen las dos apps.
 !apps/package.json
@@ -20,7 +20,7 @@
 !apps/admin/rest
 !apps/admin/graphql/package.json
 
-# db-init y proxy del despliegue (US-111): esquema, seed y configuración de
+# db-init y proxy del despliegue: esquema, seed y configuración de
 # Caddy, que viajan dentro de sus imágenes.
 !db/schema.sql
 !db/seed.sql

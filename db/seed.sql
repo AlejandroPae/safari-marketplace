@@ -68,7 +68,7 @@ ON CONFLICT (id) DO NOTHING;
 -- profiles — 3 (1:1 con users, PK = user_id)
 -- ────────────────────────────────────────────────────────────────────
 -- `profile.id` del mock NO se persiste: admin y customer declaran ambos
--- profile.id = 2, y la PK real es user_id (D-4).
+-- profile.id = 2, y la PK real es user_id.
 INSERT INTO profiles (user_id, avatar, bio, socials, contact, notifications) VALUES
   (3, '{"id":1691,"original":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2449/man.png","thumbnail":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2449/conversions/man-thumbnail.jpg"}'::jsonb, NULL, NULL, '19365141641631', NULL),
   (2, '{"id":1692,"original":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/1692/author-img-%281%29.jpg","thumbnail":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/1692/conversions/author-img-%281%29-thumbnail.jpg"}'::jsonb, NULL, NULL, '19365141641631', NULL),
@@ -86,10 +86,10 @@ INSERT INTO permissions (id, name, guard_name) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ────────────────────────────────────────────────────────────────────
--- permission_user — 6 asignaciones reales (D-5: user_id del usuario iterado)
+-- permission_user — 6 asignaciones reales (user_id del usuario iterado)
 -- ────────────────────────────────────────────────────────────────────
 -- NUNCA permissions[].pivot.model_id: el de admin vale 6, que no es un
--- usuario real y violaría esta misma FK (R-1).
+-- usuario real y violaría esta misma FK.
 INSERT INTO permission_user (user_id, permission_id) VALUES
   (3, 1),
   (3, 2),
@@ -105,7 +105,7 @@ ON CONFLICT (user_id, permission_id) DO NOTHING;
 -- No están en users.json: los referencian los `user` embebidos de otros
 -- mocks (reviews.json). Id, nombre y timestamps del snapshot, contraseña
 -- demo y permiso 'customer'; sin perfil. El setval de users cubre el máximo.
--- Los owners de ownership-transfer.json (US-63) llevan además 'store_owner':
+-- Los owners de ownership-transfer.json llevan además 'store_owner':
 -- en el mock son dueños de tienda, y sin él no salen en /vendors/list.
 INSERT INTO users (id, name, email, password_hash, is_active, email_verified_at, created_at, updated_at) VALUES
   (4, 'customer2', 'customer2@demo.com', '$2b$10$j/.1t7ZmKUU4qHu8Elw3dO6N4udivEj1oxeVxA1m6HOnp7D4J761S', true, NULL, '2022-03-17T14:15:08.000000Z', '2022-03-17T14:15:08.000000Z'),
@@ -163,7 +163,7 @@ INSERT INTO shop_staff (user_id, shop_id) VALUES
   (2, 2),
   (3, 1)
 ON CONFLICT (user_id, shop_id) DO NOTHING;
--- Permiso 'staff' para los 2 usuarios con fila en shop_staff (US-101).
+-- Permiso 'staff' para los 2 usuarios con fila en shop_staff.
 INSERT INTO permission_user (user_id, permission_id) VALUES
   (2, 4),
   (3, 4)
@@ -227,8 +227,8 @@ ON CONFLICT (id) DO NOTHING;
 -- ────────────────────────────────────────────────────────────────────
 -- refund_reasons — 8 (con las fechas del mock)
 -- ────────────────────────────────────────────────────────────────────
--- Primer bloque que inserta created_at/updated_at del mock (D-3 del Épico
--- 46): el contrato los emite y el DEFAULT now() los cambiaría en cada reset.
+-- Primer bloque que inserta created_at/updated_at del mock: el contrato
+-- los emite y el DEFAULT now() los cambiaría en cada reset.
 INSERT INTO refund_reasons (id, name, slug, language, created_at, updated_at) VALUES
   (1, 'Product Not as Described', 'product-not-as-described', 'en', '2023-11-12T10:58:58.000000Z', '2023-11-12T10:58:58.000000Z'),
   (2, 'Wrong Item Shipped', 'wrong-item-shipped', 'en', '2023-11-12T10:58:58.000000Z', '2023-11-12T10:58:58.000000Z'),
@@ -331,7 +331,7 @@ INSERT INTO store_notice_read (store_notice_id, user_id, is_read) VALUES
 ON CONFLICT (store_notice_id, user_id) DO NOTHING;
 
 -- ────────────────────────────────────────────────────────────────────
--- coupons — 10 (vigencia del mock + 5 años, US-68; is_valid se calcula en la API)
+-- coupons — 10 (vigencia del mock + 5 años; is_valid se calcula en la API)
 -- ────────────────────────────────────────────────────────────────────
 -- target/is_approve llegan como entero 1/0 -> bool(). image va a una columna
 -- json (no jsonb) para conservar el orden de claves. Sin timestamps: el mock
@@ -1960,7 +1960,7 @@ ON CONFLICT (user_id, product_id) DO NOTHING;
 -- ────────────────────────────────────────────────────────────────────
 -- reviews — 85 · abusive_reports — 3
 -- ────────────────────────────────────────────────────────────────────
--- user_id resuelto por email (D-4). photos va a una columna json (no jsonb)
+-- user_id resuelto por email. photos va a una columna json (no jsonb)
 -- para conservar el orden de claves. Contadores y fechas del mock.
 INSERT INTO reviews (id, order_id, user_id, shop_id, product_id, variation_option_id, comment, rating, photos,
                      positive_feedbacks_count, negative_feedbacks_count, created_at, updated_at) VALUES
@@ -2060,7 +2060,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ────────────────────────────────────────────────────────────────────
 -- questions — 68
 -- ────────────────────────────────────────────────────────────────────
--- user_id resuelto por email (D-4). Respuesta, contadores y fechas del mock.
+-- user_id resuelto por email. Respuesta, contadores y fechas del mock.
 INSERT INTO questions (id, user_id, shop_id, product_id, question, answer,
                        positive_feedbacks_count, negative_feedbacks_count, created_at, updated_at) VALUES
   (68, 2, 5, 470, 'Is it sweet or sour?', 'its sweet as it contains suger.', 0, 0, '2022-03-18T10:19:46.000000Z', '2022-03-18T10:20:42.000000Z'),
@@ -2204,7 +2204,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ────────────────────────────────────────────────────────────────────
 -- orders — 40 (20 padres + 20 hijas) · order_products — 76
 -- ────────────────────────────────────────────────────────────────────
--- Padre y después su hija. customer_id resuelto por email (D-4); el customer
+-- Padre y después su hija. customer_id resuelto por email; el customer
 -- embebido va verbatim a customer_snapshot. Dinero tal cual (hay 3
 -- decimales). updated_at = created_at: el mock no lo trae.
 INSERT INTO orders (id, tracking_number, parent_id, customer_id, customer_contact, customer_name,
@@ -2368,7 +2368,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ownership_transfers — 6 (owners sembrados: 48, 49, 51, 53, 45, 42)
 -- ────────────────────────────────────────────────────────────────────
 -- Ids del mock. previous/current_owner y created_by resueltos por email y por
--- la tabla de D-4 (el 6 del mock es admin@demo.com = 3 aquí). shop_id NULL:
+-- la tabla de remapeo (el 6 del mock es admin@demo.com = 3 aquí). shop_id NULL:
 -- el mock no lo trae. balance_info va verbatim en json (no jsonb): es la foto
 -- histórica del balance y el orden de sus claves es contrato; payment_info
 -- sigue siendo un string dentro. El mock no trae timestamps: se derivan del
@@ -2388,7 +2388,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ────────────────────────────────────────────────────────────────────
 -- Ids del mock. Sin timestamps en el mock: toman now(), y la API no los emite.
 -- socials, image y cover_image van verbatim en json (el orden de claves es
--- contrato). products_count es el dato del mock, no un conteo (DA-4).
+-- contrato). products_count es el dato del mock, no un conteo.
 INSERT INTO authors (id, name, slug, bio, quote, born, death, languages, socials, image, cover_image, products_count, is_approved, language) VALUES
   (12, 'Kaity lerry', 'kaity-lerry', 'An author is the creator or originator of any written work similar as a book or play, and is also considered a pen or minstrel. More astronomically defined, an author is"the person who began or gave actuality to anything"and whose authorship determines responsibility for what was created.', 'All writers are vain, selfish and lazy, and at the very bottom of their motives lies a mystery. Writing a book is a long, exhausting struggle, like a long bout of some painful illness. One would never undertake such a thing if one were not driven by some demon whom one can neither resist nor understand', '1965-06-21T18:00:00.000Z', NULL, 'English', '[]'::json, '{"id":1591,"original":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/1591/Author-img-800-%283%29.jpg","thumbnail":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/1591/conversions/Author-img-800-%283%29-thumbnail.jpg"}'::json, '{"id":1591,"original":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/1591/Author-img-800-%283%29.jpg","thumbnail":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/1591/conversions/Author-img-800-%283%29-thumbnail.jpg"}'::json, 5, true, 'en'),
   (11, 'Jakob Dillon', 'jakob-dillon', 'An author is the creator or originator of any written work similar as a book or play, and is also considered a pen or minstrel. More astronomically defined, an author is"the person who began or gave actuality to anything"and whose authorship determines responsibility for what was created.', 'All writers are vain, selfish and lazy, and at the very bottom of their motives lies a mystery. Writing a book is a long, exhausting struggle, like a long bout of some painful illness. One would never undertake such a thing if one were not driven by some demon whom one can neither resist nor understand', '1975-05-04T18:00:00.000Z', NULL, 'English', '[]'::json, '{"id":1593,"original":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/1593/Author-img-800-%281%29.jpg","thumbnail":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/1593/conversions/Author-img-800-%281%29-thumbnail.jpg"}'::json, '{"id":1593,"original":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/1593/Author-img-800-%281%29.jpg","thumbnail":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/1593/conversions/Author-img-800-%281%29-thumbnail.jpg"}'::json, 6, true, 'en'),
@@ -2406,14 +2406,15 @@ ON CONFLICT (id) DO NOTHING;
 -- ────────────────────────────────────────────────────────────────────
 -- flash_sales — 2; flash_sale_products — 4
 -- ────────────────────────────────────────────────────────────────────
--- Ids y timestamps del mock (D-3). start_date/end_date sin zona, como el mock.
+-- Ids y timestamps del mock. start_date/end_date sin zona, como el mock.
 -- sale_builder, image y cover_image verbatim en json (el orden de claves es
--- contrato). products-by-flash-sale.json NO se siembra (DA-6 del épico).
+-- contrato). products-by-flash-sale.json NO se siembra: la tabla puente sale
+-- de flash-sale.json.
 INSERT INTO flash_sales (id, title, slug, description, start_date, end_date, sale_status, type, rate, sale_builder, image, cover_image, language, created_at, updated_at) VALUES
   (3, 'Limited-Time Offer: Act Fast! 🔥', 'limited-time-offer-act-fast', 'Don''t miss out on our incredible Limited-Time Offer sale! We''ve slashed prices on a wide range of products for a brief period, giving you the perfect opportunity to grab those items you''ve had your eye on. Whether it''s the latest fashion trends, cutting-edge electronics, or home essentials, this sale has something for everyone. But remember, time is of the essence – these discounts won''t be around for long. So, hurry and fill your cart with fantastic deals while they last. It''s the ultimate chance to upgrade your lifestyle without breaking the bank. Shop now and make the most of this exclusive offer before it vanishes!', '2023-10-31 06:49:59', '2024-11-29 18:00:00', 1, 'percentage', 50, '{"data_type":"handpick_category","product_ids":[951,952]}'::json, '{"thumbnail":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2289/conversions/Group-1000003746-thumbnail.jpg","original":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2289/Group-1000003746.png","id":2292,"file_name":"Group-1000003746.png"}'::json, '{"thumbnail":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2291/conversions/Group-1000003746-thumbnail.jpg","original":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2291/Group-1000003746.png","id":2294,"file_name":"Group-1000003746.png"}'::json, 'en', '2023-10-16T06:53:42.000000Z', '2023-10-16T06:53:42.000000Z'),
   (1, 'Limited time discounts.', 'limited-time-discounts', 'Offer a discount on a specific product or category of products for a limited time. This creates a sense of urgency and encourages customers to make quick purchases.', '2023-10-16 06:40:17', '2024-11-29 18:00:00', 1, 'fixed_rate', 10, '{"data_type":"handpicked_products","product_ids":[1013,1023]}'::json, '{"thumbnail":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2285/conversions/2-92206549-thumbnail.jpg","original":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2285/2-92206549.png","id":2288,"file_name":"2-92206549.png"}'::json, '{"thumbnail":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2286/conversions/4-954757967-thumbnail.jpg","original":"https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/2286/4-954757967.png","id":2289,"file_name":"4-954757967.png"}'::json, 'en', '2023-10-16T06:46:21.000000Z', '2023-10-16T06:46:21.000000Z')
 ON CONFLICT (id) DO NOTHING;
--- Los products[].id de cada venta; el pivot.flash_sale_id del mock se ignora (V-2).
+-- Los products[].id de cada venta; el pivot.flash_sale_id del mock se ignora.
 INSERT INTO flash_sale_products (flash_sale_id, product_id) VALUES
   (3, 951),
   (3, 952),

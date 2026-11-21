@@ -1,4 +1,4 @@
-# Tienda (Next.js, pages router) en contenedor — US-15, adelgazada en US-105.
+# Tienda (Next.js, pages router) en contenedor.
 #
 # Contexto de build: la RAÍZ del repo. La tienda es un workspace de yarn
 # (apps/package.json) y su tailwind.config.js lee apps/tailwind-v3-colors.js.
@@ -10,14 +10,14 @@
 # más lento) se hace una vez para las dos imágenes. Si se cambia aquí,
 # cambiarla allí igual.
 #
-# El runtime es el build `standalone` de Next (US-105): server.js más solo
+# El runtime es el build `standalone` de Next: server.js más solo
 # los node_modules que el servidor usa, trazados por Next. Ni el resto del
 # workspace ni la caché de compilación (.next/cache) viajan en la imagen.
 #
 # Detrás de Zscaler, el CA corporativo entra como secreto opcional
 # `extra_ca`, igual que en la imagen de la API (ver apps/api/rest/Dockerfile).
 
-# Versión exacta, la misma en los tres Dockerfiles (US-105): un tag de solo
+# Versión exacta, la misma en los tres Dockerfiles: un tag de solo
 # major cambia de contenido sin aviso.
 ARG NODE_IMAGE=node:22.22.3-alpine3.23
 
@@ -40,7 +40,7 @@ RUN --mount=type=secret,id=extra_ca,required=false \
 #
 # Las NEXT_PUBLIC_* se inlinean en el JavaScript durante `next build`; además
 # next-i18next.config.js las lee al arrancar el servidor. Por eso van en una
-# etapa base de la que salen las dos. La URL de la API NO está aquí (US-102):
+# etapa base de la que salen las dos. La URL de la API NO está aquí:
 # el navegador usa /backend y el SSR, API_INTERNAL_URL, de ejecución.
 FROM ${NODE_IMAGE} AS config
 ARG NEXT_PUBLIC_DEFAULT_LANGUAGE=en
@@ -67,7 +67,7 @@ ENV FRAMEWORK_PROVIDER=rest \
 # --- 2. Build: next build (standalone)
 #
 # Sin APPLICATION_MODE=production: `next build` comprueba los tipos de la
-# tienda, que hoy pasan. Y no necesita la API (US-104). NEXT_OUTPUT activa
+# tienda, que hoy pasan. Y no necesita la API. NEXT_OUTPUT activa
 # `output: 'standalone'` en next.config.js (solo aquí, no en `just build`).
 FROM config AS build
 ENV NEXT_OUTPUT=standalone

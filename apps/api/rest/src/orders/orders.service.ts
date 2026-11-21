@@ -76,13 +76,13 @@ import {
 import { toReviewUserDto } from '#src/reviews/review-dto.mapper.js';
 
 // payment-intent.json y payment-gateway.json son el mock permanente de la
-// pasarela (decisión 2 del Épico 46): siguen aquí a propósito.
+// pasarela: siguen aquí a propósito.
 const paymentIntents = plainToClass(PaymentIntent, paymentIntentJson);
 const _paymentGateways = plainToClass(PaymentGateWay, paymentGatewayJson);
 
 const TRACKING_NUMBER = /^[0-9]{14}$/;
 
-/** Solo el super admin ve y toca cualquier orden (US-100). */
+/** Solo el super admin ve y toca cualquier orden. */
 function isSuperAdmin(user: CurrentUserPayload): boolean {
   return user.permissions.includes('super_admin');
 }
@@ -247,9 +247,8 @@ function unprocessable(
 const money = (value: Decimal): string => value.toString();
 
 /**
- * Mock permanente declarado (US-60): export e invoice devuelven las URLs S3
- * de la demo de Pickbazar. No se genera ningún Excel ni PDF; antes salían de
- * los JSON del mock y ahora son constantes, con el mismo valor.
+ * Mock permanente declarado: export e invoice devuelven las URLs S3 de la
+ * demo de Pickbazar, como constantes. No se genera ningún Excel ni PDF.
  */
 export const ORDER_EXPORT_URL =
   'https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/100/orders.xlsx';
@@ -259,7 +258,7 @@ export const ORDER_INVOICE_URL =
 /**
  * `OrderFileRecord` → las 8 claves del mock de descargas, en su orden. `file`
  * sale tal cual de la columna `json`, con su orden de claves y sus fechas
- * de 6 decimales (V-3): no pasa por ningún objeto intermedio.
+ * de 6 decimales: no pasa por ningún objeto intermedio.
  */
 function toOrderFileDto(record: OrderFileRecord): OrderFiles {
   return {
@@ -338,7 +337,7 @@ export class OrdersService {
   }
 
   /**
-   * `checkout/verify` (V-1): lee el body y calcula con R-a a R-d, las mismas
+   * `checkout/verify`: lee el body y calcula con R-a a R-d, las mismas
    * reglas que `POST /orders`. Sin cupón: el shop lo aplica después.
    */
   async verifyCheckout(
@@ -406,7 +405,7 @@ export class OrdersService {
   }
 
   /**
-   * `POST /orders` (V-2): crea el padre, una hija por tienda y sus líneas, y
+   * `POST /orders`: crea el padre, una hija por tienda y sus líneas, y
    * descuenta el stock, en una transacción (R-g/R-k). Precios, impuesto,
    * envío, cupón y totales los calcula el servidor (R-b a R-f); las cifras
    * del cliente solo se comparan y, si difieren, se registra un `warn`.
@@ -420,7 +419,7 @@ export class OrdersService {
       );
     }
     if (gateway === PaymentGatewayType.FULL_WALLET_PAYMENT) {
-      // V-5: los wallets siguen fuera del épico (decisión 4).
+      // No hay wallets: el esquema no tiene tablas que los respalden.
       throw unprocessable(
         'FULL_WALLET_PAYMENT no está disponible: no hay wallets.',
       );
@@ -542,7 +541,7 @@ export class OrdersService {
   }
 
   /**
-   * Quién ve qué (US-100, decisión 1):
+   * Quién ve qué:
    * - El super admin: la query tal cual.
    * - Un dueño o staff con `shop_id`: esa tienda solo si la gestiona. Si no,
    *   lista vacía, nunca 403, que en el admin cierra la sesión.
@@ -568,9 +567,9 @@ export class OrdersService {
 
   /**
    * Sin `shop_id` ni búsqueda, solo padres (con su hija embebida). `shop_id`
-   * da las hijas de esa tienda (V-2) y `search=tracking_number:X` la orden
-   * exacta (V-3). `customer_id` se obedece siempre: `getOrders` lo fija al
-   * usuario del token cuando no puede ver más (V-1). Un id mal formado, o
+   * da las hijas de esa tienda y `search=tracking_number:X` la orden
+   * exacta. `customer_id` se obedece siempre: `getOrders` lo fija al
+   * usuario del token cuando no puede ver más. Un id mal formado, o
    * `empty`, da la lista vacía con el envoltorio de siempre.
    */
   private async listOrdersPage(
@@ -630,7 +629,7 @@ export class OrdersService {
     return this.findVisibleOrder(String(trackingNumber), user);
   }
 
-  /** Inexistente o no visible para quien llama ⇒ 404 (V-4): un 403 revelaría que existe. */
+  /** Inexistente o no visible para quien llama ⇒ 404: un 403 revelaría que existe. */
   private async findVisibleOrder(
     idOrTracking: number | string,
     user: CurrentUserPayload,
@@ -655,7 +654,7 @@ export class OrdersService {
   }
 
   /**
-   * US-100, decisión 2: el super admin ve todo. Los demás ven sus propios
+   * El super admin ve todo. Los demás ven sus propios
    * pedidos como cliente y las hijas de tiendas que gestionan, nunca la
    * padre de otro cliente, que embebe las hijas de otras tiendas.
    */
@@ -667,7 +666,7 @@ export class OrdersService {
     return this.canManage(record, user);
   }
 
-  /** US-100, decisión 3: solo una hija de una tienda que gestiona quien llama. */
+  /** Solo una hija de una tienda que gestiona quien llama. */
   private async canManage(
     record: OrderDetailRecord,
     user: CurrentUserPayload,
@@ -677,7 +676,7 @@ export class OrdersService {
     return this.managesShop(user, record.shopId);
   }
 
-  /** Dueño de la tienda o staff con fila en `shop_staff` (precedente US-66). */
+  /** Dueño de la tienda o staff con fila en `shop_staff`. */
   private async managesShop(
     user: CurrentUserPayload,
     shopId: number,
@@ -693,7 +692,7 @@ export class OrdersService {
   }
 
   /**
-   * Antes de escribir (US-100, decisión 3): no visible ⇒ 404; visible pero
+   * Antes de escribir: no visible ⇒ 404; visible pero
    * no gestionable (por ejemplo su propio pedido como cliente, o una padre)
    * ⇒ 403. El super admin no consulta nada.
    */
@@ -711,8 +710,8 @@ export class OrdersService {
   }
 
   /**
-   * R-l (V-7): `order_status` y/o `payment_status`, ya validados por el DTO
-   * (V-9). En un padre se propaga a sus hijas. Devuelve la orden completa.
+   * R-l: `order_status` y/o `payment_status`, ya validados por el DTO.
+   * En un padre se propaga a sus hijas. Devuelve la orden completa.
    */
   async update(
     id: number,
@@ -742,7 +741,7 @@ export class OrdersService {
     }
   }
 
-  /** R-m (V-7): devuelve el snapshot previo. No repone stock. */
+  /** R-m: devuelve el snapshot previo. No repone stock. */
   async remove(id: number, user: CurrentUserPayload): Promise<Order> {
     assertOrderId(id);
     await this.assertCanWrite(id, user);
@@ -754,7 +753,7 @@ export class OrdersService {
   }
 
   /**
-   * R-n (V-8): marca la orden pedida, y no la 48. `STRIPE` pasa a
+   * R-n: marca la orden pedida, y no la 48. `STRIPE` pasa a
    * `order-processing` + `payment-success` con sus hijas; `PAYPAL` antes
    * verifica con la pasarela el `payment_id` del intento (que vive en el mock
    * permanente `payment-intent.json`: no se persiste); sin intento, 422 y sin
@@ -798,7 +797,7 @@ export class OrdersService {
   }
 
   /**
-   * Las descargas del usuario del token (V-1), también para el admin: es la
+   * Las descargas del usuario del token, también para el admin: es la
    * página «mis descargas» del shop. `orderBy`/`sortedBy` se ignoran, como
    * en el mock. La url conserva el literal `?&limit=`.
    */
@@ -826,7 +825,7 @@ export class OrdersService {
   /**
    * URL del archivo como string desnudo: la primera descarga (por id) del
    * usuario del token con ese `digital_file_id`. Inexistente o ajena ⇒ 404
-   * (V-2; el mock daba 500).
+   * (el mock daba 500).
    */
   async getDigitalFileDownloadUrl(
     digitalFileId: number,
@@ -869,7 +868,7 @@ export class OrdersService {
 
   /**
    * This action will return Payment Intent. Mock permanente de la pasarela
-   * (decisión 2): `configuredGateway` es `settings.options.paymentGateway`,
+   * (no se migra a Postgres): `configuredGateway` es `settings.options.paymentGateway`,
    * hoy leído de Postgres (`getSettings()`) en vez del JSON del mock.
    * @param order
    * @param configuredGateway
@@ -936,12 +935,11 @@ export class OrdersService {
     order: Order,
     _paymentGateway?: string,
   ): Promise<any> {
-    // Ripple no anticipado por US-22: `me()` deja de aceptar llamadas sin
-    // contexto de token (D-8 del proposal). Este método no tiene un
+    // `me()` no acepta llamadas sin contexto de token. Este método no tiene un
     // request/token disponible (se llama servicio-a-servicio, no desde un
     // controller), así que se usa `order.customer_id`, el único id de
     // usuario ya disponible en este alcance — no se hilvana un token nuevo
-    // a través de la cadena de llamadas, fuera del alcance de esta US.
+    // a través de la cadena de llamadas.
     const me = await this.authService.me(order.customer_id);
     switch (order.payment_gateway) {
       case PaymentGatewayType.STRIPE:

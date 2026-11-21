@@ -21,7 +21,7 @@ type ParsedQueryParams = {
   pages: string[];
 };
 
-// D-1 (US-104): sin prerender de rutas dinámicas. El build no llama a la API;
+// Sin prerender de rutas dinámicas. El build no llama a la API;
 // cada página se genera en su primera visita, con datos del entorno donde
 // corre. `[]` también para la raíz del inicio: `[[...pages]]` genera `/` en
 // la primera visita igual que el resto.

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Auditor de rutas HTTP de apps/api/rest (US-23, design.md Decisión F).
+ * Auditor de rutas HTTP de apps/api/rest.
  *
  * Parser estructural por bloque `@Controller(prefix) export class X` —
  * soporta varios bloques por archivo (p. ej. `shops.controller.ts` declara
@@ -18,9 +18,8 @@
  * que haber sido atribuido a una clase o a un handler. Si el parser no ve
  * uno que sí existe en el archivo, FALLA en vez de dar un verde silencioso.
  *
- * Historia (US-23, hallazgos H-1/H-2 de `verify-report.md`): la primera
- * versión solo diffeaba el set público y solo miraba la línea anterior. Con
- * eso, borrar un `@Permissions()` de clase de `UsersController` —8 rutas que
+ * Por qué el parser es así: la primera versión solo diffeaba el set
+ * público y solo miraba la línea anterior. Con eso, borrar un `@Permissions()` de clase de `UsersController` —8 rutas que
  * pasaban a "cualquier logueado"— seguía dando exit 0, y un `@Public()` no
  * adyacente era invisible al parser pero efectivo en runtime. Ambos casos
  * son ahora fallos ruidosos; hay un test de mutación en
@@ -44,7 +43,7 @@ const SRC_ROOT = process.env.ROUTE_AUDIT_SRC
 const HTTP_METHODS = ['Get', 'Post', 'Put', 'Patch', 'Delete'];
 
 /**
- * Controladores cuyas rutas quedan deliberadamente sin anotar (D-9): stubs
+ * Controladores cuyas rutas quedan deliberadamente sin anotar: stubs
  * muertos (`ProfilesController`, `console.log`, no llaman al service) que
  * caen en el deny-by-default. El parser no puede distinguirlos
  * mecánicamente de una ruta "autenticada" común — ambas carecen de
@@ -55,9 +54,9 @@ const SPECIAL_UNANNOTATED_CLASSES = new Set(['ProfilesController']);
 
 /**
  * Las 67 rutas anónimas EFECTIVAS en runtime: las 64 `@Public()` del
- * inventario (proposal.md, CA-1) + los 3 GET de `web-hook` (D-7). El
+ * inventario + los 3 GET de `web-hook`. El
  * `--check` diffea en las DOS direcciones contra este set:
- *   - falta una esperada  → R-1 materializado (esa ruta será 401 al activar)
+ *   - falta una esperada  → esa ruta será 401 al activar el guard
  *   - sobra una no esperada → una ruta quedó abierta por error (silenciosa)
  * Formato: "METODO /ruta", tal como Nest la registra dentro del módulo
  * (sin el global prefix `/api`, que agrega `main.ts` fuera de este parser).
@@ -125,7 +124,7 @@ const EXPECTED_PUBLIC = new Set([
   'GET /coupons/:param',
   'GET /coupons/:id/verify',
   'POST /coupons/verify',
-  // creación de pedido (D-10) — 2
+  // creación de pedido — 2
   'POST /orders',
   'POST /orders/checkout/verify',
   // notify-logs GET — 2
@@ -136,19 +135,19 @@ const EXPECTED_PUBLIC = new Set([
   'GET /became-seller',
   // subscribe-to-newsletter — 1
   'POST /subscribe-to-newsletter',
-  // web-hook (D-7) — 3, especial pero efectivamente público
+  // web-hook — 3, especial pero efectivamente público
   'GET /web-hook/razorpay',
   'GET /web-hook/stripe',
   'GET /web-hook/paypal',
 ]);
 
 /**
- * Las 117 rutas con permiso EFECTIVO (bucket `perm`), tal como quedaron tras
- * la Fase 2 y como las verificó `sdd-verify` en runtime. Sirven de línea
+ * Las 117 rutas con permiso EFECTIVO (bucket `perm`), verificadas en runtime.
+ * Sirven de línea
  * base: si alguien borra o afloja un `@Permissions()`, esas rutas caen al
  * bucket `auth` ("cualquier logueado basta") y el diff de abajo lo detecta.
  * Sin esto, el `--check` solo miraba el set público y el aflojamiento era
- * invisible (H-1).
+ * invisible.
  */
 const EXPECTED_PERM = new Set([
   'DELETE /abusive_reports/:id',
@@ -270,7 +269,7 @@ const EXPECTED_PERM = new Set([
   'PUT /users/:id',
 ]);
 
-/** Rutas sin anotar a propósito (D-9). Ver SPECIAL_UNANNOTATED_CLASSES. */
+/** Rutas sin anotar a propósito. Ver SPECIAL_UNANNOTATED_CLASSES. */
 const EXPECTED_SPECIAL_COUNT = 3;
 
 /** Total de rutas HTTP registradas. Cambiarlo exige actualizar el inventario. */
@@ -322,7 +321,7 @@ function classify(handlerPublic, handlerPerm, classPublic, classPerm, className)
  *
  * Antes esto miraba SOLO `lines[idx - 1]`, así que un `@Public()` separado
  * del decorador HTTP por otro decorador o por un comentario era invisible al
- * parser pero efectivo en runtime (H-2): un falso verde en la dirección
+ * parser pero efectivo en runtime: un falso verde en la dirección
  * peligrosa.
  */
 function decoratorBlockAbove(lines, idx) {
@@ -364,7 +363,7 @@ function parseFile(file) {
   const content = readFileSync(file, 'utf8');
   const lines = content.split(/\r?\n/);
   const routes = [];
-  /** Bloques de decoradores que este parser SÍ atribuyó (invariante H-2). */
+  /** Bloques de decoradores que este parser SÍ atribuyó (invariante de atribución). */
   const attributedBlocks = [];
 
   const controllerLineIdx = [];
@@ -490,11 +489,11 @@ function runCheck(routes, orphans) {
       setOf('public'),
       EXPECTED_PUBLIC,
       'PÚBLICAS',
-      'esperadas públicas y NO anotadas (serán 401 al activar el guard: R-1)',
+      'esperadas públicas y NO anotadas (serán 401 con el guard global activo)',
       'anotadas @Public() sin estar esperadas (hueco silencioso)',
     ) && ok;
 
-  // H-1: sin este diff, borrar un @Permissions() dejaba la ruta en el bucket
+  // Sin este diff, borrar un @Permissions() dejaba la ruta en el bucket
   // `auth` ("cualquier logueado basta") sin alterar el set público — exit 0.
   ok =
     diffSet(
@@ -509,20 +508,21 @@ function runCheck(routes, orphans) {
   if (specialCount !== EXPECTED_SPECIAL_COUNT) {
     ok = false;
     console.error(
-      `\n[route-audit] ESPECIALES: ${specialCount}, se esperaban ${EXPECTED_SPECIAL_COUNT} (D-9, sin anotar a propósito).`,
+      `\n[route-audit] ESPECIALES: ${specialCount}, se esperaban ${EXPECTED_SPECIAL_COUNT} (sin anotar a propósito).`,
     );
   }
 
   if (routes.length !== EXPECTED_TOTAL) {
     ok = false;
     console.error(
-      `\n[route-audit] TOTAL: ${routes.length} rutas, se esperaban ${EXPECTED_TOTAL}. Si se añadieron o quitaron rutas, hay que actualizar el inventario (CA-1) y esta línea base.`,
+      `\n[route-audit] TOTAL: ${routes.length} rutas, se esperaban ${EXPECTED_TOTAL}. Si se añadieron o quitaron rutas, hay que actualizar el inventario de rutas y esta línea base.`,
     );
   }
 
-  // H-2: una anotación que existe en el archivo pero que el parser no supo
-  // atribuir es peor que una ausente — sería efectiva en runtime e invisible
-  // aquí. Falla ruidosamente en vez de dar un verde de mentira.
+  // Invariante de atribución: una anotación que existe en el archivo pero
+  // que el parser no supo atribuir es peor que una ausente — sería efectiva
+  // en runtime e invisible aquí. Falla ruidosamente en vez de dar un verde
+  // de mentira.
   if (orphans.length > 0) {
     ok = false;
     console.error(

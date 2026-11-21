@@ -1,11 +1,11 @@
 /**
- * Test de integración contra el Postgres real (sembrado por `just db-up`). US-61.
+ * Test de integración contra el Postgres real (sembrado por `just db-up`).
  *
  * El reloj se fija con `_setNowProvider` y se restaura en `afterEach`: ningún
- * caso depende de la fecha real. Las cifras de CA-2 salen de las 20 órdenes
+ * caso depende de la fecha real. Las cifras del dashboard salen de las 20 órdenes
  * padre del seed (`orders.json`), recalculadas con `psql` el 2026-10-23.
  *
- * Escrituras: usuarios (CA-3) y una categoría con 2 productos (CA-4) con el
+ * Escrituras: usuarios y una categoría con 2 productos con el
  * centinela `zz-analytics-`, borrados en `afterAll`.
  */
 
@@ -43,7 +43,7 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-describe('getDashboardAnalytics — CA-2 con reloj fijo', () => {
+describe('getDashboardAnalytics — con reloj fijo', () => {
   it('2023-10-25T20:00:00Z: ingresos, conteos por ventana y ventas por mes del seed', async () => {
     fixClock('2023-10-25T20:00:00Z');
     const a = await getDashboardAnalytics(now());
@@ -88,7 +88,7 @@ describe('getDashboardAnalytics — CA-2 con reloj fijo', () => {
   });
 });
 
-describe('getDashboardAnalytics — CA-3 newCustomers con centinelas', () => {
+describe('getDashboardAnalytics — newCustomers con centinelas', () => {
   // Lejos del `created_at` del seed (el `now()` del `db-reset`), que así no cuenta.
   const AT = '2031-01-15T12:00:00Z';
 
@@ -129,7 +129,7 @@ describe('getDashboardAnalytics — CA-3 newCustomers con centinelas', () => {
   });
 });
 
-describe('listas — CA-4 sobre el seed', () => {
+describe('listas — sobre el seed', () => {
   it('low-stock: quantity < 10 en id ASC, con limit y filtro por tienda', async () => {
     expect((await listLowStockProducts()).map((p) => p.id)).toEqual([
       2, 190, 1014, 1015, 1017, 1018, 1021, 1022, 1023, 1024,

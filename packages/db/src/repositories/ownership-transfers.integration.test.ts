@@ -1,12 +1,13 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`: 6
- * transferencias pending, ids 5-10, sin tienda). US-63.
+ * transferencias pending, ids 5-10, sin tienda).
  *
  * Escrituras: un dueño centinela `zz-transfer-owner` y las transferencias
  * que crean los casos, borradas en `afterAll` (antes que el usuario: las FK
  * de usuario son RESTRICT). `transferShopOwnership` cambia el dueño de la
  * tienda 2; el caso lo restaura a 1 y devuelve su `updated_at` como texto,
- * para no perder los microsegundos (precedente US-59).
+ * para no perder los microsegundos (mismo criterio que
+ * `orders.integration.test.ts`).
  */
 
 import 'dotenv/config';
@@ -244,7 +245,7 @@ describe('ownership_transfers — solicitudes', () => {
   });
 });
 
-describe('transferShopOwnership — CA-5', () => {
+describe('transferShopOwnership', () => {
   it('cambia el dueño e inserta la fila approved; un fallo a mitad no deja cambios', async () => {
     const [{ updated_at: originalUpdatedAt }] = await prisma.$queryRaw<
       { updated_at: string }[]

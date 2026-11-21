@@ -1,5 +1,5 @@
 /**
- * refund-policies.repository.ts — políticas de reembolso (US-48).
+ * refund-policies.repository.ts — políticas de reembolso.
  *
  * Calco de `tags.repository.ts`. Los dos CHECK de la tabla
  * (`refund_policies_target_check`, `refund_policies_status_check`) no existen
@@ -166,7 +166,7 @@ export async function createRefundPolicy(
   }
 }
 
-/** `updatedAt: now()` explícito: ninguna tabla tiene trigger (US-32). */
+/** `updatedAt: now()` explícito: ninguna tabla tiene trigger. */
 export async function updateRefundPolicy(
   id: number,
   input: UpdateRefundPolicyInput

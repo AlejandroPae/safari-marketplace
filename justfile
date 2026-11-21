@@ -76,7 +76,7 @@ env:
       echo "  + DATABASE_URL añadido a apps/api/rest/.env"
     fi
 
-    # API_INTERNAL_URL (US-102): la URL de la API para el SSR del shop y el
+    # API_INTERNAL_URL: la URL de la API para el SSR del shop y el
     # rewrite de `next dev` de los dos frontends. Se añade también a un .env que
     # ya existiera, como DATABASE_URL: sin ella `next dev` no arranca.
     for f in apps/shop/.env apps/admin/rest/.env; do
@@ -86,21 +86,21 @@ env:
       fi
     done
 
-    # SHOP_URL (US-103): enlaces del admin a la tienda, leídos al ejecutar.
+    # SHOP_URL: enlaces del admin a la tienda, leídos al ejecutar.
     # También para un .env que ya existiera, como API_INTERNAL_URL.
     if ! grep -q '^SHOP_URL=' apps/admin/rest/.env; then
       printf '\n# URL pública de la tienda para los enlaces del admin (US-103)\nSHOP_URL="http://localhost:{{SHOP_PORT}}"\n' >> apps/admin/rest/.env
       echo "  + SHOP_URL añadido a apps/admin/rest/.env"
     fi
 
-    # DA-4 de US-102: la URL de broadcasting va por /backend. Un .env anterior
+    # La URL de broadcasting va por /backend. Un .env anterior
     # la tiene derivada de la URL absoluta de la API, que el build escribiría en
     # el JavaScript del admin.
     sed -i 's|^NEXT_PUBLIC_BROADCAST_AUTH_URL=.*|NEXT_PUBLIC_BROADCAST_AUTH_URL="/backend/broadcasting/auth"|' apps/admin/rest/.env
 
-    # JWT_SECRET (US-22): mismo patron que el SECRET del shop, arriba. Solo
+    # JWT_SECRET: mismo patron que el SECRET del shop, arriba. Solo
     # rellena la variable si la linea ya existe vacia (viene de un .env
-    # copiado de .env.example). Un `.env` de la API previo a esta US no
+    # copiado de .env.example). Un `.env` de la API anterior a JWT_SECRET no
     # tiene la linea `JWT_SECRET=`: `just setup` no la crea sola (igual que
     # no pisa un `.env` existente) — se documenta el alta manual en
     # apps/README.md.
@@ -127,7 +127,7 @@ set-api-port:
 install: install-apps install-api
 
 # Workspace del frontend: shop + admin/rest + admin/graphql (~11 min).
-# La variante GraphQL está congelada (US-12): se instala pero ninguna receta
+# La variante GraphQL está congelada: se instala pero ninguna receta
 # la arranca, construye ni verifica. Ver apps/README.md.
 [group('setup')]
 [working-directory: 'apps']
@@ -140,7 +140,7 @@ install-apps:
 install-api:
     yarn install --network-timeout 600000
 
-# Instalación del CI (US-11): todo lo que pide `just check`, sin reescribir
+# Instalación del CI: todo lo que pide `just check`, sin reescribir
 # ningún lockfile. Si un package.json no coincide con su lockfile, falla en
 # vez de actualizarlo. En local siguen siendo `just install`, `just db-build`
 # y `just scraper-install`.
@@ -149,7 +149,7 @@ install-api:
 #   - El scraper sin el navegador de Playwright: el `db-test` de `check` solo
 #     usa psycopg.
 [group('setup')]
-[doc('Instalación del CI (US-11): lockfiles congelados y scraper sin Playwright')]
+[doc('Instalación del CI: lockfiles congelados y scraper sin Playwright')]
 install-ci:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -295,10 +295,10 @@ check-ports:
 doctor:
     #!/usr/bin/env bash
     set -uo pipefail
-    # DA-1 de US-91: los schematics de Nest 12 (`nest generate`, `nest upgrade`,
+    # Los schematics de Nest 12 (`nest generate`, `nest upgrade`,
     # @nestjs/cli 12) piden Node 22.22.3+, 24.15+ o 26+. Ejecutar la API en
     # Nest 12 (ESM) solo pide 20.19+ o 22.12+ (la linea 21 no sirve). Mientras
-    # la maquina tenga menos, la API se queda con @nestjs/cli 11 (ver US-91).
+    # la maquina tenga menos, la API se queda con @nestjs/cli 11.
     if ! node_v="$(node -v 2>/dev/null)"; then
       echo "node    FALTA - instala Node 22.22.3+ o 24.15+"
     elif node -e 'const [M, m, p] = process.versions.node.split(".").map(Number); process.exit(M >= 26 || (M === 24 && m >= 15) || (M === 22 && (m > 22 || (m === 22 && p >= 3))) ? 0 : 1)'; then
@@ -317,18 +317,18 @@ doctor:
       [ -d "$d" ] && echo "deps    $d OK" || echo "deps    $d FALTA - corre 'just install'"
     done
 
-# Gate local (US-10): lint, typecheck y tests de todo el monorepo. Corta al primer rojo
+# Gate local: lint, typecheck y tests de todo el monorepo. Corta al primer rojo
 #
 # Pide: `just install`, `just db-up` y `just scraper-install`. Si falta algo,
 # lo dice antes de correr nada. No necesita API, tienda ni admin levantados.
 # En CI, .github/workflows/ci.yml corre cada paso como un step propio
-# (`just check <id>`, US-109) tras `just install-ci` y `just db-up`, y al
+# (`just check <id>`) tras `just install-ci` y `just db-up`, y al
 # final `just check resumen` escribe la tabla de la corrida.
 #
 # Pasos y duración medida (2026-11-18, secuencial). En total, 568s en frío y
 # 340s con las cachés calientes. La columna es la primera medición:
 #    1. packages/db  build       prisma generate + tsup -> dist/   ~107s
-#       Va primero: el typecheck usa generated/ y la API usa dist/ (R-2).
+#       Va primero: el typecheck usa generated/ y la API usa dist/.
 #    2. packages/db  lint        biome check                        ~8s
 #    3. packages/db  typecheck   tsc --noEmit                       ~19s
 #    4. api/rest     typecheck   tsc --noEmit                       ~79s
@@ -341,20 +341,20 @@ doctor:
 #   10. scraper      db-test     pipeline contra Postgres           ~5s
 #
 # Fuera del gate, y por qué:
-#   - Builds de Next y de la API: van en `just check-full` (lentos). Desde
-#     US-104 ninguno necesita la API levantada.
+#   - Builds de Next y de la API: van en `just check-full` (lentos). Ninguno
+#     necesita la API levantada.
 #   - `tsc` de shop y admin: no son scripts del repo. OJO: `next build` NO
 #     comprueba tipos con APPLICATION_MODE=production, que traen las
-#     plantillas .env. El CI construye la tienda con development (US-109);
+#     plantillas .env. El CI construye la tienda con development;
 #     el admin no los comprueba en ningún lado (TS2688 de minimatch).
 #   - Tests de frontend: no existen.
-#   - Variante GraphQL: congelada (US-12).
+#   - Variante GraphQL: congelada.
 [group('verify')]
-[doc('Gate local (US-10): lint, typecheck y tests del monorepo; corta al primer rojo (~6-10 min). `just check <id>...` corre solo esos pasos')]
+[doc('Gate local: lint, typecheck y tests del monorepo; corta al primer rojo (~6-10 min). `just check <id>...` corre solo esos pasos')]
 check *ids:
     #!/usr/bin/env bash
     set -uo pipefail
-    # Una sola lista de pasos (US-109): id|nombre|carpeta|comando|grupo.
+    # Una sola lista de pasos: id|nombre|carpeta|comando|grupo.
     #   grupo `check`: los 10 que corre `just check` a secas.
     #   grupo `build`: los builds de `check-full`; solo corren si se piden por
     #   id (el CI los pide uno por uno, para verlos como steps separados).
@@ -376,7 +376,7 @@ check *ids:
     campo() { cut -d'|' -f"$2" <<< "$1"; }
     read -r -a pedidos <<< "{{ids}}"
 
-    # `just check resumen`: la tabla del CI en $GITHUB_STEP_SUMMARY (US-109 D-4),
+    # `just check resumen`: la tabla del CI en $GITHUB_STEP_SUMMARY,
     # con lo que cada paso dejó en $CHECK_REPORT. Lo que no aparece ahí no se
     # ejecutó (GitHub corta en el primer step rojo).
     if [ "${pedidos[0]:-}" = "resumen" ]; then
@@ -478,7 +478,7 @@ check *ids:
 
 # `check` más los builds de la API (nest build, ~45-54s), del admin (next
 # build, ~195-430s) y de la tienda (next build). Ninguno necesita la API
-# levantada: el de la tienda desde US-104, que es lo que este gate vigila (D-8).
+# levantada: tampoco el de la tienda, que es lo que este gate vigila.
 [group('verify')]
 [doc('check + builds de la API, del admin y de la tienda (sin servicios levantados)')]
 check-full: check build-api build-admin build-shop
@@ -494,7 +494,7 @@ db-up:
     set -euo pipefail
     docker compose up -d postgres
     echo -n "esperando a Postgres"
-    # Por TCP, no por socket (US-11): con un volumen nuevo, la imagen
+    # Por TCP, no por socket: con un volumen nuevo, la imagen
     # inicializa con un servidor temporal que solo escucha en el socket y se
     # apaga al terminar. Por socket daba «listo» con ese servidor y db-migrate
     # fallaba con «the database system is shutting down».
@@ -518,7 +518,7 @@ db-migrate:
     docker compose exec -T postgres psql -U safari -d safari_scraper -v ON_ERROR_STOP=1 -q -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
     docker compose exec -T postgres psql -U safari -d safari_scraper -v ON_ERROR_STOP=1 -q < db/schema.sql
     docker compose exec -T postgres psql -U safari -d safari_scraper -v ON_ERROR_STOP=1 -q < db/seed.sql
-    @# US-69: el seed entra en la pending list de los GIN trigram (creados antes
+    @# El seed entra en la pending list de los GIN trigram (creados antes
     @# que los datos) y el planificador no los usa hasta el primer VACUUM.
     docker compose exec -T postgres psql -U safari -d safari_scraper -v ON_ERROR_STOP=1 -q -c "VACUUM ANALYZE;"
     @echo "  * esquema y datos de referencia aplicados"
@@ -558,12 +558,12 @@ db-reset:
 
 # ────────────────────── docker ───────────────────────────────
 
-# API en contenedor (US-14): Postgres sembrado y la imagen de la API, en el
+# API en contenedor: Postgres sembrado y la imagen de la API, en el
 # 9001. Es el mismo puerto que `just api-dev`: una u otra, no las dos. La
 # primera vez construye la imagen (~15 min tras Zscaler); con Zscaler el build
 # toma el CA de NODE_EXTRA_CA_CERTS (ver apps/api/rest/Dockerfile). Siembra el
-# servicio db-init del compose (US-15), del que depende la API. El 9001 lo
-# publica el balanceador api-lb (US-107), no la API: por eso se levantan los
+# servicio db-init del compose, del que depende la API. El 9001 lo
+# publica el balanceador api-lb, no la API: por eso se levantan los
 # dos. 3003 y 3002 quedan libres para shop-dev y admin-dev.
 [group('docker')]
 [doc('API en contenedor en :9001 con Postgres sembrado (en vez de api-dev, no a la vez)')]
@@ -587,12 +587,12 @@ api-docker:
 api-docker-down:
     docker compose stop api api-lb
 
-# Stack completo en contenedores (US-15): Postgres, siembra (db-init), API,
+# Stack completo en contenedores: Postgres, siembra (db-init), API,
 # tienda, admin y el proxy que publica 3003 y 3002 y enruta /backend a la API.
 # Mismos puertos que el desarrollo nativo, así que `just verify` sirve de
 # smoke; por lo mismo, no convive con api-dev/shop-dev/admin-dev. La primera
 # vez construye las tres imágenes (ver tiempos en apps/README.md). Levanta UNA
-# réplica de la API: si estaba escalada (US-107), vuelve a una.
+# réplica de la API: si estaba escalada, vuelve a una.
 [group('docker')]
 [doc('Stack completo en Docker: tienda :3003, admin :3002, API :9001')]
 stack-up:

@@ -2,7 +2,7 @@
  * Reloj mockeable para los repos de `@safari/db`. `now()` es la fuente única
  * de "ahora" en la capa de data-access.
  *
- * ALCANCE (US-32 CA-3) — qué gobierna `_setNowProvider`:
+ * ALCANCE — qué gobierna `_setNowProvider`:
  *   · `updated_at` de types, tags, manufacturers, products, categories,
  *     shops y users: lo fija cada `update`/`upsert` de repositorio.
  *   · `consumedAt` de password_reset_tokens/otp_codes

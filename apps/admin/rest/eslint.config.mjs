@@ -1,5 +1,5 @@
-// Flat config de ESLint 9 (US-81; export flat nativo de eslint-config-next 16
-// desde US-82). Reproduce el antiguo .eslintrc.json: `next` + `prettier`, sin
+// Flat config de ESLint 9 (export flat nativo de eslint-config-next 16).
+// Reproduce el antiguo .eslintrc.json: `next` + `prettier`, sin
 // exhaustive-deps ni no-img-element.
 import next from 'eslint-config-next';
 import prettier from 'eslint-config-prettier/flat';
@@ -18,9 +18,8 @@ export default [
   ...next,
   prettier,
   // Reglas que entran con eslint-config-next 16: las del React Compiler de
-  // eslint-plugin-react-hooks 7 y una nueva de @next/next. Activarlas es
-  // endurecer el lint (fuera de alcance de US-82, igual que en US-81); se
-  // apagan para conservar las mismas reglas activas que con la 15.
+  // eslint-plugin-react-hooks 7 y una nueva de @next/next. Activarlas
+  // endurecería el lint; se apagan para conservar las mismas reglas activas que con la 15.
   {
     rules: Object.fromEntries(
       [
@@ -43,7 +42,7 @@ export default [
     ),
   },
   // ESLint 9 avisa por defecto de los eslint-disable que ya no hacen falta; la
-  // 8 no lo hacía. Se apaga para no sumar hallazgos (limpiarlos es otra US).
+  // 8 no lo hacía. Se apaga para no sumar hallazgos (limpiarlos queda pendiente).
   { linterOptions: { reportUnusedDisableDirectives: 'off' } },
   {
     rules: {

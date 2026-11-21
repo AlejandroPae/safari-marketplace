@@ -151,11 +151,10 @@ export class PaymentMethodService {
     paymentGateway: string,
   ) {
     const { method_key, default_card } = createPaymentMethodDto;
-    // Ripple no anticipado por US-22: `me()` deja de aceptar llamadas sin
-    // contexto de token (D-8 del proposal). `CreatePaymentMethodDto` no
-    // trae ningún id de usuario y este método no tiene un request/token
+    // `me()` no acepta llamadas sin contexto de token. `CreatePaymentMethodDto`
+    // no trae ningún id de usuario y este método no tiene un request/token
     // disponible; hilvanar uno real exigiría tocar el controller de
-    // payment-method, fuera del alcance de esta US. Se usa el id 3
+    // payment-method. Se usa el id 3
     // (`admin@demo.com`), el mismo usuario fijo que `me()` devolvía siempre
     // en el mock (`users[0]` de `users.json` es ese usuario).
     const { id: user_id, name, email } = await this.authService.me(3);

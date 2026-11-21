@@ -1,11 +1,11 @@
 /**
  * domain-error.mapper.ts — el único punto donde la API traduce un error de
  * dominio de catálogo (`packages/db/src/domain-errors.ts`) a un
- * `HttpException`. Genérico por construcción (D27-13, spec
+ * `HttpException`. Genérico por construcción (spec
  * `catalog-write-foundations`): integrar un agregado nuevo (`tags`,
  * `manufacturers`, `categories`, `products`, `shops`) MUST limitarse a un
  * `catch (error) { throw toWriteHttpException(error); }` en SU servicio;
- * `git diff` de este archivo MUST quedar vacío (CA-7). Nunca
+ * `git diff` de este archivo MUST quedar vacío. Nunca
  * `if (aggregate === …)` aquí.
  */
 
@@ -43,11 +43,12 @@ const UNEXPECTED_ERROR_MESSAGE =
  *    message: 'Invalid `prisma.$queryRaw()` invocation:' }`. El código del
  *    driver viaja en `code`, y el `message` no contiene ninguno de los
  *    patrones de abajo, así que sin esta segunda familia la rama 503 queda
- *    MUERTA y un fallo de conexión cae al 500 literal. Hallazgo C-1 de
- *    `sdd-verify`, observado apagando el contenedor de verdad — no inferido.
+ *    MUERTA y un fallo de conexión cae al 500 literal. Comprobado apagando
+ *    el contenedor de verdad, no inferido.
  *
  * Deliberadamente NO incluye `PrismaClientKnownRequestError` por `name`: ese
- * es el defecto B1 que este mapeador evita, y es lo que mantiene P2011 (y
+ * es el defecto de `isPrismaConnectionError` que este mapeador evita (ver
+ * `isConnectionFailure`), y es lo que mantiene P2011 (y
  * cualquier otro error de escritura no traducido) en el 500.
  */
 const CONNECTION_FAILURE_CODES: ReadonlySet<string> = new Set([
@@ -98,7 +99,7 @@ export function mapDomainError(error: unknown): HttpException | null {
 }
 
 /**
- * Predicado LOCAL y PRIVADO de este mapeador — corrección de B1 del gate.
+ * Predicado LOCAL y PRIVADO de este mapeador.
  * `isPrismaConnectionError` (`packages/db/src/errors.ts:54-68`) devuelve
  * `true` para CUALQUIER `PrismaClientKnownRequestError`, lo que incluye
  * P2002/P2003/P2011/P2025: reusarlo aquí etiquetaría un `NOT NULL` violado
@@ -130,8 +131,7 @@ function isConnectionFailure(error: unknown): boolean {
 /**
  * Punto único de traducción de las escrituras de catálogo — una línea
  * idéntica en los cinco agregados: `catch (error) { throw
- * toWriteHttpException(error); }`. Orden de la cadena (design.md, Decisión
- * 3, corrección B1):
+ * toWriteHttpException(error); }`. Orden de la cadena:
  *
  * 1. `mapDomainError` — conjunto cerrado por `code` → 400/404/409.
  * 2. `isConnectionFailure` — 503 con `getUserFriendlyMessage` (que ahí sí

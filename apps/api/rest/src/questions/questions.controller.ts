@@ -35,7 +35,7 @@ export class QuestionController {
   find(@Param('id') id: string) {
     return this.questionService.findQuestion(+id);
   }
-  // create — el autor es quien llama (US-55).
+  // create — el autor es quien llama.
   @Post()
   create(
     @Body() createQuestionDto: CreateQuestionDto,
@@ -44,7 +44,7 @@ export class QuestionController {
     return this.questionService.create(createQuestionDto, user);
   }
 
-  // update = responder: super_admin o dueño de la tienda (US-55).
+  // update = responder: super_admin o dueño de la tienda.
   @Put(':id')
   update(
     @Param('id') id: string,
@@ -54,7 +54,7 @@ export class QuestionController {
     return this.questionService.update(+id, updateQuestionDto, user);
   }
 
-  // delete — el autor, el dueño de la tienda o super_admin (US-55).
+  // delete — el autor, el dueño de la tienda o super_admin.
   @Delete(':id')
   delete(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
     return this.questionService.delete(+id, user);

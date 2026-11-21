@@ -4,13 +4,12 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios del staff de tienda en `ShopsService` (US-42). Se mockea
+ * Tests unitarios del staff de tienda en `ShopsService`. Se mockea
  * solo el acceso a datos de `@safari/db`; las clases de error de dominio y
  * `toWriteHttpException` son reales.
  *
- * Reemplazan a los tests de los stubs de `DD30-8` (`createStaff()` →
- * `null`, `getStaffs` → `data: []`): el contrato del envoltorio que esos
- * tests fijaban se conserva aquí.
+ * El contrato del envoltorio que fijaban los stubs anteriores
+ * (`createStaff()` → `null`, `getStaffs` → `data: []`) se conserva aquí.
  */
 import 'reflect-metadata';
 import {
@@ -156,7 +155,7 @@ describe('getStaffs — lectura real, mismo envoltorio', () => {
     });
   });
 
-  it('shop_id inválido: lista vacía sin consultar la base (US-31)', async () => {
+  it('shop_id inválido: lista vacía sin consultar la base', async () => {
     const result = await service.getStaffs(
       { shop_id: 'abc' } as unknown as GetStaffsDto,
       admin,
@@ -247,7 +246,7 @@ describe('createStaff', () => {
 });
 
 describe('updateStaff', () => {
-  it('sigue sin escribir nada (DD30-8): devuelve null', () => {
+  it('sigue sin escribir nada: devuelve null', () => {
     expect(service.updateStaff()).toBeNull();
     expect(updateShopMock).not.toHaveBeenCalled();
   });
@@ -317,7 +316,7 @@ describe('removeStaff', () => {
     ['id fuera de rango', '99999999999999999999', undefined],
     ['id cero', '0', undefined],
     ['shop_id inválido', '2', 'abc'],
-  ])('%s ⇒ 404 sin tocar la base (US-31)', async (_l, id, shopId) => {
+  ])('%s ⇒ 404 sin tocar la base', async (_l, id, shopId) => {
     await expect(service.removeStaff(id, shopId, admin)).rejects.toBeInstanceOf(
       NotFoundException,
     );

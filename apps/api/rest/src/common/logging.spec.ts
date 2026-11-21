@@ -3,7 +3,7 @@
  * La referencia de arriba es necesaria porque tsconfig.json fija
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
-/** Tests unitarios del logging de la API (US-17). */
+/** Tests unitarios del logging de la API. */
 import { errorDetails, IsoConsoleLogger, oneLine } from './logging.js';
 
 describe('IsoConsoleLogger', () => {
@@ -38,7 +38,7 @@ describe('oneLine', () => {
   });
 });
 
-describe('errorDetails (US-99, DA-3)', () => {
+describe('errorDetails', () => {
   it('da mensaje y stack, nunca el resto del objeto de error', () => {
     // Forma de un error de Stripe: trae la respuesta cruda y sus cabeceras.
     const error = Object.assign(new Error('Your card was declined.'), {

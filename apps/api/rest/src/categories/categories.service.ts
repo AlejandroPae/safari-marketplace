@@ -29,11 +29,10 @@ import { paginate } from '#src/common/pagination/paginate.js';
 import { parseSearch } from '#src/common/search/parse-search.js';
 
 /**
- * `search=key:value;key:value` → `ListCategoriesInput` de `@safari/db`
- * (Decisión G, design.md). `type.slug` es igualdad SQL exacta (reemplaza
- * el `fuse.js` difuso del mock, V-4); `name` se soporta a propósito, aunque
- * el "In Scope" del proposal solo nombre `type.slug`: el admin manda ese
- * token desde su caja de búsqueda hoy y funciona (difusamente) — dejarlo
+ * `search=key:value;key:value` → `ListCategoriesInput` de `@safari/db`.
+ * `type.slug` es igualdad SQL exacta (reemplaza el `fuse.js` difuso del
+ * mock); `name` también se soporta a propósito: el admin manda ese token
+ * desde su caja de búsqueda y el mock lo atendía (difusamente) — dejarlo
  * sin traducir sería una regresión, no una divergencia declarable.
  */
 function parseCategorySearch(search?: string): ListCategoriesInput {
@@ -46,18 +45,18 @@ function parseCategorySearch(search?: string): ListCategoriesInput {
 
 /**
  * `toEmbeddedType` — 10 claves, el mismo `type` embebido que sirve
- * `/api/types` de US-4a (duplicación aceptada, design.md Decisión F).
+ * `/api/types` (duplicación aceptada).
  */
 function toEmbeddedType(record: TypeRecord) {
   return {
     id: record.id,
     name: record.name,
     language: record.language,
-    translated_languages: ['en'], // constante: no hay columna (V-3)
+    translated_languages: ['en'], // constante: no hay columna
     settings: record.settings,
     slug: record.slug,
     icon: record.icon,
-    promotional_sliders: null, // constante: no hay columna (V-3)
+    promotional_sliders: null, // constante: no hay columna
     created_at: record.createdAt,
     updated_at: record.updatedAt,
   };
@@ -65,7 +64,7 @@ function toEmbeddedType(record: TypeRecord) {
 
 /**
  * `toAncestorDto` — 14 claves: las de `toCategoryDto` menos `type` y
- * `children`; `parent` recursivo (cadena ascendente completa, D-2).
+ * `children`; `parent` recursivo (cadena ascendente completa).
  */
 function toAncestorDto(ancestor: CategoryAncestor) {
   return {
@@ -87,12 +86,13 @@ function toAncestorDto(ancestor: CategoryAncestor) {
 }
 
 /**
- * Forma **E** (Decisión C): el `parent` de un descendiente a profundidad
- * 1 en el mock — el literal de las 16 claves de `toCategoryDto` sobre un
- * `CategoryRecord` plano, con `parent`/`type`/`children` en `null`. El
- * mock emite el número escalar a profundidad 2 (incoherencia de eager
- * loading); reproducirla exige un contador de profundidad que D-1
- * prohíbe, así que se emite **E en todos los niveles** (V-6): la misma
+ * Forma **E**: el `parent` de un descendiente a profundidad 1 en el mock —
+ * el literal de las 16 claves de `toCategoryDto` sobre un `CategoryRecord`
+ * plano, con `parent`/`type`/`children` en `null`. El mock emite el
+ * número escalar a profundidad 2 (incoherencia de eager loading);
+ * reproducirla exige un contador de profundidad, y el ensamblaje del árbol
+ * no tiene ninguno a propósito (codificar niveles fijos es lo que truncaba
+ * el árbol), así que se emite **E en todos los niveles**: la misma
  * categoría 169 pasa a tener un `parent` coherente en las dos posiciones
  * donde aparece (top-level y anidada).
  */
@@ -119,7 +119,7 @@ function toParentEDto(rec: CategoryRecord) {
 
 /**
  * `toDescendantDto` — 16 claves como `toCategoryDto`, pero SIN `type` y
- * con `products_count` (V-1: siempre 0, `category_product` vacía por
+ * con `products_count` (siempre 0, `category_product` vacía por
  * diseño). `parent` es la forma **E** de arriba.
  */
 function toDescendantDto(descendant: CategoryDescendant) {
@@ -146,7 +146,7 @@ function toDescendantDto(descendant: CategoryDescendant) {
 /**
  * `toCategoryDto` — 16 claves uniformes para TODOS los nodos top-level,
  * incluidas las 21 raíces de `gadget`/`medicine` que el mock sirve con
- * una variante de 13 claves (D-5/V-2, decidido por el usuario:
+ * una variante de 13 claves (decisión del dueño del proyecto:
  * uniformidad sobre ramificar el mapper por `type_id`). El cast
  * `as unknown as Category` va aquí porque es la única de las cuatro
  * proyecciones cuyo tipo declarado es la entidad de Nest (precedente:
@@ -232,8 +232,8 @@ export class CategoriesService {
 
   /**
    * Proyecta el DTO campo a campo en `CreateCategoryInput` (nunca spread del
-   * body). `type_id`/`parent` se coercionan con `Number(...)` (DD28-10,
-   * réplica de W-2 de US-27b, `tags.service.ts:118-124`): sin `transform`
+   * body). `type_id`/`parent` se coercionan con `Number(...)` (réplica de
+   * `tags.service.ts:118-124`): sin `transform`
    * (`main.ts:9`), `{"type_id":"9"}` llega como STRING y el repositorio lo
    * rechazaría con un 400 que culpa al campo equivocado. `parent === null`
    * se respeta tal cual (raíz); `Number(null)` sería `0`, por eso la rama
@@ -276,14 +276,13 @@ export class CategoriesService {
    * `+id` llega como `NaN` desde el controlador si `PUT /api/categories/abc`;
    * sin esta guarda, `BigInt(NaN)` revienta en 500 dentro del repositorio
    * (precedente exacto `types.service.ts:119-128`). Los dos spreads de
-   * `type_id`/`parent` son **condicionales por separado** (DD28-10): así se
+   * `type_id`/`parent` son **condicionales por separado**: así se
    * preserva la semántica `Partial` de `UpdateCategoryInput` — un campo
    * ausente en el body nunca sobrescribe el valor actual, y "no tocar el
-   * type" queda distinguible de "ponerlo al valor actual" (DD28-5).
+   * type" queda distinguible de "ponerlo al valor actual".
    *
    * `!Number.isSafeInteger(id) || id <= 0` (no solo `!Number.isInteger`) —
-   * corrección de un `GATE: FAIL` posterior a PR#2: `PUT
-   * /api/categories/1e21` con `+id` evaluando a `1e21` pasaba
+   * `PUT /api/categories/1e21` con `+id` evaluando a `1e21` pasaba
    * `Number.isInteger` (no tiene parte decimal) y llegaba al repositorio, que
    * intentaba `BigInt`/coerción de un id fuera del rango de `bigint` de
    * Postgres y reventaba en HTTP 500 antes de que este guard pudiera

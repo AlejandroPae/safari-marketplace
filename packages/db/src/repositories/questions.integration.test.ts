@@ -1,7 +1,7 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
  * 68 preguntas, ids 68→1; usuario 2 → 54 y usuario 4 → 14; el producto 1
- * tiene 6, tres de ellas sobre «apple»). US-55.
+ * tiene 6, tres de ellas sobre «apple»).
  *
  * Las escrituras son del admin (3), sin preguntas en el seed; se borran en
  * `beforeAll`/`afterAll`. Las preguntas del seed no se modifican.

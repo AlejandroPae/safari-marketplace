@@ -6,17 +6,17 @@
  * `categories.service.spec.ts:1-6`).
  */
 /**
- * Tests unitarios de `BecomeSellerService` (US-44/US-45): el envoltorio
- * (D-2) y la delegación del `POST` (D-4). `@safari/db` se mockea completo —
+ * Tests unitarios de `BecomeSellerService`: el envoltorio y la delegación
+ * del `POST`. `@safari/db` se mockea completo —
  * el barrel es seguro de cargar sin `DATABASE_URL` (cliente lazy vía
  * Proxy), mismo arnés que `categories.service.spec.ts:66-82`.
  *
- * No hay clases de error de dominio que probar aquí (D-6): el repositorio
+ * No hay clases de error de dominio que probar aquí: el repositorio
  * de `become_seller` nunca lanza un error de dominio, solo devuelve
- * `| null` (D-1) — la única guarda de fila ausente es
+ * `| null` — la única guarda de fila ausente es
  * `InternalServerErrorException`.
  *
- * Red de regresión de CA-3 (D-10, US-45): `AssertSameKeys` deriva las
+ * Red de regresión del contrato interno: `AssertSameKeys` deriva las
  * claves del JSON real (`@db/become-seller.json`, mapeado en
  * `moduleNameMapper`) con `keyof typeof`, así que un renombre o borrado de
  * clave rompe la compilación en la dirección que corresponda — sin
@@ -25,7 +25,7 @@
  * `apps/api/rest/package.json` declara el rango `^4.7.4`, que permite
  * instalar cualquier `4.7.x` sin `satisfies` (llegó en 4.9), así que la red
  * no puede depender de una versión más nueva que la que el rango declarado
- * garantiza. Desde US-88 la suite corre en Vitest con SWC, que transpila
+ * garantiza. La suite corre en Vitest con SWC, que transpila
  * sin comprobar tipos: esta red la dispara `npx tsc --noEmit -p
  * tsconfig.json` (que incluye los specs), no `vitest run`.
  */
@@ -68,7 +68,7 @@ function makeRecord(
 }
 
 /**
- * Fixture de `create()` construida desde el JSON real (D-11): compila sin
+ * Fixture de `create()` construida desde el JSON real: compila sin
  * cast — `page_options` es directamente el objeto interno de 24 claves
  * (`json.page_options.page_options`), no el envoltorio.
  */
@@ -81,7 +81,7 @@ function realCreateDto(): CreateBecomeSellerDto {
 }
 
 // ---------------------------------------------------------------------------
-// Red de regresión CA-3 (D-4/D-10): drift de claves del contrato interno.
+// Red de regresión: drift de claves del contrato interno.
 // ---------------------------------------------------------------------------
 type KeyDrift<T, K extends string> = Exclude<keyof T, K> | Exclude<K, keyof T>;
 type AssertSameKeys<T, K extends string> = [KeyDrift<T, K>] extends [never]
@@ -105,7 +105,7 @@ const _dtoKeys: AssertSameKeys<
   'language' | 'page_options' | 'commissions'
 > = true;
 
-describe('BecomeSellerService — red de tipos del contrato interno (CA-3 / D-10)', () => {
+describe('BecomeSellerService — red de tipos del contrato interno', () => {
   it('las 24 claves del objeto interno siguen presentes en el dato real, en el orden declarado', () => {
     expect(
       Object.keys(becomeSellerJson.page_options.page_options),
@@ -148,7 +148,7 @@ describe('BecomeSellerService — red de tipos del contrato interno (CA-3 / D-10
   });
 });
 
-describe('BecomeSellerService.findAll (US-44/US-45)', () => {
+describe('BecomeSellerService.findAll', () => {
   let service: BecomeSellerService;
 
   beforeEach(() => {
@@ -156,7 +156,7 @@ describe('BecomeSellerService.findAll (US-44/US-45)', () => {
     service = new BecomeSellerService();
   });
 
-  it('recompone el envoltorio (D-2): 2 claves top-level, 5 del envoltorio, `page_options.page_options` idéntico por referencia', async () => {
+  it('recompone el envoltorio: 2 claves top-level, 5 del envoltorio, `page_options.page_options` idéntico por referencia', async () => {
     const record = makeRecord();
     getBecomeSellerMock.mockResolvedValue(record);
 
@@ -187,7 +187,7 @@ describe('BecomeSellerService.findAll (US-44/US-45)', () => {
   });
 });
 
-describe('BecomeSellerService.create (US-44, D-4)', () => {
+describe('BecomeSellerService.create', () => {
   let service: BecomeSellerService;
 
   beforeEach(() => {

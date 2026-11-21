@@ -3,7 +3,7 @@
  * el Postgres real (docker-compose, puerto 5433), pero SOLO para
  * `SELECT slugify($1)`. Los casos de colisión inyectan `ExistingSlugLookup`
  * como un array EN MEMORIA — este archivo NO lee ni escribe la tabla
- * `types` (gate finding B4): `packages/db` no tiene `vitest.config.*`, así
+ * `types`: `packages/db` no tiene `vitest.config.*`, así
  * que los archivos corren en paralelo, y `types.integration.test.ts:18`
  * asserta `toHaveLength(10)` sobre `listTypes()` sin filtro — cualquier
  * escritura ajena en `types` lo volvería intermitente.

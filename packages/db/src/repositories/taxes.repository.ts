@@ -1,5 +1,5 @@
 /**
- * taxes.repository.ts — clases de impuesto (US-49).
+ * taxes.repository.ts — clases de impuesto.
  *
  * Sin paginar: el admin de `/settings` pide `limit=999` y espera un ARRAY
  * para poblar el selector de clase, y el mock siempre devolvió el array
@@ -89,7 +89,7 @@ export async function createTax(input: CreateTaxInput): Promise<TaxRecord> {
   }
 }
 
-/** `updatedAt: now()` explícito: ninguna tabla tiene trigger (US-32). */
+/** `updatedAt: now()` explícito: ninguna tabla tiene trigger. */
 export async function updateTax(
   id: number,
   input: UpdateTaxInput

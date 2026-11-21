@@ -2,7 +2,7 @@ import { hostname } from 'node:os';
 import type { NextFunction, Request, Response } from 'express';
 
 /**
- * Identifica la réplica que atiende (US-107). En un contenedor, el hostname
+ * Identifica la réplica que atiende. En un contenedor, el hostname
  * es el id corto del contenedor (12 hex), así que con varias réplicas detrás
  * del balanceador se ve cuál respondió cada petición. En `api-dev` es el
  * nombre del equipo.

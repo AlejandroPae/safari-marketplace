@@ -30,10 +30,9 @@ import { User } from './entities/user.entity.js';
 import { toUserDto } from './user-dto.mapper.js';
 
 /**
- * US-25: `UsersService` deja de mantener `this.users` en memoria y pasa a
- * llamar funciones planas de `@safari/db` (D-1 del design). Sigue SIN
- * dependencias de constructor (D-E): `StoreNoticesModule` instancia un
- * segundo `UsersService` sin importar `UsersModule`
+ * `UsersService` llama funciones planas de `@safari/db`, sin estado en
+ * memoria. No tiene dependencias de constructor: `StoreNoticesModule`
+ * instancia un segundo `UsersService` sin importar `UsersModule`
  * (`store-notices.module.ts:8`) — un `constructor(private readonly …)` aquí
  * rompería el arranque de Nest.
  */
@@ -41,11 +40,11 @@ import { toUserDto } from './user-dto.mapper.js';
 export class UsersService {
   /**
    * Crea el usuario (`createUser`, bcrypt costo 10) con permiso `customer`
-   * fijo (V-8/D-D): `permission`/`profile`/`address` del DTO se ignoran —
+   * fijo: `permission`/`profile`/`address` del DTO se ignoran —
    * aceptar un permiso del body sería escalada de privilegios. `createUser`
    * devuelve `UserRecord` (sin relaciones); se lee de nuevo con
    * `findUserWithRelations` para que `toUserDto` publique las 15 claves
-   * (D-D: asimetría declarada, ya embarcada por `auth.service.register`).
+   * (la misma asimetría que `auth.service.register`).
    */
   async create(createUserDto: CreateUserDto): Promise<User> {
     const passwordHash = await bcrypt.hash(createUserDto.password, 10);
@@ -79,10 +78,10 @@ export class UsersService {
   }
 
   /**
-   * D-B guarda #2: sin envoltorio de paginación no hay triple camino de
+   * Sin envoltorio de paginación no hay triple camino de
    * `page`/`limit` — `?limit=5` crudo llegaría a Prisma como `take: "5"` y
    * lanzaría. `getUsersNotify` pasa a `async`; Nest resuelve la promesa que
-   * devuelve el handler de `store-notices.controller.ts` sin tocarlo (D-E).
+   * devuelve el handler de `store-notices.controller.ts` sin tocarlo.
    */
   async getUsersNotify({ limit }: GetUsersDto): Promise<User[]> {
     const result = await this.withPrismaErrorTranslation(() =>
@@ -92,14 +91,14 @@ export class UsersService {
   }
 
   /**
-   * Guarda de id (US-31), ancla de los cinco guards de este archivo
+   * Guarda de id, ancla de los cinco guards de este archivo
    * (`findOne`, `update`, `makeAdmin`, `banUser`, `activeUser`):
    * `!Number.isSafeInteger(id) || id <= 0` — no solo `!Number.isInteger`,
    * que deja pasar `1e21` hasta el driver y revienta en `invalid input
    * syntax for type bigint` (500, sin `.code` de Prisma reconocible por
    * `withPrismaErrorTranslation`). `id <= 0` porque ningún id real es no
    * positivo (`bigserial` arrancando en 1). El mensaje deliberadamente NO
-   * interpola el id (superficie admin-only, DD31-A) — no se homogeneiza con
+   * interpola el id (superficie admin-only) — no se homogeneiza con
    * el mensaje del catálogo, que sí lo hace.
    */
   async findOne(id: number): Promise<User> {
@@ -118,9 +117,9 @@ export class UsersService {
   }
 
   /**
-   * Stub declarado (A11): lee y devuelve el usuario vía `findUserWithRelations`
+   * Stub declarado: lee y devuelve el usuario vía `findUserWithRelations`
    * (404 si no existe), sin persistir ningún campo de `updateUserDto`.
-   * Guarda de id: misma regla y mismo porqué que `findOne` (US-31).
+   * Guarda de id: misma regla y mismo porqué que `findOne`.
    */
   async update(id: number, _updateUserDto: UpdateUserDto): Promise<User> {
     if (!Number.isSafeInteger(id) || id <= 0) {
@@ -142,14 +141,14 @@ export class UsersService {
   }
 
   /**
-   * D-B guarda #4: `MakeAdminInput.user_id` es `string`
+   * `MakeAdminInput.user_id` es `string`
    * (`apps/admin/rest/src/types/index.ts:442-444`) — se convierte y valida
-   * ANTES de llamar al repositorio. D-5: el permiso concedido aquí NO
+   * ANTES de llamar al repositorio. El permiso concedido aquí NO
    * afecta al guard hasta el siguiente login del usuario promovido — el
    * guard lee permisos del JWT, nunca consulta la base
    * (`permissions.guard.ts:18-26`). No se añade un lookup nuevo para
    * disimular el retardo. Guarda de id: misma regla y mismo porqué que
-   * `findOne` (US-31); opera sobre el `id` numérico ya derivado, no sobre
+   * `findOne`; opera sobre el `id` numérico ya derivado, no sobre
    * el `userId` de string del body.
    */
   async makeAdmin(userId: string): Promise<User> {
@@ -172,11 +171,10 @@ export class UsersService {
    * `block-user`: fija `is_active: false` explícitamente (`setUserActive`,
    * sin invertir — dos llamadas seguidas dejan al usuario bloqueado). 409 si
    * el actor se bloquea a sí mismo o si el objetivo es el único
-   * `super_admin` (conteo SIN filtrar `isActive` — conservador a propósito,
-   * D-F). El `findUserWithRelations` previo sirve dos propósitos: el 404 y
-   * las relaciones que necesita `toUserDto`. Guarda de id: misma regla y
-   * mismo porqué que `findOne` (US-31); corre antes del chequeo de
-   * auto-bloqueo.
+   * `super_admin` (conteo SIN filtrar `isActive` — conservador a
+   * propósito). El `findUserWithRelations` previo sirve dos propósitos: el
+   * 404 y las relaciones que necesita `toUserDto`. Guarda de id: misma regla
+   * y mismo porqué que `findOne`; corre antes del chequeo de auto-bloqueo.
    */
   async banUser(id: number, currentUser: CurrentUserPayload): Promise<User> {
     if (!Number.isSafeInteger(id) || id <= 0) {
@@ -222,8 +220,8 @@ export class UsersService {
    * `unblock-user`: fija `is_active: true` explícitamente. Sin guardas de
    * negocio (reactivar nunca deja el panel sin admin) pero SÍ lee
    * `findUserWithRelations` antes de escribir — necesita las relaciones
-   * para el DTO de 15 claves y el 404 (D-F). Guarda de id: misma regla y
-   * mismo porqué que `findOne` (US-31).
+   * para el DTO de 15 claves y el 404. Guarda de id: misma regla y mismo
+   * porqué que `findOne`.
    */
   async activeUser(id: number): Promise<User> {
     if (!Number.isSafeInteger(id) || id <= 0) {
@@ -261,9 +259,9 @@ export class UsersService {
 
   /**
    * Staff de las tiendas de las que quien llama es dueño, desde
-   * `shop_staff` (US-42); `?shop_id` acota a una. Un `shop_id` inválido da
-   * la lista vacía. Antes filtraba el permiso global `staff`, que nadie
-   * tiene en el seed. Mismo envoltorio y misma `url` que antes.
+   * `shop_staff`; `?shop_id` acota a una. Un `shop_id` inválido da la
+   * lista vacía. No filtra por el permiso global `staff`, que nadie tiene
+   * en el seed. Mismo envoltorio y misma `url` que el mock.
    */
   async getMyStaffs(
     query: GetUsersDto,
@@ -275,7 +273,7 @@ export class UsersService {
         ? undefined
         : Number(rawShopId);
     if (shopId !== undefined && !(Number.isSafeInteger(shopId) && shopId > 0)) {
-      // Guarda de US-31: no llega a `BigInt`. La tienda 0 no existe, así que
+      // Guarda de id: no llega a `BigInt`. La tienda 0 no existe, así que
       // la consulta no encuentra filas y el envoltorio es el de siempre.
       return this._listByPermission(query, '/my-staffs/list', undefined, {
         shopId: 0,
@@ -287,13 +285,13 @@ export class UsersService {
     });
   }
 
-  /** Todos los usuarios con al menos una fila en `shop_staff` (US-42). */
+  /** Todos los usuarios con al menos una fila en `shop_staff`. */
   async getAllStaffs(query: GetUsersDto): Promise<UserPaginator> {
     return this._listByPermission(query, '/all-staffs/list', undefined, {});
   }
 
   /**
-   * Base de los 6 listados (A1). D-B — CRÍTICO: `page`/`limit` viajan por
+   * Base de los 6 listados. CRÍTICO: `page`/`limit` viajan por
    * TRES caminos distintos:
    *  - al repositorio: `Number(page)||1` / `Number(limit)||30` (Prisma
    *    lanza con `NaN`/string en `skip`/`take`).

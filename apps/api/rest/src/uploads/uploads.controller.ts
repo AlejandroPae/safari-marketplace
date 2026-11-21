@@ -9,7 +9,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { UploadsService } from './uploads.service.js';
 
 /**
- * Metadatos de los archivos subidos que se pueden registrar (US-99, DA-2):
+ * Metadatos de los archivos subidos que se pueden registrar:
  * `mimetype` y `size`. Nunca el `buffer` (el contenido) ni el
  * `originalname`, que puede traer datos personales.
  */

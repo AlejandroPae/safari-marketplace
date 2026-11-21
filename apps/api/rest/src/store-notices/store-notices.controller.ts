@@ -23,7 +23,7 @@ import {
   type CurrentUserPayload,
 } from '#src/auth/decorators/current-user.decorator.js';
 
-// `is_read` es por usuario (US-51): toda ruta que proyecta un aviso necesita
+// `is_read` es por usuario: toda ruta que proyecta un aviso necesita
 // saber quién consulta, por eso @CurrentUser va en lecturas y escrituras.
 @Permissions(...ADMIN_AND_OWNER)
 @Controller('store-notices')

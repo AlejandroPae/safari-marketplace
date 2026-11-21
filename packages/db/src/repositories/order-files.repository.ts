@@ -1,5 +1,5 @@
 /**
- * order-files.repository.ts — descargas digitales de un cliente (US-60).
+ * order-files.repository.ts — descargas digitales de un cliente.
  *
  * Solo lectura, y siempre de UN cliente: la API pasa el `sub` del token, y
  * aquí no hay forma de listar las descargas de todos. `digital_file_id` no es

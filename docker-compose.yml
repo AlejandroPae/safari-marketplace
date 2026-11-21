@@ -4,11 +4,11 @@
 #   just db-shell     abre psql contra la base
 #   just db-down      apaga el stack (los datos sobreviven)
 #   just db-reset     borra el volumen y empieza de cero
-#   just api-docker   Postgres + API en contenedor + su balanceador (US-14, US-107)
-#   just stack-up     stack completo: Postgres, API, tienda y admin (US-15)
+#   just api-docker   Postgres + API en contenedor + su balanceador
+#   just stack-up     stack completo: Postgres, API, tienda y admin
 #
 #   docker compose up -d --scale api=3   tres réplicas de la API detrás de
-#                                        api-lb (US-107); ver apps/README.md
+#                                        api-lb; ver apps/README.md
 #
 # Estas credenciales son para desarrollo local. En la nube, la cadena de
 # conexión se inyecta por la variable DATABASE_URL y nunca se versiona.
@@ -34,7 +34,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # Esquema y datos de referencia (US-15, D-2 del épico). Corre lo mismo que
+  # Esquema y datos de referencia. Corre lo mismo que
   # `just db-migrate`, con los mismos archivos de db/ (montados, no copiados:
   # una sola fuente de verdad), y termina. Es idempotente, así que se repite
   # en cada `up` sin daño.
@@ -62,10 +62,10 @@ services:
         echo "esquema y datos de referencia aplicados"
     restart: "no"
 
-  # API REST (US-14). El desarrollo con hot-reload sigue siendo `just api-dev`
+  # API REST. El desarrollo con hot-reload sigue siendo `just api-dev`
   # (usan el mismo puerto: una u otra).
   #
-  # Escalable (US-107): sin container_name ni puerto publicado, porque dos
+  # Escalable: sin container_name ni puerto publicado, porque dos
   # réplicas no pueden llamarse igual ni publicar el mismo puerto. Nadie le
   # habla directo: el host, el proxy y el SSR de la tienda pasan por api-lb.
   api:
@@ -94,7 +94,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-solo-desarrollo-local-no-usar-en-la-nube}
       SHOP_URL: ${SHOP_URL:-http://localhost:3003}
     healthcheck:
-      # /api/health/ready consulta la base (US-17): sin ella responde 503 y el
+      # /api/health/ready consulta la base: sin ella responde 503 y el
       # contenedor pasa a unhealthy, en vez de parecer sano sin datos.
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9001/api/health/ready"]
       interval: 10s
@@ -102,7 +102,7 @@ services:
       retries: 3
       start_period: 30s
 
-  # Balanceador de la API (US-107): un Caddy que reparte entre las réplicas de
+  # Balanceador de la API: un Caddy que reparte entre las réplicas de
   # `api` (docker/api-lb.Caddyfile) y publica 9001, así que
   # http://localhost:9001/api sigue siendo la API. SIN depends_on, a propósito:
   # Caddy arranca aunque `api` aún no resuelva, y así ni el proxy ni el SSR de
@@ -115,7 +115,7 @@ services:
     ports:
       - "9001:9001"
 
-  # Tienda (US-15). Solo la red interna: el navegador entra por `proxy`.
+  # Tienda. Solo la red interna: el navegador entra por `proxy`.
   shop:
     build:
       context: .
@@ -131,8 +131,8 @@ services:
       api-lb:
         condition: service_started
     environment:
-      # SSR/ISR hablan con la API por la red interna (US-102), a través del
-      # balanceador (US-107): así el SSR se reparte entre réplicas y conmuta
+      # SSR/ISR hablan con la API por la red interna, a través del
+      # balanceador: así el SSR se reparte entre réplicas y conmuta
       # si una cae, igual que el navegador.
       API_INTERNAL_URL: http://api-lb:9001/api
       # next-auth: la URL pública y, para sus llamadas desde el servidor, la
@@ -152,7 +152,7 @@ services:
       retries: 3
       start_period: 60s
 
-  # Admin (US-15). Solo la red interna: el navegador entra por `proxy`.
+  # Admin. Solo la red interna: el navegador entra por `proxy`.
   admin:
     build:
       context: .
@@ -166,7 +166,7 @@ services:
       api:
         condition: service_healthy
     environment:
-      # Enlaces «ver en la tienda», leídos al ejecutar (US-103).
+      # Enlaces «ver en la tienda», leídos al ejecutar.
       SHOP_URL: ${SHOP_URL:-http://localhost:3003}
       NODE_EXTRA_CA_CERTS: /run/secrets/extra_ca
     secrets:
@@ -178,8 +178,8 @@ services:
       retries: 3
       start_period: 60s
 
-  # Reverse proxy (US-15): publica la tienda en 3003 y el admin en 3002, y
-  # en los dos enruta /backend/* a la API. En el despliegue (US-111) es el
+  # Reverse proxy: publica la tienda en 3003 y el admin en 3002, y
+  # en los dos enruta /backend/* a la API. En el despliegue es el
   # mismo Caddyfile, dentro de la imagen safari-proxy, detrás de Traefik.
   proxy:
     image: caddy:2.11.9-alpine

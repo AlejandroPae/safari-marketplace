@@ -22,7 +22,7 @@ import {
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
-  // Taxonomía global (design.md, Decisión B): escritura solo super_admin.
+  // Taxonomía global: escritura solo super_admin.
   @Permissions(...ADMIN_ONLY)
   @Post()
   create(@Body() createCategoryDto: CreateCategoryDto) {

@@ -9,7 +9,7 @@ import {
  * ni envoltorio — `page_options` ES el objeto interno de 24 claves, no
  * `{ page_options: <objeto interno> }`. No se deriva de `BecomeSeller` por
  * `OmitType`: el envoltorio de la respuesta y el body del `POST` tienen
- * formas distintas en `page_options` (US-45).
+ * formas distintas en `page_options`.
  */
 export class CreateBecomeSellerDto {
   language?: string;

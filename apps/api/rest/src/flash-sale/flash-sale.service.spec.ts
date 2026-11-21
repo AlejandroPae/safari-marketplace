@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `FlashSaleService` (US-94). Mismo arnés que
+ * Tests unitarios de `FlashSaleService`. Mismo arnés que
  * `authors.service.spec.ts`: se mockea solo el acceso a datos de
  * `@safari/db` y se dejan REALES las clases de error de dominio y
  * `toWriteHttpException`.
@@ -254,7 +254,7 @@ describe('FlashSaleService', () => {
   });
 
   describe('getFlashSale', () => {
-    it('inexistente ⇒ 404 (V-5)', async () => {
+    it('inexistente ⇒ 404', async () => {
       findFlashSaleBySlugMock.mockResolvedValue(null);
       await expect(
         service.getFlashSale('no-existe', 'en'),
@@ -262,7 +262,7 @@ describe('FlashSaleService', () => {
     });
   });
 
-  describe('getFlashSaleInfoByProductId (US-96)', () => {
+  describe('getFlashSaleInfoByProductId', () => {
     it('array de ventas con la proyección de /flash-sale/:slug', async () => {
       listProductFlashSalesMock.mockResolvedValue([makeFlashSaleRecord()]);
       const result = await service.getFlashSaleInfoByProductId('1013');
@@ -379,7 +379,7 @@ describe('FlashSaleService', () => {
       expect(updateFlashSaleMock).toHaveBeenCalledWith(1, { title: 'Otro' });
     });
 
-    it('id fuera de rango ⇒ 404 sin tocar la base (US-31)', async () => {
+    it('id fuera de rango ⇒ 404 sin tocar la base', async () => {
       await expect(service.update(1e21, body({}))).rejects.toBeInstanceOf(
         NotFoundException,
       );
@@ -397,7 +397,7 @@ describe('FlashSaleService', () => {
   });
 
   describe('remove', () => {
-    it('devuelve la venta borrada (V-6)', async () => {
+    it('devuelve la venta borrada', async () => {
       deleteFlashSaleMock.mockResolvedValue(makeFlashSaleRecord());
       expect((await service.remove(1)).id).toBe(1);
     });

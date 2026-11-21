@@ -1,14 +1,14 @@
 /**
  * domain-errors.ts — el contrato dominio → HTTP de las escrituras de
  * catálogo, como un conjunto cerrado de 5 códigos (spec
- * `catalog-write-foundations`). Genérico por construcción (D27-13): ninguna
+ * `catalog-write-foundations`). Genérico por construcción: ninguna
  * clase lleva texto de un agregado en particular — `aggregate`/`field`/`id`
- * son parámetros de constructor, no literales. Integrar `tags`/`manufacturers`
- * (US-27b) o cualquier otro agregado MUST limitarse a un call site nuevo en
- * SU repositorio; `git diff` de este archivo MUST quedar vacío (CA-7).
+ * son parámetros de constructor, no literales. Integrar cualquier otro
+ * agregado MUST limitarse a un call site nuevo en SU repositorio, sin tocar
+ * este archivo.
  *
  * `src/errors.ts` (242 líneas de helpers de Prisma consumidos por 8 archivos)
- * NO se toca — D27-3. `isPrismaConstraintError` agrupa P2002/P2003/P2025 en
+ * no sirve aquí: `isPrismaConstraintError` agrupa P2002/P2003/P2025 en
  * un solo booleano y no puede discriminarlos, así que este archivo trae su
  * propio traductor, `translateCatalogWriteError`, que sí discrimina.
  */
@@ -120,7 +120,7 @@ export class DependentRowsError extends CatalogWriteError {
 /**
  * Clave única repetida (P2002). Pese al nombre, no es solo el slug: también
  * `code` de cupones o los uniques de varias columnas de reseñas y reportes,
- * que se violan de forma normal, no solo por carrera (US-67). `field` es el
+ * que se violan de forma normal, no solo por carrera. `field` es el
  * NOMBRE del campo (o la lista `a, b, c`), nunca el valor: el traductor no
  * lo tiene.
  */
@@ -162,8 +162,8 @@ function _asPrismaLikeError(error: unknown): PrismaLikeError | null {
 }
 
 /**
- * Único lugar que conoce códigos de Prisma para las escrituras de catálogo
- * (Decisión 3 del design). `P2002` → `SlugConflictError`, `P2003` →
+ * Único lugar que conoce códigos de Prisma para las escrituras de catálogo.
+ * `P2002` → `SlugConflictError`, `P2003` →
  * `InvalidReferenceError`, `P2025` → `RecordNotFoundError`. Cualquier otra
  * cosa vuelve intacta — mismo contrato que `_translateCheckViolation`
  * (`products.repository.ts:454-466`): el llamador es quien lanza.

@@ -24,9 +24,8 @@ export const MY_QUESTIONS_URL =
   '/my-questions?with=user&orderBy=created_at&sortedBy=desc';
 
 /**
- * «Mis preguntas» (US-55): solo las del usuario que llama (V-2, corrección
- * de privacidad: antes devolvía las 68 a cualquiera). Una pregunta ajena es
- * 404, no 403: desde aquí no existe.
+ * «Mis preguntas»: solo las del usuario que llama (por privacidad). Una
+ * pregunta ajena es 404, no 403: desde aquí no existe.
  */
 @Injectable()
 export class MyQuestionsService {

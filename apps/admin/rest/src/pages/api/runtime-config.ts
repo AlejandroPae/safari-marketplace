@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 /**
- * Configuración que el admin lee al ejecutar, no al construir (US-103).
+ * Configuración que el admin lee al ejecutar, no al construir.
  *
  * `SHOP_URL` no lleva `NEXT_PUBLIC_`: Next no la escribe en el JavaScript, así
  * que el navegador la pide aquí. Cambiarla solo exige reiniciar el admin. Si
- * falta, 500 con un mensaje que la nombra (DA-2).
+ * falta, 500 con un mensaje que la nombra.
  */
 export default function handler(_req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store');

@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `FlashSaleRequestsService` (US-97). Mismo arnés que
+ * Tests unitarios de `FlashSaleRequestsService`. Mismo arnés que
  * `flash-sale.service.spec.ts`: se mockea solo el acceso a datos de
  * `@safari/db` y se dejan REALES las clases de error de dominio y
  * `toWriteHttpException`. Las fixtures de producto y venta son copia de
@@ -528,7 +528,7 @@ describe('FlashSaleRequestsService', () => {
     });
   });
 
-  describe('approve y disapprove (US-98)', () => {
+  describe('approve y disapprove', () => {
     it('aprobar devuelve la solicitud con request_status true', async () => {
       approveMock.mockResolvedValue(makeRequestRecord({ status: 'approved' }));
       const dto = await service.approve(7);

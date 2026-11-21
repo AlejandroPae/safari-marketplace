@@ -60,7 +60,7 @@ function optionalBodyId(value: unknown, field: string): number | null {
 @Injectable()
 export class ReviewService {
   /**
-   * Filtros reales combinados con AND (V-1): `product_id` del query y
+   * Filtros reales combinados con AND: `product_id` del query y
    * `rating:N`, `shop_id:N` y `type.slug:<x>` desde `search`. Las demás
    * claves se ignoran. Un número no válido devuelve la lista vacía (como el
    * mock con un `product_id` que no casa). Orden `id DESC`, defaults
@@ -109,7 +109,7 @@ export class ReviewService {
     }
   }
 
-  /** DTO o 404 (V-8). */
+  /** DTO o 404. */
   async findReview(id: number): Promise<Review> {
     assertId(id);
     return toReviewDto(await this.findOrFail(id));
@@ -177,7 +177,7 @@ export class ReviewService {
     }
   }
 
-  /** Solo el autor o un `super_admin`. Devuelve la reseña borrada (V-5). */
+  /** Solo el autor o un `super_admin`. Devuelve la reseña borrada. */
   async delete(id: number, user: CurrentUserPayload): Promise<Review> {
     assertId(id);
     this.assertCanModify(await this.findOrFail(id), user);

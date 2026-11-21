@@ -28,7 +28,7 @@ import {
 export class CouponsController {
   constructor(private readonly couponsService: CouponsService) {}
 
-  // Las escrituras llevan @CurrentUser: propiedad por tienda (DD29-4, US-52).
+  // Las escrituras llevan @CurrentUser: propiedad por tienda.
   @Permissions(...ADMIN_OWNER_AND_STAFF)
   @Post()
   createCoupon(
@@ -38,7 +38,7 @@ export class CouponsController {
     return this.couponsService.create(createCouponDto, user);
   }
 
-  // La lista ya se prefetchea anónima en coupon.ssr.ts (cierre del usuario, proposal.md).
+  // La lista ya se prefetchea anónima en coupon.ssr.ts.
   @Public()
   @Get()
   getCoupons(@Query() query: GetCouponsDto) {
@@ -51,15 +51,15 @@ export class CouponsController {
     return this.couponsService.getCoupon(param);
   }
 
-  // Leía `@Param('param')` en una ruta `:id` y siempre llegaba `undefined`
-  // (V-8). El `:id` es el código: misma búsqueda que `GET :param`.
+  // Leía `@Param('param')` en una ruta `:id` y siempre llegaba `undefined`.
+  // El `:id` es el código: misma búsqueda que `GET :param`.
   @Public()
   @Get(':id/verify')
   verify(@Param('id') id: string) {
     return this.couponsService.getCoupon(id);
   }
 
-  // `verify` corre en el carrito de invitado (cierre del usuario, proposal.md).
+  // `verify` corre en el carrito de invitado.
   @Public()
   @Post('verify')
   verifyCoupon(@Body() verifyCouponInput: VerifyCouponInput) {

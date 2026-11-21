@@ -7,9 +7,8 @@ export const MY_WISHLISTS_URL =
   '/my-wishlists?with=shop&orderBy=created_at&sortedBy=desc';
 
 /**
- * `my-wishlists` es la misma lista que `wishlists` (US-53): antes servía
- * los productos 2..7 del mock a cualquiera (V-1). Solo cambia la url fija
- * del paginador.
+ * `my-wishlists` es la misma lista que `wishlists`. Solo cambia la url
+ * fija del paginador.
  */
 @Injectable()
 export class MyWishlistService {

@@ -16,13 +16,14 @@ export const INSUFFICIENT_PERMISSIONS_MESSAGE =
   'No tienes permisos suficientes para esta operación.';
 
 /**
- * Resuelve los permisos EXCLUSIVAMENTE desde el payload del JWT (D-5 del épico,
- * CA-5): cero consultas a la base por request.
+ * Resuelve los permisos EXCLUSIVAMENTE desde el payload del JWT: cero
+ * consultas a la base por request.
  *
  * COSTE ACEPTADO: revocar un permiso en Postgres NO afecta a un token ya emitido.
  * El usuario conserva ese permiso hasta que el JWT expira (`JWT_EXPIRES_IN`, 7 días
  * por defecto — jwt-options.ts:31). Revocación inmediata exigiría una denylist con
- * estado en el servidor, que D-9 de US-22 descartó explícitamente.
+ * estado en el servidor, que la API descarta a propósito (sin refresh tokens
+ * ni denylist; ver `logout`).
  */
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -36,7 +37,7 @@ export class PermissionsGuard implements CanActivate {
     if (!required) return true; // sin @Permissions(), un token válido basta
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    // Regla anti-fuga (Decisión D, design.md): NUNCA deducir "no autorizado"
+    // Regla anti-fuga: NUNCA deducir "no autorizado"
     // de la ausencia de usuario. Un 403 le confirmaría a un anónimo que la
     // ruta existe y es privilegiada; el 401 no dice nada que el default no
     // diga ya.

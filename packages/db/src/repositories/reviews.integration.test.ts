@@ -1,7 +1,7 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
  * 85 reseñas de los usuarios 2, 4 y 5, ids 85→1; 3 reportes del usuario 2
- * sobre las reseñas 1, 21 y 78). US-54.
+ * sobre las reseñas 1, 21 y 78).
  *
  * Las escrituras son del admin (3), que el seed deja sin reseñas ni
  * reportes; `beforeAll`/`afterAll` borran todo lo suyo.
@@ -126,8 +126,8 @@ describe('createReview', () => {
         comment: 'zz-review-2',
       })
     ).rejects.toBeInstanceOf(SlugConflictError);
-    // Con orden distinta sí se admite (una reseña por compra). Desde US-58
-    // order_id tiene FK: la 41 es una orden sembrada del admin con el producto 2.
+    // Con orden distinta sí se admite (una reseña por compra). order_id
+    // tiene FK: la 41 es una orden sembrada del admin con el producto 2.
     const conOrden = await createReview({
       userId: ADMIN,
       productId: 2,

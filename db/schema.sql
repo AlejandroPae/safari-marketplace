@@ -10,9 +10,10 @@
 -- filtros que el frontend envía de verdad
 -- (apps/shop/src/framework/rest/client/index.ts).
 --
--- Identidad entra desde US-20. El resto del dominio entra por el Épico 46
--- (2026-10-20) y el Épico 92 (autores y ventas flash, 2026-11-17), una US
--- por bloque de tablas, sembradas desde los mismos JSON.
+-- Además del catálogo cubre la identidad y el resto del dominio de
+-- Pickbazar (contenido, cupones, órdenes, mensajería, autores, ventas
+-- flash...), un bloque de tablas por agregado, sembradas desde los mismos
+-- JSON.
 -- Siguen fuera de alcance deliberado: carritos, direcciones y wallets/
 -- balances, porque ningún mock JSON los respalda.
 --
@@ -103,12 +104,11 @@ CREATE TABLE IF NOT EXISTS types (
 
 
 -- =====================================================================
--- users — identidad para autenticación (US-20).
+-- users — identidad para autenticación.
 --
--- Hasta esta US no existía tabla de usuarios: el login del mock acepta
--- cualquier contraseña. Este esquema deja sembrados los 3 usuarios demo
--- de users.json con un hash bcrypt real; el login en sí sigue mock hasta
--- US-22, que es quien lo consulta.
+-- El login del mock aceptaba cualquier contraseña. Este esquema deja
+-- sembrados los 3 usuarios demo de users.json con un hash bcrypt real,
+-- que es lo que el login contrasta.
 --
 -- Sin columna `email_verified`: el mock trae ambas (booleano y
 -- timestamp) pero son redundantes -- email_verified_at ya dice si y
@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- (products_nombre_ilike_trgm_idx) y sin introducir el primer CREATE EXTENSION del
 -- DDL versionado (las extensiones se activan en justfile). Consecuencia:
 -- todo lookup por email debe escribirse `WHERE lower(email) = lower($1)`
--- o este índice no se usa -- lo hereda US-21.
+-- o este índice no se usa.
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_idx ON users (lower(email));
 
 
@@ -158,8 +158,8 @@ CREATE TABLE IF NOT EXISTS profiles (
 -- guard_name viene del origen Laravel del mock; se conserva porque
 -- hasAccess() en ambos frontends compara el nombre en snake_case, no el
 -- guard. `staff` (id 4) es nueva: no está en users.json pero el
--- universo de 4 valores es lo que comparan los frontends -- queda sin
--- asignar hasta US-25.
+-- universo de 4 valores es lo que comparan los frontends. El seed se la
+-- asigna a los usuarios con fila en shop_staff.
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS permissions (
     id           bigserial    PRIMARY KEY,
@@ -180,7 +180,7 @@ CREATE TABLE IF NOT EXISTS permission_user (
 
 
 -- ---------------------------------------------------------------------
--- password_reset_tokens — sin consumidor todavía (llega en US-24).
+-- password_reset_tokens — recuperación de contraseña por token.
 --
 -- Por user_id, no por email al estilo Laravel: todos los usuarios ya
 -- existen en el seed, no hay flujo de pre-existencia que resolver.
@@ -196,7 +196,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 
 
 -- ---------------------------------------------------------------------
--- otp_codes — sin consumidor todavía (llega en US-24).
+-- otp_codes — códigos de un solo uso enviados por teléfono.
 --
 -- Única tabla de identidad SIN FK a users: se clave por teléfono en
 -- texto plano porque POST /api/send-otp-code recibe un teléfono, no un
@@ -221,8 +221,8 @@ CREATE TABLE IF NOT EXISTS otp_codes (
 -- Éxito, Falabella...) los crea él en tiempo de ejecución, porque no
 -- forman parte de los datos de la app.
 --
--- owner_id referencia users(id) ON DELETE RESTRICT (US-20): el default 1
--- ya no es relleno, es un hecho -- store_owner@demo.com. Se queda porque
+-- owner_id referencia users(id) ON DELETE RESTRICT: el default 1 no es
+-- relleno, es un hecho -- store_owner@demo.com. Se queda porque
 -- pipelines.py:187-190 crea shops con `INSERT INTO shops (name, slug)
 -- VALUES (...)`, sin owner_id; sin el DEFAULT ese INSERT violaría el
 -- NOT NULL. Nunca CASCADE aquí: products.shop_id ya es CASCADE, así que
@@ -253,8 +253,7 @@ CREATE TABLE IF NOT EXISTS shops (
 -- (bajo 163 "Eggs"); 163 y 164 cuelgan de la raíz 124 "Dairy & Eggs",
 -- toda la rama en type_id 7 (daily-needs). Profundidad máxima = 2
 -- saltos; 0 bisnietos. Medido con WITH RECURSIVE contra esta misma
--- base, no leyendo el seed (el comentario anterior decía "2 niveles
--- reales" y por eso packages/db perdía esas 6 filas — ver US-4b).
+-- base, no leyendo el seed: quien asuma dos niveles pierde esas 6 filas.
 -- ON DELETE SET NULL para que borrar una madre no arrastre a las hijas.
 -- El CHECK de abajo prohíbe la autorreferencia, pero NO un ciclo
 -- A->B->A: quien recorra el árbol necesita su propia guarda.
@@ -437,7 +436,7 @@ CREATE TABLE IF NOT EXISTS product_tag (
 
 
 -- =====================================================================
--- Identidad extendida (US-41, Épico 40) — staff por tienda y la página
+-- Identidad extendida — staff por tienda y la página
 -- "vender con nosotros".
 --
 -- Van al FINAL del bloque de tablas: shop_staff referencia users y shops
@@ -456,10 +455,6 @@ CREATE TABLE IF NOT EXISTS product_tag (
 -- shop_id y AddStaffInput del admin es {email,password,name,shop_id}. Un
 -- `role` sería especulativo. Sin `updated_at`: un pivote se crea o se borra,
 -- nunca se actualiza (igual que permission_user y product_tag).
---
--- El título de CA-1 en la US dice "con rol"
--- (41-esquema-identidad-extendida.md:61); el código no lo respalda y la spec
--- ya zanja que gana el código (extended-identity-schema/spec.md:24-26).
 CREATE TABLE IF NOT EXISTS shop_staff (
     user_id     bigint       NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     shop_id     bigint       NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
@@ -481,7 +476,7 @@ CREATE TABLE IF NOT EXISTS shop_staff (
 -- 24 claves), NO el envoltorio con forma de settings: los id/language/
 -- created_at/updated_at de ese envoltorio son exactamente estas cuatro
 -- columnas y meterlos en el jsonb fosilizaría las fechas del mock. El
--- envoltorio se recompone en el servicio (US-44).
+-- envoltorio se recompone en el servicio.
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS become_seller (
     id            smallint     PRIMARY KEY DEFAULT 1,
@@ -495,7 +490,7 @@ CREATE TABLE IF NOT EXISTS become_seller (
 
 
 -- =====================================================================
--- Contenido (US-47, Épico 46) — FAQ y términos y condiciones.
+-- Contenido — FAQ y términos y condiciones.
 --
 -- Sembradas desde faqs.json y terms-and-conditions.json. Las dos tienen
 -- la misma forma: contenido global (emitido por el super admin) o de una
@@ -550,7 +545,7 @@ CREATE TABLE IF NOT EXISTS terms_and_conditions (
 
 
 -- =====================================================================
--- Reembolsos (US-48, Épico 46) — políticas y motivos.
+-- Reembolsos — políticas y motivos.
 --
 -- Sembradas desde refund-policies.json y refund-reasons.json. NO es el
 -- dominio de reembolsos (el módulo `refunds` es un stub sin JSON): son las
@@ -580,9 +575,8 @@ CREATE TABLE IF NOT EXISTS refund_policies (
 
 -- ---------------------------------------------------------------------
 -- refund_reasons — catálogo plano de motivos que el cliente elige al pedir
--- un reembolso. Es la primera tabla del épico cuyo contrato EMITE
--- created_at/updated_at, así que el seed inserta las fechas del mock en vez
--- de dejar el DEFAULT now().
+-- un reembolso. Su contrato EMITE created_at/updated_at, así que el seed
+-- inserta las fechas del mock en vez de dejar el DEFAULT now().
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS refund_reasons (
     id          bigserial    PRIMARY KEY,
@@ -595,7 +589,7 @@ CREATE TABLE IF NOT EXISTS refund_reasons (
 
 
 -- =====================================================================
--- Configuración fiscal y de envío (US-49, Épico 46) — taxes y shippings.
+-- Configuración fiscal y de envío — taxes y shippings.
 --
 -- Una fila cada una en el mock ("Global", id 1). La relación con settings
 -- es BLANDA: settings.options.taxClass/shippingClass guardan el id "1" como
@@ -635,11 +629,11 @@ CREATE TABLE IF NOT EXISTS shippings (
 
 
 -- =====================================================================
--- Atributos de producto (US-50, Épico 46) — attributes + attribute_values.
+-- Atributos de producto — attributes + attribute_values.
 --
 -- Agregado padre-hijo sembrado desde attributes.json (8 atributos, 27
 -- valores). Es la base de las variaciones de producto que todavía no se
--- persisten (épico aparte): aquí solo vive el catálogo de atributos.
+-- persisten: aquí solo vive el catálogo de atributos.
 --
 -- Un atributo es de SU tienda (shop_id NOT NULL, CASCADE, igual que
 -- products.shop_id). Sin type_id: el mock trae `type` todo null. Los valores
@@ -672,11 +666,11 @@ CREATE TABLE IF NOT EXISTS attribute_values (
 
 
 -- =====================================================================
--- Avisos de tienda (US-51, Épico 46) — store_notices + 3 pivotes.
+-- Avisos de tienda — store_notices + 3 pivotes.
 --
 -- Los avisos que el super admin (o un dueño, para su tienda) publica en la
--- barra superior del panel. Primera tabla del épico que toca identidad: el
--- autor y los destinatarios son usuarios reales. El mock trae created_by = 6
+-- barra superior del panel. Toca identidad: el autor y los destinatarios
+-- son usuarios reales. El mock trae created_by = 6
 -- (admin@demo.com en el Laravel original); el generador lo resuelve POR EMAIL
 -- al id del seed (3), nunca copia el id.
 --
@@ -739,13 +733,13 @@ CREATE TABLE IF NOT EXISTS store_notice_read (
 
 
 -- =====================================================================
--- Cupones (US-52, Épico 46) — primera tabla del dominio transaccional.
+-- Cupones — primera tabla del dominio transaccional.
 --
 -- Sembrada desde coupons.json (10 cupones). `is_valid` NO es columna: la API
 -- lo calcula en cada lectura desde la vigencia (active_from <= now() <
 -- expire_at). Con el seed del mock las 10 filas ya vencieron.
 --
--- `image` es `json`, no `jsonb` (D-5): el contrato preserva el orden de
+-- `image` es `json`, no `jsonb`: el contrato preserva el orden de
 -- claves y dos filas traen {thumbnail, original, id}. Un cupón de tienda
 -- muere con su tienda (CASCADE, como products.shop_id); shop_id NULL es un
 -- cupón global de super_admin. El autor puede borrarse (SET NULL).
@@ -774,7 +768,7 @@ CREATE TABLE IF NOT EXISTS coupons (
 
 
 -- =====================================================================
--- Lista de deseos (US-53, Épico 46) — wishlists, pivote usuario ↔ producto.
+-- Lista de deseos — wishlists, pivote usuario ↔ producto.
 --
 -- Calco de permission_user/product_tag: PK compuesta y las dos FK en
 -- CASCADE, porque un favorito no sobrevive a su usuario ni a su producto.
@@ -793,18 +787,19 @@ CREATE TABLE IF NOT EXISTS wishlists (
 
 
 -- =====================================================================
--- Reseñas y reportes de abuso (US-54, Épico 46) — reviews + abusive_reports.
+-- Reseñas y reportes de abuso — reviews + abusive_reports.
 --
 -- Sembradas desde reviews.json (85) y reports.json (3). Las reseñas son de
 -- los usuarios 2, 4 y 5 del mock; el 4 y el 5 no estaban en users.json y el
--- generador los SIEMBRA desde el `user` embebido (D-4).
+-- generador los SIEMBRA desde el `user` embebido (resueltos por email).
 --
 -- reviews: contenido de su autor sobre un producto de una tienda; sin
 -- cualquiera de los tres no tiene sentido (CASCADE en las tres FK, mismo
--- criterio que products.shop_id). order_id y variation_option_id van SIN FK:
--- orders llega en US-58 y no hay tabla de variaciones. Los contadores de
--- feedback son columnas: no hay filas de votos que los respalden. `photos`
--- es `json`, no `jsonb` (D-5): el orden de claves de cada foto es contrato.
+-- criterio que products.shop_id). order_id y variation_option_id van SIN FK
+-- aquí: orders se crea más abajo (su FK se añade tras ella) y no hay tabla
+-- de variaciones. Los contadores de feedback son columnas: no hay filas de
+-- votos que los respalden. `photos` es `json`, no `jsonb`: el orden de
+-- claves de cada foto es contrato.
 --
 -- abusive_reports: polimórfica (model_type + model_id, sin FK); el
 -- repositorio valida que el objeto exista. model_type guarda el nombre
@@ -848,10 +843,10 @@ CREATE TABLE IF NOT EXISTS abusive_reports (
 
 
 -- =====================================================================
--- Preguntas sobre productos (US-55, Épico 46) — questions.
+-- Preguntas sobre productos — questions.
 --
 -- Sembradas desde questions.json (68). Sus autores son los usuarios 2 y 4;
--- el 4 (customer2@demo.com) lo siembra el bloque de reseñas (US-54).
+-- el 4 (customer2@demo.com) lo siembra el bloque de reseñas.
 --
 -- CASCADE en las tres FK por el mismo criterio que reviews: la pregunta es
 -- contenido de su autor sobre un producto de una tienda. SIN UNIQUE (user,
@@ -875,11 +870,12 @@ CREATE TABLE IF NOT EXISTS questions (
 
 
 -- =====================================================================
--- Mensajería cliente ↔ tienda (US-56, Épico 46) — conversations + messages.
+-- Mensajería cliente ↔ tienda — conversations + messages.
 --
 -- Un solo agregado: la conversación de un usuario con una tienda y sus
 -- mensajes. Sembradas desde conversations.json (2) y messages.json (5).
--- El usuario 6 del mock es admin@demo.com, que aquí es el 3 (D-4).
+-- El usuario 6 del mock es admin@demo.com, que aquí es el 3 (se resuelve
+-- por email).
 --
 -- Una conversación por par (user, shop), que es lo que hace Pickbazar: el
 -- POST la reutiliza. CASCADE en todas las FK: sin usuario, tienda o
@@ -889,7 +885,7 @@ CREATE TABLE IF NOT EXISTS questions (
 -- mensajes (el mock los traía incoherentes). Escribir un mensaje fija
 -- conversations.updated_at con el reloj de Node, para que la conversación
 -- suba al ordenar por updated_at. El estado de lectura vive aparte, en
--- conversation_reads (US-64). Sin triggers (reloj único, ver abajo).
+-- conversation_reads. Sin triggers (reloj único, ver abajo).
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS conversations (
     id          bigserial    PRIMARY KEY,
@@ -912,7 +908,7 @@ CREATE TABLE IF NOT EXISTS messages (
 
 
 -- =====================================================================
--- Estado de lectura de las conversaciones (US-64) — conversation_reads.
+-- Estado de lectura de las conversaciones — conversation_reads.
 --
 -- Calco de store_notice_read: una fila por (conversación, usuario) con la
 -- última vez que ese participante la leyó (POST /messages/seen/:id). Va por
@@ -933,7 +929,7 @@ CREATE TABLE IF NOT EXISTS conversation_reads (
 
 
 -- =====================================================================
--- Catálogo de estados de pedido (US-57, Épico 46) — order_statuses.
+-- Catálogo de estados de pedido — order_statuses.
 --
 -- Sembrado desde order-statuses.json (10 filas) con sus ids y sus fechas.
 -- `serial` es la posición en el flujo: única y positiva, y es el orden de
@@ -958,7 +954,7 @@ CREATE TABLE IF NOT EXISTS order_statuses (
 
 
 -- =====================================================================
--- Órdenes (US-58, Épico 46) — orders + order_products.
+-- Órdenes — orders + order_products.
 --
 -- Sembradas desde orders.json: 20 padres con 1 hija cada uno (40 filas) y
 -- 76 líneas. Padres e hijas comparten tabla, como en Pickbazar: el padre
@@ -973,7 +969,7 @@ CREATE TABLE IF NOT EXISTS order_statuses (
 -- Dinero en numeric SIN escala (el mock trae 3 decimales: sales_tax 0.044),
 -- salvo cancelled_*, que el contrato emite como string con 2 decimales.
 -- order_status/payment_status/payment_gateway son los enums de la API
--- (orders/entities/order.entity.ts), NO el catálogo order_statuses (US-57).
+-- (orders/entities/order.entity.ts), NO el catálogo order_statuses.
 --
 -- FK: el cliente se pone a NULL si se borra (la orden es histórica, y NULL
 -- es también el invitado); la tienda es RESTRICT (no hay deleteShop); el
@@ -1052,8 +1048,8 @@ CREATE TABLE IF NOT EXISTS order_products (
 );
 
 
--- FK pendiente de US-54: reviews.order_id existía sin FK porque orders no
--- existía. No se edita el CREATE TABLE reviews: se añade aquí, idempotente
+-- FK diferida de reviews.order_id: reviews se crea antes que orders, así
+-- que la FK no cabe en su CREATE TABLE. Se añade aquí, idempotente
 -- (db-up re-aplica este archivo sobre un volumen vivo y un ALTER desnudo
 -- fallaría la segunda vez). SET NULL: la reseña sobrevive a su orden.
 DO $$ BEGIN
@@ -1065,7 +1061,7 @@ END $$;
 
 
 -- =====================================================================
--- Descargas digitales (US-60, Épico 46) — order_files.
+-- Descargas digitales — order_files.
 --
 -- Sembradas desde order-files.json (10 filas, todas de customer@demo.com
 -- y sin orden). Una fila es el derecho de un cliente a descargar un archivo
@@ -1091,15 +1087,16 @@ CREATE TABLE IF NOT EXISTS order_files (
 
 
 -- =====================================================================
--- Retiros de tienda (US-62, Épico 46) — withdraws.
+-- Retiros de tienda — withdraws.
 --
 -- Sembrada desde withdraws.json (2 solicitudes de la tienda 3). Un retiro
 -- es lo que una tienda pide cobrar; el super admin le cambia el estado. El
 -- vocabulario de status es la minúscula del dato y del admin (on_hold con
 -- guion bajo), no el TitleCase del enum de la entidad Nest.
 --
--- No hay columna ni tabla de balance: aprobar no descuenta nada (decisión 4
--- del épico). Sin deleted_at: se borra de verdad y la API emite null. Un
+-- No hay columna ni tabla de balance: aprobar no descuenta nada (wallets y
+-- balances quedan fuera, ver la cabecera). Sin deleted_at: se borra de
+-- verdad y la API emite null. Un
 -- retiro muere con su tienda (CASCADE, como products.shop_id). Sin trigger
 -- (reloj único, ver abajo).
 -- =====================================================================
@@ -1118,16 +1115,15 @@ CREATE TABLE IF NOT EXISTS withdraws (
 
 
 -- =====================================================================
--- Transferencias de propiedad de tienda (US-63, Épico 46) —
--- ownership_transfers.
+-- Transferencias de propiedad de tienda — ownership_transfers.
 --
 -- Sembrada desde ownership-transfer.json (6 solicitudes pending, sin tienda).
 -- Una fila registra que una tienda pasa (o pidió pasar) de previous_owner a
 -- current_owner; POST /transfer-shop-ownership inserta una 'approved' en la
 -- misma transacción que cambia shops.owner_id.
 --
--- balance_info es la FOTO del balance al crear la transferencia (D-5): no se
--- proyecta de ninguna tabla (no hay tabla de balances, decisión 4) ni se
+-- balance_info es la FOTO del balance al crear la transferencia: no se
+-- proyecta de ninguna tabla (no hay tabla de balances) ni se
 -- valida su shop_id. Va en json y no en jsonb, igual que order_info,
 -- refund_info y withdrawal_info: jsonb reordena las claves y el orden es
 -- contrato; payment_info sigue siendo un string dentro del documento.
@@ -1158,13 +1154,12 @@ CREATE TABLE IF NOT EXISTS ownership_transfers (
 
 
 -- =====================================================================
--- Autores (US-93, Épico 92).
+-- Autores — authors.
 --
 -- Sembrados desde authors.json (11 autores). El autor es global del
 -- catálogo: el mock no trae shop_id y el que envía el admin se ignora.
--- products NO tiene author_id (products.json no lo trae en ninguna fila,
--- DA-3 del épico), así que products_count es el dato sembrado del mock y
--- no un conteo (DA-4).
+-- products NO tiene author_id (products.json no lo trae en ninguna fila),
+-- así que products_count es el dato sembrado del mock y no un conteo.
 --
 -- born/death son timestamptz: Date.toJSON() emite los mismos 3 decimales
 -- que el mock. languages es texto libre ("English, Russian"), como allí.
@@ -1194,13 +1189,13 @@ CREATE TABLE IF NOT EXISTS authors (
 
 
 -- =====================================================================
--- Ventas flash (US-94, Épico 92) — flash_sales + flash_sale_products.
+-- Ventas flash — flash_sales + flash_sale_products.
 --
 -- Sembradas desde flash-sale.json (2 ventas, 4 productos). La venta es
 -- global: el mock no trae shop_id. start_date/end_date son timestamp SIN
 -- zona porque el mock tampoco la trae ("2023-10-31 06:49:59"); la API los
 -- emite en ese mismo formato. No se filtra por vigencia: las 2 ventas del
--- mock terminaron el 2024-11-29 (R-3 del épico).
+-- mock terminaron el 2024-11-29 y el listado quedaría vacío.
 --
 -- flash_sale_products es la fuente de verdad de los productos de una venta.
 -- sale_builder se guarda tal cual, pero su product_ids se reescribe con la
@@ -1238,16 +1233,16 @@ CREATE TABLE IF NOT EXISTS flash_sale_products (
 
 
 -- =====================================================================
--- Solicitudes de vendedores para ventas flash (US-97, Épico 95) —
+-- Solicitudes de vendedores para ventas flash —
 -- flash_sale_requests + flash_sale_request_products.
 --
 -- Un dueño de tienda (o su staff) pide que unos productos suyos entren en
--- una venta. No hay mock: las tablas nacen vacías (DA-4). shop_id se deduce
+-- una venta. No hay mock: las tablas nacen vacías. shop_id se deduce
 -- de los productos (todos de la misma tienda) y no viene en el cuerpo.
--- status es texto (DA-5): con un booleano no se distinguirían «pendiente»
+-- status es texto: con un booleano no se distinguirían «pendiente»
 -- y «rechazada». La API emite el request_status booleano del admin como
--- status = 'approved'. Aprobar y rechazar (US-98) escriben en
--- flash_sale_products. added_to_sale (US-98, DA-6) marca los productos que
+-- status = 'approved'. Aprobar y rechazar escriben en
+-- flash_sale_products. added_to_sale marca los productos que
 -- esa aprobación metió en la venta: rechazar retira solo esos, nunca uno
 -- que ya estaba (o que el admin metió a mano).
 -- =====================================================================
@@ -1297,7 +1292,7 @@ CREATE INDEX IF NOT EXISTS products_scraped_idx       ON products (scraped_at DE
 
 -- Búsqueda por nombre. En el mock la hacía Fuse.js en memoria sobre
 -- 1.200 productos; con un catálogo real hay que resolverla en la base.
--- Sobre la COLUMNA, no sobre lower(name) (US-69): Prisma traduce
+-- Sobre la COLUMNA, no sobre lower(name): Prisma traduce
 -- `contains` + `mode: insensitive` a `name ILIKE '%x%'`, y un índice de
 -- expresión solo sirve a consultas con la misma expresión. gin_trgm_ops
 -- resuelve el ILIKE porque el trigrama ya es insensible a mayúsculas. El
@@ -1313,7 +1308,8 @@ CREATE INDEX IF NOT EXISTS categories_type_idx    ON categories (type_id);
 CREATE INDEX IF NOT EXISTS category_product_categoria_idx ON category_product (category_id);
 CREATE INDEX IF NOT EXISTS product_tag_tag_idx            ON product_tag (tag_id);
 
--- El inverso del pivote de permisos: lo pide US-25 CA-2.
+-- El inverso del pivote de permisos: los listados por rol (admin, vendors,
+-- customers, staffs) filtran por permission_id.
 CREATE INDEX IF NOT EXISTS permission_user_permiso_idx    ON permission_user (permission_id);
 CREATE INDEX IF NOT EXISTS password_reset_tokens_user_idx ON password_reset_tokens (user_id);
 CREATE INDEX IF NOT EXISTS otp_codes_phone_idx            ON otp_codes (phone);
@@ -1323,22 +1319,22 @@ CREATE INDEX IF NOT EXISTS otp_codes_phone_idx            ON otp_codes (phone);
 -- permission_user_permiso_idx.
 CREATE INDEX IF NOT EXISTS shop_staff_tienda_idx ON shop_staff (shop_id);
 
--- Contenido (US-47): cada FK saliente con su índice. El shop filtra FAQ y
+-- Contenido: cada FK saliente con su índice. El shop filtra FAQ y
 -- términos por shop_id en las páginas de cada tienda.
 CREATE INDEX IF NOT EXISTS faqs_shop_idx                  ON faqs (shop_id);
 CREATE INDEX IF NOT EXISTS faqs_user_idx                  ON faqs (user_id);
 CREATE INDEX IF NOT EXISTS terms_and_conditions_shop_idx  ON terms_and_conditions (shop_id);
 CREATE INDEX IF NOT EXISTS terms_and_conditions_user_idx  ON terms_and_conditions (user_id);
 
--- Reembolsos (US-48).
+-- Reembolsos.
 CREATE INDEX IF NOT EXISTS refund_policies_shop_idx       ON refund_policies (shop_id);
 
--- Atributos (US-50): el admin filtra por shop_id (pantalla de tienda y
+-- Atributos: el admin filtra por shop_id (pantalla de tienda y
 -- formulario de producto variable). attribute_values.attribute_id ya queda
 -- cubierto por la izquierda del UNIQUE (attribute_id, slug).
 CREATE INDEX IF NOT EXISTS attributes_shop_idx            ON attributes (shop_id);
 
--- Avisos (US-51): cada FK saliente con su índice. Los inversos de los
+-- Avisos: cada FK saliente con su índice. Los inversos de los
 -- pivotes responden a los filtros del admin (users.id, shops.slug).
 CREATE INDEX IF NOT EXISTS store_notices_created_by_idx   ON store_notices (created_by);
 CREATE INDEX IF NOT EXISTS store_notices_updated_by_idx   ON store_notices (updated_by);
@@ -1346,43 +1342,43 @@ CREATE INDEX IF NOT EXISTS store_notice_user_usuario_idx  ON store_notice_user (
 CREATE INDEX IF NOT EXISTS store_notice_shop_tienda_idx   ON store_notice_shop (shop_id);
 CREATE INDEX IF NOT EXISTS store_notice_read_usuario_idx  ON store_notice_read (user_id);
 
--- Cupones (US-52): el shop filtra por shop_id en /shops/[slug]/offers.
+-- Cupones: el shop filtra por shop_id en /shops/[slug]/offers.
 CREATE INDEX IF NOT EXISTS coupons_shop_idx               ON coupons (shop_id);
 CREATE INDEX IF NOT EXISTS coupons_user_idx               ON coupons (user_id);
 
--- Lista de deseos (US-53): el inverso del pivote, para la cascada desde
+-- Lista de deseos: el inverso del pivote, para la cascada desde
 -- products y para saber quién marcó un producto.
 CREATE INDEX IF NOT EXISTS wishlists_producto_idx         ON wishlists (product_id);
 
--- Reseñas (US-54): el shop filtra por product_id y el admin por shop_id.
+-- Reseñas: el shop filtra por product_id y el admin por shop_id.
 -- user_id queda cubierto por la izquierda del único de expresión. El índice
 -- polimórfico de abusive_reports sirve al conteo por reseña.
 CREATE INDEX IF NOT EXISTS reviews_shop_idx               ON reviews (shop_id);
 CREATE INDEX IF NOT EXISTS reviews_producto_idx           ON reviews (product_id);
 CREATE INDEX IF NOT EXISTS abusive_reports_modelo_idx     ON abusive_reports (model_type, model_id);
 
--- Preguntas (US-55): cada FK con su índice (my-questions filtra por user_id,
+-- Preguntas: cada FK con su índice (my-questions filtra por user_id,
 -- el shop por product_id y el admin por shop_id). La búsqueda por texto
 -- sigue el precedente de products_nombre_ilike_trgm_idx: trigram sobre la
--- columna para que la use el ILIKE de Prisma (US-69; antes era
--- questions_question_trgm_idx, sobre lower(question)).
+-- columna para que la use el ILIKE de Prisma (el nombre viejo,
+-- questions_question_trgm_idx, era el índice sobre lower(question)).
 CREATE INDEX IF NOT EXISTS questions_user_idx             ON questions (user_id);
 CREATE INDEX IF NOT EXISTS questions_shop_idx             ON questions (shop_id);
 CREATE INDEX IF NOT EXISTS questions_producto_idx         ON questions (product_id);
 CREATE INDEX IF NOT EXISTS questions_question_ilike_trgm_idx
     ON questions USING gin (question gin_trgm_ops);
 
--- Mensajería (US-56): conversations.user_id ya queda cubierto por la
+-- Mensajería: conversations.user_id ya queda cubierto por la
 -- izquierda del UNIQUE (user_id, shop_id). El índice de messages sirve al
 -- último mensaje por conversación y al listado paginado.
 CREATE INDEX IF NOT EXISTS conversations_shop_idx         ON conversations (shop_id);
 CREATE INDEX IF NOT EXISTS messages_conversacion_idx
     ON messages (conversation_id, created_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS messages_user_idx              ON messages (user_id);
--- Lecturas (US-64): la PK cubre conversation_id; user_id sirve a su FK.
+-- Lecturas: la PK cubre conversation_id; user_id sirve a su FK.
 CREATE INDEX IF NOT EXISTS conversation_reads_user_idx    ON conversation_reads (user_id);
 
--- Órdenes (US-58): el listado del cliente filtra customer_id, el de una
+-- Órdenes: el listado del cliente filtra customer_id, el de una
 -- tienda shop_id y el detalle embebe hijas por parent_id. order_products
 -- ya queda cubierto por su PK para order_id.
 CREATE INDEX IF NOT EXISTS orders_parent_idx              ON orders (parent_id);
@@ -1391,27 +1387,27 @@ CREATE INDEX IF NOT EXISTS orders_shop_idx                ON orders (shop_id);
 CREATE INDEX IF NOT EXISTS orders_coupon_idx              ON orders (coupon_id);
 CREATE INDEX IF NOT EXISTS order_products_producto_idx    ON order_products (product_id);
 
--- Descargas (US-60): la lista y la descarga filtran por cliente y por
+-- Descargas: la lista y la descarga filtran por cliente y por
 -- digital_file_id; order_id sirve a su FK.
 CREATE INDEX IF NOT EXISTS order_files_customer_idx       ON order_files (customer_id);
 CREATE INDEX IF NOT EXISTS order_files_digital_file_idx   ON order_files (digital_file_id);
 CREATE INDEX IF NOT EXISTS order_files_order_idx          ON order_files (order_id);
 
--- Retiros (US-62): la lista filtra por tienda (la del dueño o la de la query).
+-- Retiros: la lista filtra por tienda (la del dueño o la de la query).
 CREATE INDEX IF NOT EXISTS withdraws_shop_idx             ON withdraws (shop_id);
 
--- Transferencias (US-63): el dueño ve las filas donde es previous o current
+-- Transferencias: el dueño ve las filas donde es previous o current
 -- owner; shop_id filtra la lista y created_by sirve a su FK.
 CREATE INDEX IF NOT EXISTS ownership_transfers_shop_idx       ON ownership_transfers (shop_id);
 CREATE INDEX IF NOT EXISTS ownership_transfers_previous_idx   ON ownership_transfers (previous_owner_id);
 CREATE INDEX IF NOT EXISTS ownership_transfers_current_idx    ON ownership_transfers (current_owner_id);
 CREATE INDEX IF NOT EXISTS ownership_transfers_created_by_idx ON ownership_transfers (created_by);
 
--- Ventas flash (US-94): la PK cubre flash_sale_id; product_id sirve a su FK
+-- Ventas flash: la PK cubre flash_sale_id; product_id sirve a su FK
 -- (borrar un producto busca sus filas puente).
 CREATE INDEX IF NOT EXISTS flash_sale_products_product_idx    ON flash_sale_products (product_id);
 
--- Solicitudes de venta flash (US-97): las FK hacia la venta y la tienda
+-- Solicitudes de venta flash: las FK hacia la venta y la tienda
 -- (borrarlas busca sus solicitudes) y el filtro por tienda del listado. La
 -- PK de la tabla puente cubre request_id; product_id sirve a su FK.
 CREATE INDEX IF NOT EXISTS flash_sale_requests_flash_sale_idx         ON flash_sale_requests (flash_sale_id);
@@ -1420,7 +1416,7 @@ CREATE INDEX IF NOT EXISTS flash_sale_request_products_product_idx    ON flash_s
 
 
 -- ---------------------------------------------------------------------
--- updated_at — reloj único, sin triggers (US-32 CA-1).
+-- updated_at — reloj único, sin triggers.
 -- NINGUNA tabla lleva trigger BEFORE UPDATE. `updated_at` lo fija la capa de
 -- datos con el reloj de Node (`packages/db/src/clock.ts` -> `now()`), el mismo
 -- del que sale `created_at` (`@default(now())` de Prisma): una fila, un reloj.

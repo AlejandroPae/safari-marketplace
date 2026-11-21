@@ -1,13 +1,12 @@
 /**
  * Test de integración contra el Postgres real (docker-compose, puerto
- * 5433, sembrado por `just db-up`: 10 tags). Lectura y escritura (CA-1,
- * CA-2, CA-3 — US-27b).
+ * 5433, sembrado por `just db-up`: 10 tags). Lectura y escritura.
  *
  * Las escrituras operan sobre un centinela `zz-tags-` en `name`/`slug` —
  * prefijo distinto de otros archivos de este mismo paquete (`zz-types-`,
  * `zz-manu-`) para que las suites no se limpien la basura mutuamente: no
  * hay `vitest.config.*` en `packages/db`, así que los archivos corren en
- * paralelo (design.md, DD-8.1). `cleanup` corre en `beforeAll` (corrida
+ * paralelo. `cleanup` corre en `beforeAll` (corrida
  * abortada previa) y se PLIEGA dentro del `afterAll` que ya existía — no se
  * agrega un segundo `afterAll`: `sequence.hooks: 'stack'` es el default de
  * vitest y correría LIFO sobre un cliente ya desconectado si se registrara
@@ -83,16 +82,15 @@ describe('findTagBySlug', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Escrituras (CA-1, CA-2, CA-3, CA-6 — US-27b). NO INSERTAR TESTS DE LECTURA
-// DEBAJO DE ESTA LÍNEA: `listTags` (arriba, `:19-20`) asserta
+// Escrituras. NO INSERTAR TESTS DE LECTURA DEBAJO DE ESTA LÍNEA: `listTags`
+// (arriba, `:19-20`) asserta
 // `items[0].id === 62` sobre un `orderBy: { id: 'desc' }` SIN filtro. Vitest
 // corre los tests de un archivo en orden de declaración; cualquier tag
 // centinela vivo (id > 62) mientras corre ese assert lo pone rojo. El orden
-// de los `describe` de abajo —después de las lecturas— es la garantía
-// (design.md, DD-8.3).
+// de los `describe` de abajo —después de las lecturas— es la garantía.
 // ---------------------------------------------------------------------------
 
-describe('createTag — CA-1, centinela zz-tags-', () => {
+describe('createTag — centinela zz-tags-', () => {
   it('persiste y devuelve el registro; sobrevive a una relectura por slug', async () => {
     const created = await createTag({
       name: `${SENTINEL_PREFIX}Oferta Verano`,
@@ -122,7 +120,7 @@ describe('createTag — CA-1, centinela zz-tags-', () => {
     expect(await findTagBySlug(`${SENTINEL_PREFIX}type-invalido`)).toBeNull();
   });
 
-  it('typeId fuera del rango seguro de bigint (1e21) ⇒ InvalidReferenceError, sin tocar Postgres (US-31, antirregresión)', async () => {
+  it('typeId fuera del rango seguro de bigint (1e21) ⇒ InvalidReferenceError, sin tocar Postgres (antirregresión)', async () => {
     // `Number.isInteger` deja pasar `1e21` (no tiene parte decimal); sin
     // `Number.isSafeInteger` este valor llegaría a Postgres como `bigint` y
     // reventaría en `invalid input syntax for type bigint` (500). Precedente
@@ -139,7 +137,7 @@ describe('createTag — CA-1, centinela zz-tags-', () => {
     ).toBeNull();
   });
 
-  it('typeId negativo (-5) ⇒ InvalidReferenceError por P2003 (FK), NO por la guarda (US-31, D31-2)', async () => {
+  it('typeId negativo (-5) ⇒ InvalidReferenceError por P2003 (FK), NO por la guarda', async () => {
     expect.assertions(3);
     // Discriminador: la guarda pasa el tercer argumento `value` a
     // `InvalidReferenceError` y el mensaje lo interpola; la rama `P2003` de
@@ -160,7 +158,7 @@ describe('createTag — CA-1, centinela zz-tags-', () => {
   });
 });
 
-describe('updateTag — CA-2, slug inmutable, updatedAt explícito', () => {
+describe('updateTag — slug inmutable, updatedAt explícito', () => {
   it('cambia name, NO el slug, y updatedAt avanza (medido con _setNowProvider)', async () => {
     try {
       const created = await createTag({
@@ -229,7 +227,7 @@ describe('updateTag — CA-2, slug inmutable, updatedAt explícito', () => {
   });
 });
 
-describe('deleteTag — CA-3, sin conteo de dependientes (D27b-3)', () => {
+describe('deleteTag — sin conteo de dependientes', () => {
   it('id inexistente ⇒ RecordNotFoundError', async () => {
     await expect(deleteTag(999999)).rejects.toBeInstanceOf(RecordNotFoundError);
   });
@@ -247,7 +245,7 @@ describe('deleteTag — CA-3, sin conteo de dependientes (D27b-3)', () => {
     expect(await findTagBySlug(`${SENTINEL_PREFIX}borrable`)).toBeNull();
   });
 
-  it('desenlace: borra el tag y `product_tag` desenlaza por CASCADE — assert POR FILA, nunca un conteo global (B-2: la fixture de products.integration.test.ts:198-237 mantiene viva product_tag mientras esa suite corre)', async () => {
+  it('desenlace: borra el tag y `product_tag` desenlaza por CASCADE — assert POR FILA, nunca un conteo global (la fixture de products.integration.test.ts:198-237 mantiene viva product_tag mientras esa suite corre)', async () => {
     const created = await createTag({
       name: `${SENTINEL_PREFIX}Desenlace`,
       slug: `${SENTINEL_PREFIX}desenlace`,
@@ -272,7 +270,7 @@ describe('deleteTag — CA-3, sin conteo de dependientes (D27b-3)', () => {
   });
 });
 
-describe('image: null se trata como ausente (DD-5) — RV-1 de US-27b', () => {
+describe('image: null se trata como ausente', () => {
   // `CreateTagInput.image`/`UpdateTagInput.image` NO admiten `null` en el
   // tipo, pero el runtime sí lo recibe: `tags.service.ts` castea el `image`
   // del DTO con `as unknown as Prisma.InputJsonValue` y cualquier cliente
@@ -280,7 +278,7 @@ describe('image: null se trata como ausente (DD-5) — RV-1 de US-27b', () => {
   // real (nunca `as any`). Sin el `!= null` de los spreads del repositorio,
   // Prisma rechazaría el `null` crudo sobre un `Json?` (exige
   // `Prisma.DbNull`/`JsonNull`) y, de colar, cada PUT del admin borraría la
-  // imagen almacenada (W-1). Asserts POR FILA, nunca conteos globales.
+  // imagen almacenada. Asserts POR FILA, nunca conteos globales.
   const NULL_IMAGE = null as unknown as Prisma.InputJsonValue;
   const IMAGE = {
     id: 7,
@@ -345,7 +343,7 @@ describe('image: null se trata como ausente (DD-5) — RV-1 de US-27b', () => {
   });
 });
 
-describe('cierre de la suite (CA-6)', () => {
+describe('cierre de la suite', () => {
   it('ningún test de escritura dejó basura: prisma.tag.count() vuelve a 10', async () => {
     expect(await prisma.tag.count()).toBe(10);
   });

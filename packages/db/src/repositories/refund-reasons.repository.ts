@@ -1,10 +1,10 @@
 /**
- * refund-reasons.repository.ts — motivos de reembolso (US-48).
+ * refund-reasons.repository.ts — motivos de reembolso.
  *
- * El agregado más plano del épico: nombre, slug e idioma. Calco de
+ * Agregado plano: nombre, slug e idioma. Calco de
  * `tags.repository.ts` sin FK. Los timestamps forman parte del contrato
  * (`refund-reasons.json` los emite), por eso `updateRefundReason` fija
- * `updatedAt` con `now()` de `clock.ts` (US-32).
+ * `updatedAt` con `now()` de `clock.ts`.
  */
 
 import type { Prisma } from '../../generated/prisma/client/client';

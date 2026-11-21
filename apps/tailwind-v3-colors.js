@@ -1,4 +1,4 @@
-// Paleta por defecto de Tailwind 3.4.14 (MIT), generada desde su colors.js (US-86).
+// Paleta por defecto de Tailwind 3.4.14 (MIT), generada desde su colors.js.
 // La v4 la redefinió en OKLCH y sus tonos no coinciden con los de la v3: se fija
 // para no cambiar los colores. gray y orange no están: las configs los definen
 // con sus propias variables CSS.

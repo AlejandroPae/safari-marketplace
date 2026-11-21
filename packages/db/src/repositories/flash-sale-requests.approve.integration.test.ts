@@ -1,10 +1,10 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`).
- * Aprobar y rechazar solicitudes de venta flash (US-98).
+ * Aprobar y rechazar solicitudes de venta flash.
  *
  * Escenario: la venta 3 tiene 951 y 952; una solicitud de la tienda 9 pide
  * 951 (ya en la venta) y 950 (no). Aprobar mete solo 950 y lo marca; rechazar
- * retira solo 950 (DA-6). Las solicitudes llevan el centinela `zz-fsa-`.
+ * retira solo 950. Las solicitudes llevan el centinela `zz-fsa-`.
  *
  * Escribe en `flash_sales`/`flash_sale_products` del seed: `beforeAll`
  * guarda la venta 3 y `afterAll` la restaura (filas puente, `sale_builder` y

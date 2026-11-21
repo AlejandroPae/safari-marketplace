@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `MyQuestionsService` (US-55): todo es del usuario que
+ * Tests unitarios de `MyQuestionsService`: todo es del usuario que
  * llama y lo ajeno es 404.
  */
 import 'reflect-metadata';

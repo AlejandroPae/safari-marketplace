@@ -24,10 +24,10 @@ export class RefundsController {
     return this.refundsService.create(createRefundDto);
   }
 
-  // D-8 (design.md, Decisión G): el filtro de propiedad NO es cableable hoy
-  // — `findAll()` no recibe `@Query()` y `RefundsService.findAll()` no
-  // acepta argumentos (devuelve `{data: []}` fijo). Queda autenticado
-  // (deny-by-default) hasta que US-25 haga real el servicio.
+  // El filtro de propiedad NO es cableable hoy — `findAll()` no recibe
+  // `@Query()` y `RefundsService.findAll()` no acepta argumentos (devuelve
+  // `{data: []}` fijo). Queda autenticado (deny-by-default) mientras el
+  // servicio sea un stub.
   @Get()
   findAll() {
     return this.refundsService.findAll();

@@ -78,8 +78,8 @@ export class ShopsController {
   // `:id` siempre vale `undefined`, así que `+id` es `NaN`.
   //
   // La moderación real vive en `ShopsService.approveShop` /
-  // `disapproveShop` → `_setActive` (toda aprobación es ADMIN_ONLY,
-  // design.md Decisión B). Estos dos handlers solo llaman a stubs que
+  // `disapproveShop` → `_setActive` (toda aprobación es ADMIN_ONLY).
+  // Estos dos handlers solo llaman a stubs que
   // devuelven un string y no tocan la base. Borrarlas o recablearlas es
   // decisión del dueño del repo; aquí solo se corrige que `disapprove`
   // llamara al stub de `approve`.
@@ -170,7 +170,7 @@ export class NearByShopController {
   }
 }
 
-// Cola de aprobación del admin (cierre del usuario, proposal.md).
+// Cola de aprobación del admin.
 @Permissions(...ADMIN_ONLY)
 @Controller('new-shops')
 export class NewShopsController {

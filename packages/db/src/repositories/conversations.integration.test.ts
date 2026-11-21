@@ -1,11 +1,11 @@
 /**
  * Test de integración contra el Postgres real (sembrado por `just db-up`:
  * conversaciones 1 (admin ↔ tienda 7, 5 mensajes) y 6 (admin ↔ tienda 2,
- * sin mensajes); las 12 tiendas son del usuario 1). US-56.
+ * sin mensajes); las 12 tiendas son del usuario 1).
  *
  * Las escrituras crean conversaciones y mensajes nuevos (ids > 6 y > 5) y
  * tocan el `updated_at` de la conversación 1: `afterAll` lo devuelve todo al
- * estado sembrado. Las lecturas de US-64 escriben en `conversation_reads`,
+ * estado sembrado. Las marcas de lectura escriben en `conversation_reads`,
  * que el seed deja vacía y la limpieza vacía otra vez.
  */
 
@@ -178,7 +178,7 @@ describe('createMessage', () => {
   });
 });
 
-describe('markConversationSeen — US-64', () => {
+describe('markConversationSeen', () => {
   const OWNER_VIEW = { userId: OWNER, seeAll: false };
 
   // Los bloques de arriba dejan una conversación y un mensaje nuevos hasta el `afterAll`.

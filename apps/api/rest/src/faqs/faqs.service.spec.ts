@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `FaqsService` (US-47). Mismo arnés que
+ * Tests unitarios de `FaqsService`. Mismo arnés que
  * `tags.service.spec.ts`: se mockea solo el acceso a datos de `@safari/db` y
  * se dejan REALES las clases de error de dominio y `toWriteHttpException`.
  */
@@ -164,7 +164,7 @@ describe('FaqsService', () => {
       expect(Object.keys(faq)).toEqual(MOCK_KEYS);
     });
 
-    it('inexistente o id mal formado ⇒ 404 (V-4)', async () => {
+    it('inexistente o id mal formado ⇒ 404', async () => {
       findFaqByIdMock.mockResolvedValue(null);
       await expect(service.getFaq('999')).rejects.toBeInstanceOf(
         NotFoundException,
@@ -232,7 +232,7 @@ describe('FaqsService', () => {
       expect(faq).toMatchObject({ faq_title: 'Nuevo' });
     });
 
-    it('remove devuelve la fila borrada, no un string (V-6)', async () => {
+    it('remove devuelve la fila borrada, no un string', async () => {
       deleteFaqMock.mockResolvedValue(makeFaqRecord());
       expect(Object.keys(await service.remove(7))).toEqual(MOCK_KEYS);
     });

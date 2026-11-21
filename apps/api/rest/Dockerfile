@@ -1,4 +1,4 @@
-# API REST (NestJS) en contenedor — US-14.
+# API REST (NestJS) en contenedor.
 #
 # Contexto de build: la RAÍZ del repo, no esta carpeta. La API depende de
 # @safari/db por `link:../../../packages/db`, así que la imagen reproduce esa
@@ -20,7 +20,7 @@
 #
 #   docker build --secret id=extra_ca,src="$NODE_EXTRA_CA_CERTS" ...
 
-# Versión exacta, la misma en los tres Dockerfiles (US-105): un tag de solo
+# Versión exacta, la misma en los tres Dockerfiles: un tag de solo
 # major cambia de contenido sin aviso.
 ARG NODE_IMAGE=node:22.22.3-alpine3.23
 
@@ -53,7 +53,7 @@ RUN yarn build
 
 # --- 3. Runtime: solo dependencias de producción y los dos dist/
 #
-# Una sola copia de Prisma (US-106). yarn v1 instala también las dependencias
+# Una sola copia de Prisma. yarn v1 instala también las dependencias
 # del paquete enlazado por `link:`: si packages/db ya tuviera su package.json
 # aquí, @prisma/client acabaría duplicado en los node_modules de la API, y
 # esa copia nunca se carga (Node sigue el realpath del symlink). Por eso la
@@ -84,7 +84,7 @@ COPY --from=db-build /repo/packages/db/dist ./dist
 WORKDIR /repo/apps/api/rest
 COPY --from=api-build /repo/apps/api/rest/dist ./dist
 ENV NODE_ENV=production
-# Commit del que salió la imagen (US-110): el CI lo pasa con --build-arg y
+# Commit del que salió la imagen: el CI lo pasa con --build-arg y
 # /api/health lo devuelve como `revision`, para saber qué versión corre. Va al
 # final para no invalidar la caché de las capas de arriba en cada commit.
 ARG GIT_SHA=unknown

@@ -5,11 +5,10 @@
  * se limita a este archivo para no tocar la config del build.
  */
 /**
- * Tests unitarios de `ProductsService.getProducts()` (US-2, deuda V-4).
+ * Tests unitarios de `ProductsService.getProducts()`.
  *
  * Estrategia: los helpers `parseProductSearch` / `parseFiniteNumber` /
- * `toProductDto` son privados del módulo por diseño (Decision C del design
- * archivado de US-2) y NO se exportan: se prueban a través de la superficie
+ * `toProductDto` son privados del módulo por diseño y NO se exportan: se prueban a través de la superficie
  * pública, mockeando SOLO `listProducts` de `@safari/db` y asertando (a) lo
  * que recibe el repositorio mockeado y (b) lo que devuelve `getProducts()`.
  * `isPrismaConnectionError` / `getUserFriendlyMessage` se dejan REALES
@@ -57,7 +56,7 @@ vi.mock('@safari/db', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@safari/db')>()),
   listProducts: vi.fn(),
   findProductBySlug: vi.fn(),
-  // US-29 (PR#4): las 5 escrituras/lecturas auxiliares que faltaban. Las
+  // Las 5 escrituras/lecturas auxiliares de `create`/`update`/`remove`. Las
   // clases de error (`InvalidSalePriceError`, etc.) y `CATALOG_ERROR_CODES`
   // siguen REALES vía el `importOriginal` de arriba — solo se mockea el
   // acceso a datos, nunca el contrato de errores.
@@ -66,7 +65,7 @@ vi.mock('@safari/db', async (importOriginal) => ({
   deleteProduct: vi.fn(),
   findProductShopId: vi.fn(),
   findShopOwnerById: vi.fn(),
-  // US-66 (Ampliación): pertenencia a `shop_staff`, solo lectura.
+  // Pertenencia a `shop_staff`, solo lectura.
   isShopStaff: vi.fn(),
 }));
 
@@ -80,7 +79,7 @@ const findShopOwnerByIdMock = vi.mocked(findShopOwnerById);
 const isShopStaffMock = vi.mocked(isShopStaff);
 
 /**
- * `ValidationPipe` corre sin `transform` (Decision A del design de US-2):
+ * `ValidationPipe` corre sin `transform`:
  * en runtime los query params llegan como strings crudos aunque el DTO
  * declare números. Este cast reproduce esa realidad — mismo patrón
  * `as unknown as` que usa el propio servicio en `toProductDto()`.
@@ -131,7 +130,7 @@ function asDto(product: Product): ProductListItemDto {
   return product as unknown as ProductListItemDto;
 }
 
-/** Las 20 claves exactas, en el orden del mock (tabla del design de US-2). */
+/** Las 20 claves exactas, en el orden del mock. */
 const EXPECTED_KEYS = [
   'id',
   'name',
@@ -242,7 +241,7 @@ function makeProductRecord(
   };
 }
 
-/** `ProductDetail` = `ProductRecord` + `relatedProducts` (US-3). */
+/** `ProductDetail` = `ProductRecord` + `relatedProducts`. */
 function makeProductDetail(
   overrides: Partial<ProductDetail> = {},
 ): ProductDetail {
@@ -254,7 +253,7 @@ function makeProductDetail(
 }
 
 /**
- * Payload de usuario autenticado (US-29): el guard (`JwtAuthGuard`, US-23) ya
+ * Payload de usuario autenticado: el guard (`JwtAuthGuard`) ya
  * corrió y `@CurrentUser()` ya lo resolvió — estos tests entran DIRECTO por
  * la superficie del servicio, así que se construye a mano, sin JWT real.
  */
@@ -299,7 +298,7 @@ function makeUpdateDto(
   return { ...overrides } as UpdateProductDto;
 }
 
-describe('ProductsService.getProducts (Postgres vía @safari/db, US-2)', () => {
+describe('ProductsService.getProducts (Postgres vía @safari/db)', () => {
   let service: ProductsService;
 
   beforeEach(() => {
@@ -343,7 +342,7 @@ describe('ProductsService.getProducts (Postgres vía @safari/db, US-2)', () => {
       expect(dto.type.logo).toBeNull();
     });
 
-    it('emite in_flash_sale=1 si el producto está en una venta flash (US-96)', async () => {
+    it('emite in_flash_sale=1 si el producto está en una venta flash', async () => {
       listProductsMock.mockResolvedValueOnce({
         items: [makeProductRecord({ inFlashSale: true })],
         total: 1,
@@ -370,7 +369,7 @@ describe('ProductsService.getProducts (Postgres vía @safari/db, US-2)', () => {
     });
   });
 
-  describe('per_page — preservación de tipo (Decision A)', () => {
+  describe('per_page — preservación de tipo', () => {
     it('con ?limit=30 explícito: per_page es el STRING "30" y listProducts recibe el NUMBER 30', async () => {
       listProductsMock.mockResolvedValue({
         items: [makeProductRecord()],
@@ -454,7 +453,7 @@ describe('ProductsService.getProducts (Postgres vía @safari/db, US-2)', () => {
     });
   });
 
-  describe('tokens numéricos malformados — regresión V-3', () => {
+  describe('tokens numéricos malformados — regresión', () => {
     it('ignora shop_id/min_price/max_price no numéricos y el request sigue en 200 (antes: 500)', async () => {
       const search =
         'shop_id:abc;min_price:abc;max_price:abc;status:publish;visibility:visibility_public';
@@ -487,7 +486,7 @@ describe('ProductsService.getProducts (Postgres vía @safari/db, US-2)', () => {
     });
   });
 
-  describe('mapeo de errores de base (CA-5, Decision D)', () => {
+  describe('mapeo de errores de base', () => {
     it('error de conexión de Prisma → 503 con mensaje amigable', async () => {
       // Error con la forma real de PrismaClientInitializationError; lo
       // clasifica el isPrismaConnectionError REAL (sin mockear).
@@ -528,7 +527,7 @@ describe('ProductsService.getProducts (Postgres vía @safari/db, US-2)', () => {
   });
 });
 
-describe('ProductsService.getProductBySlug (Postgres vía @safari/db, US-3)', () => {
+describe('ProductsService.getProductBySlug (Postgres vía @safari/db)', () => {
   let service: ProductsService;
 
   beforeEach(() => {
@@ -584,7 +583,7 @@ describe('ProductsService.getProductBySlug (Postgres vía @safari/db, US-3)', ()
     ).toEqual([]);
   });
 
-  it('slug inexistente (null) → NotFoundException 404 con el slug en el mensaje, no envuelto por el catch (D-5)', async () => {
+  it('slug inexistente (null) → NotFoundException 404 con el slug en el mensaje, no envuelto por el catch', async () => {
     findProductBySlugMock.mockResolvedValue(null);
 
     expect.assertions(4);
@@ -639,7 +638,7 @@ describe('ProductsService.getProductBySlug (Postgres vía @safari/db, US-3)', ()
 });
 
 /**
- * Mapeo de errores de base en los 4 endpoints derivados migrados en US-5.
+ * Mapeo de errores de base en los 4 endpoints derivados del catálogo.
  *
  * Cierra el MUST "Errores de conexión a Postgres" de la spec
  * `derived-catalog-api`, que hasta ahora solo tenía cobertura efímera: los
@@ -648,7 +647,7 @@ describe('ProductsService.getProductBySlug (Postgres vía @safari/db, US-3)', ()
  * Mismo arnés que los tests de `getProducts`: `listProducts` mockeado y
  * `isPrismaConnectionError` REAL.
  */
-describe('endpoints derivados — mapeo de errores de base (US-5)', () => {
+describe('endpoints derivados — mapeo de errores de base', () => {
   let service: ProductsService;
 
   beforeEach(() => {
@@ -720,12 +719,12 @@ describe('endpoints derivados — mapeo de errores de base (US-5)', () => {
 });
 
 /**
- * `ProductsService.create` (US-29, PR#4). `findShopOwnerById` mockeado
+ * `ProductsService.create`. `findShopOwnerById` mockeado
  * devuelve al dueño real por defecto; cada `it` que necesita otro dueño lo
  * sobreescribe. `toWriteHttpException` NUNCA se mockea (viene directo de
  * `domain-error.mapper`, no de `@safari/db`).
  */
-describe('ProductsService.create (Postgres vía @safari/db, US-29)', () => {
+describe('ProductsService.create (Postgres vía @safari/db)', () => {
   let service: ProductsService;
   const OWNER_ID = 42;
   const SHOP_ID = 9;
@@ -768,14 +767,14 @@ describe('ProductsService.create (Postgres vía @safari/db, US-29)', () => {
   });
 
   /**
-   * R29-7 (design.md): "`manufacturer_id` como opcional silencioso... `null`
-   * explícito SÍ es válido, probado aparte." `Number(null) === 0` — si el
+   * `manufacturer_id` es opcional, pero un `null` explícito SÍ es válido y
+   * se prueba aparte. `Number(null) === 0` — si el
    * servicio coerciona sin distinguir `null` de un string numérico, un
    * cliente que manda `manufacturer_id: null` para decir "sin fabricante"
    * termina enviando `manufacturerId: 0` (una FK a un fabricante que no
-   * existe) en vez de `null` (SET NULL, válido). Ver hallazgo en el reporte.
+   * existe) en vez de `null` (SET NULL, válido).
    */
-  it('manufacturer_id: null explícito llega como null al repositorio, nunca Number(null)===0 (R29-7)', async () => {
+  it('manufacturer_id: null explícito llega como null al repositorio, nunca Number(null)===0', async () => {
     await service.create(
       makeCreateDto({
         shop_id: SHOP_ID,
@@ -790,10 +789,10 @@ describe('ProductsService.create (Postgres vía @safari/db, US-29)', () => {
 });
 
 /**
- * `ProductsService.update`/`remove` — guard de id (nivel A, DD29-4): antes
+ * `ProductsService.update`/`remove` — guard de id (nivel A): antes
  * de tocar el repositorio, un id sin forma de entero seguro positivo es 404.
  */
-describe('ProductsService.update/remove — guard de id, nivel A (US-29)', () => {
+describe('ProductsService.update/remove — guard de id, nivel A', () => {
   let service: ProductsService;
 
   beforeEach(() => {
@@ -840,13 +839,13 @@ describe('ProductsService.update/remove — guard de id, nivel A (US-29)', () =>
 });
 
 /**
- * CA-5 — matriz de roles en las 3 rutas de escritura. `super_admin` corta en
+ * Matriz de roles en las 3 rutas de escritura. `super_admin` corta en
  * seco: se prueba con `expect(...).not.toHaveBeenCalled()`, no infiriendo el
  * short-circuit del status 200 solamente. El caso "sin token → 401" se
- * DECLARA (comentario abajo): lo produce `JwtAuthGuard` (US-23), nunca
+ * DECLARA (comentario abajo): lo produce `JwtAuthGuard`, nunca
  * `ProductsService` — no hay rama de este archivo que lo emita.
  */
-describe('CA-5 — matriz de roles en las 3 rutas de escritura (US-29)', () => {
+describe('matriz de roles en las 3 rutas de escritura', () => {
   let service: ProductsService;
   const OWNER_ID = 42;
   const OTHER_USER_ID = 999;
@@ -877,7 +876,7 @@ describe('CA-5 — matriz de roles en las 3 rutas de escritura (US-29)', () => {
     deleteProductMock.mockResolvedValue(makeProductRecord({ shopId: SHOP_ID }));
     findProductShopIdMock.mockResolvedValue(SHOP_ID);
     // Sin fila en `shop_staff` por defecto: los casos de staff real están en
-    // el describe de la Ampliación de US-66.
+    // el describe 'el staff de la tienda gestiona productos'.
     isShopStaffMock.mockResolvedValue(false);
 
     service = new ProductsService();
@@ -929,14 +928,14 @@ describe('CA-5 — matriz de roles en las 3 rutas de escritura (US-29)', () => {
   );
 
   // Sin token → 401: DECLARADO, no probado en este archivo (a nivel de
-  // guard, `JwtAuthGuard`/US-23 — `@CurrentUser()` mismo lanza 401 si no hay
+  // guard, `JwtAuthGuard` — `@CurrentUser()` mismo lanza 401 si no hay
   // `request.user` ni bearer válido, ANTES de que `ProductsService` exista
   // en la cadena). Un `it` que invocara el decorador directamente probaría
   // el decorador, no este servicio; queda fuera del alcance de este archivo.
 });
 
-/** CA-2/CA-5 — un `PUT` que mueve `shop_id` exige propiedad de AMBAS tiendas. */
-describe('CA-5 — PUT que mueve shop_id exige propiedad de ambas tiendas (US-29)', () => {
+/** Un `PUT` que mueve `shop_id` exige propiedad de AMBAS tiendas. */
+describe('PUT que mueve shop_id exige propiedad de ambas tiendas', () => {
   let service: ProductsService;
   const OWNER_ID = 42;
   const CURRENT_SHOP_ID = 9;
@@ -986,14 +985,14 @@ describe('CA-5 — PUT que mueve shop_id exige propiedad de ambas tiendas (US-29
 });
 
 /**
- * US-66 (Ampliación, Decisión 2 cerrada): el staff de la tienda — fila en
+ * El staff de la tienda — fila en
  * `shop_staff`, sin exigir el permiso global `staff` dentro del servicio —
  * gestiona sus productos igual que el dueño. Orden de las comprobaciones:
  * `super_admin` (sin consultar) → dueño (`findShopOwnerById`) → staff
  * (`isShopStaff`, solo si no es dueño). El guard `@Permissions` del
  * controlador sigue exigiendo el permiso `staff` y no se prueba aquí.
  */
-describe('US-66 Ampliación — el staff de la tienda gestiona productos', () => {
+describe('el staff de la tienda gestiona productos', () => {
   let service: ProductsService;
   const OWNER_ID = 42;
   const STAFF_ID = 7;
@@ -1146,14 +1145,14 @@ describe('US-66 Ampliación — el staff de la tienda gestiona productos', () =>
 });
 
 /**
- * CA-4/DD29-1 — cada clase de error de dominio de `products.repository.ts` →
+ * Cada clase de error de dominio de `products.repository.ts` →
  * su status HTTP vía `toWriteHttpException` (real, sin mockear). Las tres
  * primeras (`InvalidSalePriceError`/`MissingPriceError`/`InvalidReferenceError`)
- * son donde DD29-1 paga: antes de esa decisión, `super(...)` no fijaba
- * `code`, `isCatalogWriteError` las rechazaba y `toWriteHttpException`
- * degradaba a 500 — se asierta 400 explícitamente, no solo "no revienta".
+ * son las delicadas: si su `super(...)` no fija `code`,
+ * `isCatalogWriteError` las rechaza y `toWriteHttpException` degrada a
+ * 500 — se asierta 400 explícitamente, no solo "no revienta".
  */
-describe('create/update/remove — mapeo de errores de dominio a HTTP (CA-4, DD29-1)', () => {
+describe('create/update/remove — mapeo de errores de dominio a HTTP', () => {
   let service: ProductsService;
   const OWNER_ID = 42;
   const SHOP_ID = 9;
@@ -1167,15 +1166,11 @@ describe('create/update/remove — mapeo de errores de dominio a HTTP (CA-4, DD2
 
   const casos: ReadonlyArray<[string, () => Error, number]> = [
     [
-      'InvalidSalePriceError (DD29-1) → 400, no 500',
+      'InvalidSalePriceError → 400, no 500',
       () => new InvalidSalePriceError(150, 100),
       400,
     ],
-    [
-      'MissingPriceError (DD29-1) → 400, no 500',
-      () => new MissingPriceError(),
-      400,
-    ],
+    ['MissingPriceError → 400, no 500', () => new MissingPriceError(), 400],
     [
       'InvalidReferenceError → 400',
       () => new InvalidReferenceError('products', 'type_id', 999999),

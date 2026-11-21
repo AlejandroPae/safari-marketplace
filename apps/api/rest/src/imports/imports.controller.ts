@@ -6,7 +6,7 @@ import {
   Permissions,
 } from '#src/auth/decorators/permissions.decorator.js';
 
-// US-99, DA-2: los tres imports son stubs. Se registra solo la ruta, nunca
+// Los tres imports son stubs. Se registra solo la ruta, nunca
 // el cuerpo del request.
 @Permissions(...ADMIN_ONLY)
 @Controller()

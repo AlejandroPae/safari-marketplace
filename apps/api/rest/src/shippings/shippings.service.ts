@@ -89,7 +89,7 @@ export class ShippingsService {
     }
   }
 
-  /** Por id; inexistente o id mal formado ⇒ 404 (V-2). */
+  /** Por id; inexistente o id mal formado ⇒ 404. */
   async findOne(id: number): Promise<Shipping> {
     assertId(id);
     let record: ShippingRecord | null;

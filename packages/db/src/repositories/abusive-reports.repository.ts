@@ -1,7 +1,7 @@
 /**
- * abusive-reports.repository.ts — reportes de abuso (US-54).
+ * abusive-reports.repository.ts — reportes de abuso.
  *
- * Polimórfica: `(modelType, modelId)` apunta a una reseña o (desde US-55) a
+ * Polimórfica: `(modelType, modelId)` apunta a una reseña o a
  * una pregunta, sin FK. `assertReportableExists` valida el objeto antes de
  * escribir. Un reporte por usuario y objeto: el `P2002` del UNIQUE llega
  * como `SlugConflictError` (409).
@@ -92,7 +92,7 @@ export async function _countReports(
   return new Map(groups.map((g) => [Number(g.modelId), g._count._all]));
 }
 
-/** El objeto reportado debe existir: una reseña (US-54) o una pregunta (US-55). */
+/** El objeto reportado debe existir: una reseña o una pregunta. */
 export async function assertReportableExists(
   modelType: string,
   modelId: number
@@ -175,7 +175,7 @@ export async function createAbusiveReport(
   }
 }
 
-/** Solo el mensaje; fija `updatedAt: now()` (US-32). */
+/** Solo el mensaje; fija `updatedAt: now()`. */
 export async function updateAbusiveReport(
   id: number,
   input: { message?: string }
@@ -212,11 +212,11 @@ export async function deleteAbusiveReport(
 }
 
 /**
- * Rechazar (US-65): borra TODOS los reportes de un objeto y deja el objeto
+ * Rechazar: borra TODOS los reportes de un objeto y deja el objeto
  * intacto; es lo opuesto de «aceptar», que borra la reseña con sus
  * reportes. Devuelve cuántos borró (0 si no tenía: idempotente). El objeto
  * debe existir; si no, `RecordNotFoundError` sin borrar nada. Como la fila
- * desaparece, el UNIQUE deja volver a reportarlo (DD-2).
+ * desaparece, el UNIQUE deja volver a reportarlo.
  */
 export async function rejectAbusiveReports(
   modelType: string,

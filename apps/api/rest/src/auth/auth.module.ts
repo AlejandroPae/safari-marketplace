@@ -5,7 +5,7 @@ import { AuthController } from './auth.controller.js';
 import { resolveJwtOptions } from './jwt-options.js';
 
 @Module({
-  // registerAsync + useFactory (Decisión A, design.md): el fail-fast de
+  // registerAsync + useFactory: el fail-fast de
   // `resolveJwtOptions()` corre cuando Nest instancia este provider, DESPUÉS
   // de que `.env` esté en `process.env`. `register({...})` leería
   // `process.env.JWT_SECRET` al evaluar este módulo, antes de
@@ -13,8 +13,8 @@ import { resolveJwtOptions } from './jwt-options.js';
   imports: [JwtModule.registerAsync({ useFactory: resolveJwtOptions })],
   controllers: [AuthController],
   providers: [AuthService],
-  // JwtModule también se exporta (Decisión A, design.md): los guards
-  // globales de la Fase 3 se instancian en el contexto de AppModule, y
+  // JwtModule también se exporta: los guards globales (`APP_GUARD`) se
+  // instancian en el contexto de AppModule, y
   // JwtAuthGuard inyecta JwtService. Sin este export, el arranque falla con
   // "Nest can't resolve dependencies of JwtAuthGuard (?, Reflector)".
   exports: [AuthService, JwtModule],

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Esquema y datos de referencia para el despliegue (US-111, D-4).
+# Esquema y datos de referencia para el despliegue.
 #
 # El esquema se aplica siempre: es idempotente (CREATE ... IF NOT EXISTS) y
 # no altera tablas existentes. El seed, solo si la base está vacía (sin filas

@@ -58,7 +58,7 @@ const Header = ({ layout }: { layout?: string }) => {
   const {
     query: { slug },
   } = router;
-  // Solo en páginas de tienda: en un producto el slug es del producto (US-71).
+  // Solo en páginas de tienda: en un producto el slug es del producto.
   const isShopPage = useIsShopPage();
   const { data: shopData, isLoading } = useShop({
     slug: slug as string,

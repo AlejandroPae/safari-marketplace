@@ -1,29 +1,28 @@
 /**
- * auth-tokens.repository.ts — recuperación de contraseña y OTP (Épico 19,
- * US-24). Ocho funciones planas sobre `password_reset_tokens` y
- * `otp_codes`; ninguna de las dos tablas tiene FK hacia la otra
- * (`otp_codes` tampoco la tiene hacia `users`).
+ * auth-tokens.repository.ts — recuperación de contraseña y OTP. Ocho
+ * funciones planas sobre `password_reset_tokens` y `otp_codes`; ninguna de
+ * las dos tablas tiene FK hacia la otra (`otp_codes` tampoco la tiene hacia
+ * `users`).
  *
- * Frontera D-2 del épico, mismo criterio que `UserCredentials`
+ * Misma frontera del hash que `UserCredentials`
  * (`users.repository.ts:9-11,32-38`): `PasswordResetTokenSecret` y
  * `OtpCodeSecret` llevan el hash (`tokenHash`/`codeHash`) y viven AQUÍ, no
  * en `records.ts`. El valor en claro nunca entra a este paquete: el
- * caller (`auth.service.ts`, PR#2) genera el secreto, lo hashea con la
+ * caller (`auth.service.ts`) genera el secreto, lo hashea con la
  * librería de hashing de la capa Nest y solo pasa el hash ya calculado.
  * Este archivo no importa ningún módulo de hashing — `packages/db` no
  * gana dependencias nuevas (`package.json` sigue con las mismas 4).
  *
- * V-4 (design.md): este archivo estrena `$transaction` en el paquete —
- * `createPasswordResetToken` invalida el token vivo previo del usuario y
- * crea el nuevo en la misma transacción, como ARRAY (no nested write: el
+ * Uso de `$transaction`: `createPasswordResetToken` invalida el token vivo
+ * previo del usuario y crea el nuevo en la misma transacción, como ARRAY
+ * (no nested write: el
  * orden relativo `updateMany`/`create` en un nested write no está
  * documentado, y una propiedad de seguridad no puede apostar a eso).
  *
  * `consumePasswordResetToken`/`consumeOtpCode` usan `updateMany` con un
  * `WHERE id = ? AND consumed_at IS NULL` condicional y devuelven el
  * `count` de `Prisma.BatchPayload` — nunca `update()`, que señaliza "ya
- * consumido" lanzando P2025 en vez de reportar 0 filas afectadas
- * (Decisión C, design.md). El `count` es lo que garantiza que, ante dos
+ * consumido" lanzando P2025 en vez de reportar 0 filas afectadas. El `count` es lo que garantiza que, ante dos
  * peticiones concurrentes con el mismo token/código, como máximo una
  * gane la carrera.
  */
@@ -56,14 +55,14 @@ export interface OtpCodeSecret {
 
 export interface CreatePasswordResetTokenInput {
   userId: number;
-  /** Ya hasheado — hashear es responsabilidad de la API (US-24, PR#2). */
+  /** Ya hasheado — hashear es responsabilidad de la API. */
   tokenHash: string;
   expiresAt: Date;
 }
 
 export interface CreateOtpCodeInput {
   phone: string;
-  /** Ya hasheado — hashear es responsabilidad de la API (US-24, PR#2). */
+  /** Ya hasheado — hashear es responsabilidad de la API. */
   codeHash: string;
   expiresAt: Date;
 }
@@ -116,9 +115,10 @@ function _toOtpCodeSecret(row: OtpCodeRow): OtpCodeSecret {
 
 /**
  * Invalida (`consumed_at = now()`) los tokens vivos previos del usuario y
- * crea el nuevo, en una sola transacción (array — Decisión C). Bajo READ
- * COMMITTED esto atomiza UNA petición, no serializa dos concurrentes del
- * mismo usuario: ver V-6 en design.md. El consumidor está escrito para
+ * crea el nuevo, en una sola transacción (array). Bajo READ COMMITTED esto
+ * atomiza UNA petición, no serializa dos concurrentes del mismo usuario:
+ * cada una puede no ver la fila de la otra antes de comprometer su
+ * `updateMany`, y quedan dos tokens vivos. El consumidor está escrito para
  * `N >= 0` filas vivas (`findLivePasswordResetTokens`), no para "a lo
  * sumo una".
  */
@@ -144,8 +144,8 @@ export async function createPasswordResetToken(
 
 /**
  * Filas vivas y no vencidas del usuario, de la más nueva a la más vieja
- * (`orderBy: {id: 'desc'}`). Devuelve `N >= 0`: el caller (Decisión D,
- * `auth.service.ts`) recorre con `for…of` y corta en la primera
+ * (`orderBy: {id: 'desc'}`). Devuelve `N >= 0`: el caller
+ * (`auth.service.ts`) recorre con `for…of` y corta en la primera
  * coincidencia de comparación de hash.
  */
 export async function findLivePasswordResetTokens(
@@ -210,13 +210,12 @@ export async function consumeOtpCode(id: number): Promise<number> {
 }
 
 // ---------------------------------------------------------------------------
-// Purga — mantenimiento manual, sin scheduler (fuera de alcance de US-24)
+// Purga — mantenimiento manual, sin scheduler
 // ---------------------------------------------------------------------------
 
 /**
  * Elimina las filas vencidas o consumidas de las dos tablas. No afecta
- * filas vivas. Sin scheduler: se invoca a mano (ver `apps/README.md`,
- * PR#2).
+ * filas vivas. Sin scheduler: se invoca a mano (ver `apps/README.md`).
  */
 export async function purgeExpiredAuthTokens(): Promise<{
   passwordResetTokens: number;
@@ -242,7 +241,7 @@ export async function purgeExpiredAuthTokens(): Promise<{
 }
 
 // ---------------------------------------------------------------------------
-// Resolución de identidad por contacto (otp-login, D2)
+// Resolución de identidad por contacto (otp-login)
 // ---------------------------------------------------------------------------
 
 /**

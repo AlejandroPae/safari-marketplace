@@ -4,8 +4,8 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `OrdersService`: lectura (US-58), escritura (US-59) y
- * descargas, export e invoice (US-60).
+ * Tests unitarios de `OrdersService`: lectura, escritura y descargas,
+ * export e invoice.
  * Solo se mockea el acceso a datos; las dependencias de pago se proveen
  * vacías salvo `verifyOrder` de PayPal, que es la pasarela. El cálculo de
  * precios es el real (`orders-pricing.ts`, con su propio spec).
@@ -204,7 +204,7 @@ describe('OrdersService — lectura', () => {
     service = moduleRef.get(OrdersService);
   });
 
-  describe('forma (D-1)', () => {
+  describe('forma', () => {
     it('padre: claves del mock en orden, terminando en children; dinero y cancelled_* como el mock', async () => {
       findMock.mockResolvedValue(makeParentWithChild());
       const order = (await service.getOrder(
@@ -361,7 +361,7 @@ describe('OrdersService — lectura', () => {
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it('orden ajena ⇒ 404 para un cliente, 200 para el admin (V-4, R-5)', async () => {
+    it('orden ajena ⇒ 404 para un cliente, 200 para el admin', async () => {
       findMock.mockResolvedValue(makeOrder({ id: 41, customerId: 3 }));
       await expect(
         service.getOrder('41', CUSTOMER_USER),
@@ -377,7 +377,7 @@ describe('OrdersService — lectura', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Escritura (US-59)
+// Escritura
 // ---------------------------------------------------------------------------
 
 const productsMock = vi.mocked(findProductsForOrder);
@@ -559,7 +559,7 @@ describe('OrdersService — escritura', () => {
     createMock.mockResolvedValue(makeParentWithChild());
   });
 
-  describe('verifyCheckout (V-1)', () => {
+  describe('verifyCheckout', () => {
     it('calcula impuesto y envío con las 5 claves del contrato en su orden', async () => {
       const verified = await service.verifyCheckout({
         amount: 10,
@@ -606,7 +606,7 @@ describe('OrdersService — escritura', () => {
     });
   });
 
-  describe('create (V-2)', () => {
+  describe('create', () => {
     it('totales del servidor, una hija por tienda, snapshot del producto y estados de COD', async () => {
       userMock.mockResolvedValue({
         id: 2,
@@ -725,7 +725,7 @@ describe('OrdersService — escritura', () => {
       );
     });
 
-    it('FULL_WALLET_PAYMENT ⇒ 422 (V-5); pasarela desconocida ⇒ 400; sin productos ⇒ 400', async () => {
+    it('FULL_WALLET_PAYMENT ⇒ 422; pasarela desconocida ⇒ 400; sin productos ⇒ 400', async () => {
       await expect(
         service.create(
           orderDto({
@@ -761,7 +761,7 @@ describe('OrdersService — escritura', () => {
     });
   });
 
-  describe('update / remove (V-7)', () => {
+  describe('update / remove', () => {
     it('update pasa order_status y payment_status al repositorio y devuelve la orden', async () => {
       statusMock.mockResolvedValue(makeParentWithChild());
       const order = await service.update(
@@ -812,7 +812,7 @@ describe('OrdersService — escritura', () => {
     });
   });
 
-  describe('pay (V-8)', () => {
+  describe('pay', () => {
     it('STRIPE marca la orden pedida; inexistente ⇒ 404', async () => {
       findMock.mockResolvedValueOnce(
         makeOrder({
@@ -860,7 +860,7 @@ describe('OrdersService — escritura', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Descargas, export e invoice (US-60)
+// Descargas, export e invoice
 // ---------------------------------------------------------------------------
 
 const filesMock = vi.mocked(listOrderFilesByCustomer);
@@ -931,7 +931,7 @@ describe('OrdersService — descargas, export e invoice', () => {
     expect(page.first_page_url).toContain('/downloads?&limit=30&page=1');
   });
 
-  it('CA-3: el controlador pasa el sub del token, nunca un customer_id de la query', async () => {
+  it('el controlador pasa el sub del token, nunca un customer_id de la query', async () => {
     filesMock.mockResolvedValue({ items: [], total: 0 });
     const query = {
       limit: '10',
@@ -975,10 +975,10 @@ describe('OrdersService — descargas, export e invoice', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Acceso por tienda (US-100)
+// Acceso por tienda
 // ---------------------------------------------------------------------------
 
-describe('OrdersService — acceso por tienda (US-100)', () => {
+describe('OrdersService — acceso por tienda', () => {
   const ownerMock = vi.mocked(findShopOwnerById);
   const staffMock = vi.mocked(isShopStaff);
   const findOrderMock = vi.mocked(findOrderByIdOrTracking);
@@ -1027,7 +1027,7 @@ describe('OrdersService — acceso por tienda (US-100)', () => {
     service = moduleRef.get(OrdersService);
   });
 
-  describe('listado (decisión 1)', () => {
+  describe('listado', () => {
     it('el super admin conserva la query tal cual', async () => {
       await service.getOrders({ shop_id: '7' } as GetOrdersDto, ADMIN_USER);
       await service.getOrders({} as GetOrdersDto, ADMIN_USER);
@@ -1091,7 +1091,7 @@ describe('OrdersService — acceso por tienda (US-100)', () => {
     });
   });
 
-  describe('detalle (decisión 2)', () => {
+  describe('detalle', () => {
     it('un dueño abre la hija de su tienda pero no la padre de otro cliente', async () => {
       findOrderMock.mockResolvedValue(child());
       expect((await service.getOrder('6', OWNER)).id).toBe(6);
@@ -1118,7 +1118,7 @@ describe('OrdersService — acceso por tienda (US-100)', () => {
     });
   });
 
-  describe('escritura (decisión 3)', () => {
+  describe('escritura', () => {
     const dto = { order_status: 'order-completed' } as UpdateOrderDto;
 
     it('un dueño cambia y borra la hija de su tienda', async () => {

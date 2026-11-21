@@ -42,9 +42,8 @@ function assertId(id: number): void {
 }
 
 /**
- * Reportes de abuso (US-54). Antes las 5 rutas devolvían cadenas (V-6).
- * La moderación (lista, detalle, edición y borrado) es del admin; reportar
- * es de cualquier usuario autenticado.
+ * Reportes de abuso. La moderación (lista, detalle, edición y borrado) es
+ * del admin; reportar es de cualquier usuario autenticado.
  */
 @Injectable()
 export class AbusiveReportService {
@@ -74,7 +73,7 @@ export class AbusiveReportService {
   /**
    * `model_type` acepta el nombre corto (lo que envía el shop) o el FQCN. El
    * repositorio valida que el objeto exista: una reseña o pregunta
-   * (US-55) inexistente es 404. Reportar dos veces lo mismo es 409.
+   * inexistente es 404. Reportar dos veces lo mismo es 409.
    */
   async create(
     dto: CreateReportDto,
@@ -106,7 +105,7 @@ export class AbusiveReportService {
   }
 
   /**
-   * Rechazar (US-65): borra todos los reportes del objeto y lo deja intacto.
+   * Rechazar: borra todos los reportes del objeto y lo deja intacto.
    * `model_type` corto o FQCN; si falta vale `Review`, que es lo que llega
    * hoy del admin (no recibe `abusive_reports` en el detalle). Objeto
    * inexistente ⇒ 404; `model_id` o `model_type` inválidos ⇒ 400; sin

@@ -4,7 +4,7 @@
  * `types: ["node","express","multer"]` y deja fuera los globals de Vitest.
  */
 /**
- * Tests unitarios de `ReviewService` (US-54). Solo se mockea el acceso a
+ * Tests unitarios de `ReviewService`. Solo se mockea el acceso a
  * datos; los proyectores son los reales.
  */
 import 'reflect-metadata';

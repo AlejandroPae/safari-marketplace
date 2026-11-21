@@ -11,7 +11,7 @@ export class GetFlashSaleDto extends PaginationArgs {
   orderBy?: QueryReviewsOrderByColumn;
   sortedBy?: SortOrder;
   search?: string;
-  /** Venta de `/products-by-flash-sale` (el shop lo envía suelto, US-94). */
+  /** Venta de `/products-by-flash-sale` (el shop lo envía suelto). */
   slug?: string;
 }
 
