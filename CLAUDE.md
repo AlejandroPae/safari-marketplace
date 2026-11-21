@@ -7,10 +7,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 `safari-marketplace` — monorepo didáctico para enseñar sistemas distribuidos.
 Integra una tienda e-commerce (Pickbazar: Next.js + NestJS), una capa de datos
 Prisma sobre PostgreSQL y un scraper multi-tienda (Python/Scrapy/Playwright)
-que recolecta productos tecnológicos de 6 retailers colombianos. El README
-raíz menciona despliegue automatizado con Terraform: **hoy no existe ningún
-archivo Terraform en el repo** (es una promesa, no un hecho — ver Épico 16
-del backlog).
+que recolecta productos tecnológicos de 6 retailers colombianos. Se despliega
+con imágenes de Docker (publicadas por el CI en Docker Hub) en un VPS con
+Dokploy; la guía de los estudiantes es `docs/README.md`. **No hay Terraform
+en el repo.**
 
 La prosa del repo (commits, docs, comentarios) va en **español neutral**;
 nombres de archivo, slugs, claves de config e identificadores en
@@ -33,9 +33,9 @@ just admin-dev         # admin   -> http://localhost:3002
 just verify            # los 3 responden con contenido real (cuenta product-cards)
 just check-ports       # diagnóstico de puertos ocupados (Zscaler usa el 9000)
 
-# Gate local (US-10). Pide install + db-up + scraper-install; no pide servidores
+# Gate local. Pide install + db-up + scraper-install; no pide servidores
 just check             # lint + typecheck + tests de todo el repo, ~6-10 min, corta al primer rojo
-just check-full        # check + build-api + build-admin + build-shop (ninguno pide la API, US-104)
+just check-full        # check + build-api + build-admin + build-shop (ninguno pide la API)
 
 # Base de datos (Postgres 16 en Docker, puerto 5433)
 just db-up             # levanta el contenedor + aplica db/schema.sql + db/seed.sql
@@ -48,32 +48,29 @@ just db-check          # packages/db: typecheck + tests de integración (requier
 just scraper-install   # venv + requirements + Chromium de Playwright
 just spiders           # lista los 6 spiders (alkosto|compulago|compuworking|exito|falabella|tauret)
 just scrape <spider>   # corre un spider
-just db-test           # prueba el pipeline contra la base sin salir a internet
-                       # OJO: HOY ROTO — el pipeline ya escribe en `products`
-                       # (US-6), pero test_pipeline.py y `just db-count` aún
-                       # consultan la tabla `productos`, que no existe (US-8)
+just db-test           # prueba el pipeline contra la tabla `products` sin salir a internet
 
 # Build de producción
 just build             # shop + admin. Desde Next 16 `next dev` escribe en
                        # .next/dev y puede convivir con un build, pero no dos
                        # `next build` (ni dos `next dev`) de la misma app
-                       # Desde US-104 NO necesita la API: las rutas dinámicas
+                       # NO necesita la API: las rutas dinámicas
                        # se generan en la primera visita y las páginas
                        # estáticas toleran la API caída (avisan en el log).
 just build-api         # compila la API a dist/
 ```
 
-El gate repo-wide es `just check` (US-10). Corre 10 pasos en orden; la lista,
+El gate repo-wide es `just check`. Corre 10 pasos en orden; la lista,
 la duración de cada uno y lo que queda fuera están en el comentario de la
 receta. Las piezas, por separado:
 
 - `just db-check` — vitest de integración en `packages/db` (requiere
   `just db-up` antes).
-- `cd apps/api/rest && npx vitest run` — 44 archivos / 710 tests (medido el
-  2026-11-18).
+- `cd apps/api/rest && npx vitest run` — 45 archivos / 714 tests (medido el
+  2026-11-21).
   Vitest 4 con `unplugin-swc` (Nest necesita `emitDecoratorMetadata`, que
   esbuild no emite); `vitest.config.ts` mapea `#db/*` a `src/db/pickbazar/`
-  y `#src/*` a `src/`. 37 de los 44 specs mockean `@safari/db`, así que no
+  y `#src/*` a `src/`. 37 de los 45 specs mockean `@safari/db`, así que no
   necesitan Postgres levantado. La red de tipos es aparte:
   `npx tsc --noEmit -p tsconfig.json` (Vitest no comprueba tipos).
 - Lint de la API: `npx eslint "{src,apps,libs,test}/**/*.ts"`. **No** uses
@@ -97,13 +94,13 @@ apps/
 │                   de apps/package.json le da la 19.3.1: hay una sola copia.
 ├── api/rest/       NestJS 12 en ESM (`"type": "module"`, imports `#src/*` y
 │                   `#db/*`), TypeScript 6. Casi todo en Postgres vía
-│                   @safari/db (verificado 2026-11-17, tras el Épico 46). Sigue
-│                   en mock:
-│                   - 4 módulos con JSON de src/db/pickbazar/, PERMANENTES por
-│                     decisión 2 del Épico 46: authors, flash-sale,
-│                     payment-method y payment-intent. También src/payment/
-│                     (servicios de Stripe/PayPal, sin controlador) y la
-│                     llamada a la pasarela de `POST /orders/payment`.
+│                   @safari/db (verificado 2026-11-21; authors y flash-sale
+│                   ya migraron). Sigue en mock:
+│                   - payment-method y payment-intent, con JSON de
+│                     src/db/pickbazar/ (permanentes por decisión del dueño).
+│                     También src/payment/ (servicios de Stripe/PayPal, sin
+│                     controlador) y la llamada a la pasarela de
+│                     `POST /orders/payment`.
 │                   - 9 stubs sin datos ni JSON: addresses, ai, feedbacks,
 │                     imports, newsletters, notify-logs, refunds, uploads y
 │                     web-hook devuelven literales ("This action...").
@@ -131,11 +128,13 @@ db/                 Fuente de verdad del catálogo compartido:
 services/
 └── scraper-worker/ Scrapy + Playwright. 6 spiders de retailers colombianos.
                     Migrado de MongoDB a PostgreSQL (psycopg). Su schema.sql es un
-                    tombstone: el esquema vive en db/. pipelines.py ya upserta en
-                    `products` (US-6); test_pipeline.py y `just db-count` siguen
-                    en `productos` (US-8).
+                    tombstone: el esquema vive en db/. pipelines.py upserta en
+                    `products`, y test_pipeline.py y `just db-count` la consultan.
 
-docker-compose.yml  Solo Postgres 16 (safari/safari@localhost:5433/safari_scraper).
+docker-compose.yml  Stack local: Postgres 16 (safari/safari@localhost:5433/safari_scraper),
+                    db-init, api + api-lb, shop, admin y proxy. `just db-up` levanta
+                    solo Postgres; `just stack-up`, todo.
+docker-compose.deploy.yml  Stack de producción (Dokploy), con las imágenes del CI.
 justfile            Todas las tareas, en español, agrupadas (setup/dev/build/verify/bd/scraper/limpieza).
 ```
 
