@@ -36,6 +36,7 @@ API.
    la lista con sus servicios.
 
    > ![Captura — Botón de refrescar junto a Service Name](img/07-refrescar-servicios.png)
+   
 
 3. Completa el formulario:
 
@@ -52,26 +53,40 @@ API.
    | Certificate Provider | Let's Encrypt |
    | Middlewares | vacío |
 
-   Pulsa **Create**.
+   El campo **Certificate Provider** aparece recién al activar **HTTPS**,
+   debajo del interruptor. Pulsa **Create**.
 
    > ![Captura — Formulario del dominio de la tienda: proxy, puerto 3003, HTTPS con Let's Encrypt](img/07-dominio-tienda.png)
+   
 
 ## Crear el dominio del admin
 
-4. Pulsa otra vez **Add Domain** y repite el formulario con dos cambios:
+4. Pulsa otra vez **Add Domain** y completa el formulario. Cambian solo
+   **Host** y **Container Port** (en negrita):
 
    | Campo | Valor |
    |---|---|
-   | Host | `admin.<tu-dominio>` |
-   | Container Port | `3002` |
+   | Service Name | `proxy` |
+   | Host | **`admin.<tu-dominio>`** |
+   | Path | `/` |
+   | Internal Path | `/` |
+   | Strip Path | apagado |
+   | Container Port | **`3002`** |
+   | Custom Entrypoint | apagado |
+   | HTTPS | activado |
+   | Certificate Provider | Let's Encrypt |
+   | Middlewares | vacío |
 
-   El resto queda igual: servicio `proxy`, Path `/`, HTTPS y Let's Encrypt.
+   Pulsa **Create**.
 
    > ![Captura — Formulario del dominio del admin: proxy, puerto 3002](img/07-dominio-admin.png)
 
-5. La pestaña **Domains** muestra los dos dominios.
+5. La pestaña **Domains** muestra los dos dominios. El botón
+   **Validate DNS** de cada uno comprueba que el registro ya apunta a la IP
+   del servidor.
 
    > ![Captura — Pestaña Domains con los dominios tienda y admin](img/07-dominios-creados.png)
+   
 
 ## Qué hace Dokploy con esto
 
@@ -86,6 +101,9 @@ API.
 Si quieres ver el compose final que va a ejecutar Dokploy, con las etiquetas
 de Traefik y la red ya añadidas, pulsa **Preview Compose** (pestaña
 **General**).
+
+> ![Captura — Pestaña General Preview Compose](img/07-preview-compose.png)
+
 
 ---
 
